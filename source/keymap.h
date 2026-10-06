@@ -9,6 +9,7 @@ typedef enum {
     KEYMAP_MOTOROLA,
     KEYMAP_SIEMENS,
     KEYMAP_LG,
+    KEYMAP_MOTOROLA_OLD,    // T720 / V300 (MIDP 1.0): mã phím dương
     KEYMAP_COUNT,
 } KeyMapId;
 

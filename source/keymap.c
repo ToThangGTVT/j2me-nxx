@@ -7,6 +7,7 @@ static const KeyMap maps[KEYMAP_COUNT] = {
     [KEYMAP_MOTOROLA]     = { "Motorola", "MOT-RAZRV3", -1, -6, -2, -5, -20, -21, -22, -8 },
     [KEYMAP_SIEMENS]      = { "Siemens", "SIE-S65", -59, -60, -61, -62, -26, -1, -4, -12 },
     [KEYMAP_LG]           = { "LG", "LG-KG800", -1, -2, -3, -4, -5, -202, -203, -204 },
+    [KEYMAP_MOTOROLA_OLD] = { "Motorola (cu)", "MOT-T720", 1, 6, 2, 5, 20, 21, 22, 23 },
 };
 
 const KeyMap *keymap_get(int id) {

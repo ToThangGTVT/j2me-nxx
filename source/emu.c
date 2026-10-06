@@ -176,7 +176,13 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     GameSettings gs;
     game_settings_load(base, &gs);
     fps_limit = gs.fps_limit >= 0 ? gs.fps_limit : settings()->fps_limit;
-    keymap = keymap_get(gs.keymap >= 0 ? gs.keymap : settings()->keymap);
+    int km = gs.keymap >= 0 ? gs.keymap : settings()->keymap;
+    // Game Motorola MIDP 1.0 (có thuộc tính Mot-*) dùng mã phím dương của máy Motorola cũ
+    const char *profile = manifest_get(&manifest, "MicroEdition-Profile");
+    if (gs.keymap < 0 && km == KEYMAP_NOKIA && profile && strstr(profile, "MIDP-1") &&
+        (manifest_get(&manifest, "Mot-Program-Space-Requirement") || manifest_get(&manifest, "Mot-Data-Space-Requirement")))
+        km = KEYMAP_MOTOROLA_OLD;
+    keymap = keymap_get(km);
     parse_screen_size(&gs);
     compute_dst();
 
@@ -435,10 +441,11 @@ static void script_step(void) {
         int code, n = 0;
         if (sscanf(p, "%u:%d%n", &at, &code, &n) != 2)
             break;
-        if (at > last && at <= t) {
+        // Giữ phím 120ms như bấm tay (nhiều game đọc trạng thái phím trong vòng lặp vẽ)
+        if (at > last && at <= t)
             midp_post_key(keymap_translate(keymap, code), true);
+        if (at + 120 > last && at + 120 <= t)
             midp_post_key(keymap_translate(keymap, code), false);
-        }
         p += n;
         if (*p == ',')
             p++;

@@ -16,6 +16,7 @@ public final class DirectGraphicsImpl implements DirectGraphics {
         for (int i = 0; i < p.length; i++) {
             p[i] = argb;
         }
+        img.opaque = (argb >>> 24) == 255;
         return img;
     }
 

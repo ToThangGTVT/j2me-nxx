@@ -18,7 +18,7 @@
 
 static bool slots_ready;
 static int G_img, G_transX, G_transY, G_clipX, G_clipY, G_clipW, G_clipH, G_color, G_font, G_stroke;
-static int I_pixels, I_width, I_height, I_mutable;
+static int I_pixels, I_width, I_height, I_mutable, I_opaque;
 static int F_key;
 
 static void init_slots(void) {
@@ -40,11 +40,13 @@ static void init_slots(void) {
     I_width = field_slot(I, "width", "I");
     I_height = field_slot(I, "height", "I");
     I_mutable = field_slot(I, "mutable", "Z");
+    I_opaque = field_slot(I, "opaque", "Z");
     F_key = field_slot("javax/microedition/lcdui/Font", "key", "I");
     slots_ready = true;
 }
 
 typedef struct {
+    Object *img;
     uint32_t *px;
     int w, h;
     int cx0, cy0, cx1, cy1;     // vùng clip [cx0, cx1) x [cy0, cy1)
@@ -53,10 +55,16 @@ typedef struct {
     bool dotted;
 } Ctx;
 
+// Ghi pixel có thể không đục vào ảnh: bỏ cờ opaque
+static inline void mark_maybe_transparent(Ctx *c) {
+    FIELD_I(c->img, I_opaque) = 0;
+}
+
 static bool ctx_init(Object *g, Ctx *c) {
     init_slots();
     Object *img = FIELD_L(g, G_img);
     Object *arr = FIELD_L(img, I_pixels);
+    c->img = img;
     c->px = ARRAY_DATA(arr, uint32_t);
     c->w = FIELD_I(img, I_width);
     c->h = FIELD_I(img, I_height);
@@ -359,6 +367,8 @@ static NativeResult G_drawRGB(VMThread *t, Value *args, Value *ret) {
     x += c.tx;
     y += c.ty;
     const uint32_t *src = ARRAY_DATA(rgb, uint32_t);
+    if (alpha && !FIELD_I(c.img, I_opaque))
+        mark_maybe_transparent(&c);
     int r0 = y < c.cy0 ? c.cy0 - y : 0, r1 = y + h > c.cy1 ? c.cy1 - y : h;
     int k0 = x < c.cx0 ? c.cx0 - x : 0, k1 = x + w > c.cx1 ? c.cx1 - x : w;
     for (int r = r0; r < r1; r++) {
@@ -395,12 +405,16 @@ static NativeResult G_drawRegionImpl(VMThread *t, Value *args, Value *ret) {
     if (x0 >= x1 || y0 >= y1)
         return NATIVE_OK;
 
+    bool src_opaque = FIELD_I(src, I_opaque) != 0;
+    if (copy && !src_opaque)
+        mark_maybe_transparent(&c);
     if (tr == 0) {
         for (int y = y0; y < y1; y++) {
             const uint32_t *s = sp + (sy + y - dy) * sw + sx + (x0 - dx);
             uint32_t *d = c.px + y * c.w + x0;
             int n = x1 - x0;
-            if (copy) {
+            // Ảnh đục: chép thẳng cả hàng
+            if (copy || src_opaque) {
                 memcpy(d, s, (size_t)n * 4);
                 continue;
             }
@@ -433,7 +447,7 @@ static NativeResult G_drawRegionImpl(VMThread *t, Value *args, Value *ret) {
             default: px = lx; py = ly; break;
             }
             uint32_t p = sp[(sy + py) * sw + sx + px];
-            if (copy)
+            if (copy || src_opaque)
                 d[x] = p;
             else if ((p >> 24) == 255)
                 d[x] = p;
@@ -552,6 +566,16 @@ static NativeResult Image_decode0(VMThread *t, Value *args, Value *ret) {
     FIELD_I(self, I_width) = w;
     FIELD_I(self, I_height) = h;
     FIELD_I(self, I_mutable) = 0;
+    // Kiểm tra ảnh có pixel trong suốt không
+    int opaque = 1;
+    const uint32_t *pp = ARRAY_DATA(arr, uint32_t);
+    for (int i = 0; i < w * h; i++) {
+        if ((pp[i] >> 24) != 255) {
+            opaque = 0;
+            break;
+        }
+    }
+    FIELD_I(self, I_opaque) = opaque;
     ret->i = 1;
     return NATIVE_OK;
 }

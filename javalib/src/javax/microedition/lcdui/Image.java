@@ -5,11 +5,13 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class Image {
-    // VM đọc trực tiếp 4 field này (source/midp/graphics.c)
+    // VM đọc trực tiếp các field này (source/midp/graphics.c)
     int[] pixels;
     int width;
     int height;
     boolean mutable;
+    // Mọi pixel có alpha = 255: vẽ ảnh được bằng chép thẳng (nhanh hơn nhiều)
+    boolean opaque;
 
     Image(int w, int h, boolean mutable) {
         width = w;
@@ -30,6 +32,7 @@ public class Image {
         for (int i = 0; i < p.length; i++) {
             p[i] = 0xffffffff;
         }
+        img.opaque = true;
         return img;
     }
 
@@ -39,6 +42,7 @@ public class Image {
         }
         Image img = new Image(source.width, source.height, false);
         System.arraycopy(source.pixels, 0, img.pixels, 0, img.pixels.length);
+        img.opaque = source.opaque;
         return img;
     }
 
@@ -92,6 +96,7 @@ public class Image {
         Image img = new Image(w, h, false);
         Graphics g = new Graphics(img);
         g.drawRegionImpl(image, x, y, width, height, transform, 0, 0, true);
+        img.opaque = image.opaque;
         return img;
     }
 
@@ -106,10 +111,18 @@ public class Image {
         int n = width * height;
         if (processAlpha) {
             System.arraycopy(rgb, 0, img.pixels, 0, n);
+            img.opaque = true;
+            for (int i = 0; i < n; i++) {
+                if ((rgb[i] >>> 24) != 255) {
+                    img.opaque = false;
+                    break;
+                }
+            }
         } else {
             for (int i = 0; i < n; i++) {
                 img.pixels[i] = rgb[i] | 0xff000000;
             }
+            img.opaque = true;
         }
         return img;
     }

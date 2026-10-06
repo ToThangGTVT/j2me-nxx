@@ -224,6 +224,12 @@ public class Display {
     // GameCanvas.flushGraphics()
     static void flushImage(Image img, int x, int y, int w, int h) {
         synchronized (paintLock) {
+            Display d0 = instance;
+            if (img.width == screenW && img.height == screenH && (d0 == null || d0.menuItems == null)) {
+                // Đẩy thẳng bộ đệm của GameCanvas ra màn hình, không chép qua ảnh màn hình
+                flush0(img.pixels, screenW, screenH);
+                return;
+            }
             Graphics g = screenGraphics;
             g.reset();
             g.drawRegionImpl(img, 0, 0, Math.min(img.width, screenW), Math.min(img.height, screenH), 0, 0, 0, false);

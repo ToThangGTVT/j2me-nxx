@@ -33,6 +33,7 @@ typedef enum {
     ITEM_LANGUAGE,
     ITEM_SHOW_HELP,
     ITEM_KEYMAP,
+    ITEM_SCALE,
 } ItemId;
 
 static int cursor;
@@ -93,6 +94,7 @@ static int visible_items(ItemId *out) {
     }
     out[n++] = ITEM_KEYMAP;
     if (!game_mode) {
+        out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;
         out[n++] = ITEM_LANGUAGE;
     }
@@ -230,6 +232,10 @@ bool settings_screen_update(void) {
         if (dir || a)
             settings()->show_help = !settings()->show_help;
         break;
+    case ITEM_SCALE:
+        if (dir || a)
+            settings()->scale_mode = (settings()->scale_mode + (dir ? dir : 1) + 3) % 3;
+        break;
     case ITEM_KEYMAP:
         if (dir || a) {
             // Chế độ game có thêm "Mặc định" (-1)
@@ -304,6 +310,12 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
             snprintf(value, size, tr(S_DEFAULT_FMT), keymap_get(s->keymap)->name);
         else
             snprintf(value, size, "%s", keymap_get(game_mode ? game.keymap : s->keymap)->name);
+        break;
+    case ITEM_SCALE:
+        *label = tr(S_SCALE_MODE);
+        *hint = tr(S_SCALE_HINT);
+        snprintf(value, size, "%s", tr(s->scale_mode == 2 ? S_SCALE_INTEGER : s->scale_mode == 1 ? S_SCALE_SHARP
+                                                                                                 : S_SCALE_SMOOTH));
         break;
     case ITEM_SHOW_HELP:
         *label = tr(S_SHOW_HELP);

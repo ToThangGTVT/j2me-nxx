@@ -116,6 +116,9 @@ static void compute_dst(void) {
     float s = (float)SCREEN_W / scr_w;
     if ((float)SCREEN_H / scr_h < s)
         s = (float)SCREEN_H / scr_h;
+    // Phóng số nguyên: điểm ảnh đều nhau (nhỏ hơn màn hình thì giữ 1x... trừ khi không vừa)
+    if (settings()->scale_mode == 2 && s >= 1.0f)
+        s = (float)(int)s;
     dst.w = (int)(scr_w * s);
     dst.h = (int)(scr_h * s);
     dst.x = (SCREEN_W - dst.w) / 2;
@@ -211,7 +214,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     }
 
     screen_tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, scr_w, scr_h);
-    SDL_SetTextureScaleMode(screen_tex, SDL_ScaleModeLinear);
+    SDL_SetTextureScaleMode(screen_tex, settings()->scale_mode == 0 ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
     running = true;
     return true;
 }

@@ -8,6 +8,7 @@ typedef struct {
     int screen_w, screen_h; // kích thước màn hình mặc định cho game
     int lang;               // Lang (lang.h)
     int keymap;             // KeyMapId (keymap.h)
+    int scale_mode;         // 0 mượt, 1 sắc nét, 2 sắc nét số nguyên
     bool show_help;         // hiện bảng phím bên trái khi chơi
 } Settings;
 

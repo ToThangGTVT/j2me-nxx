@@ -9,6 +9,8 @@
 #include <switch.h>
 
 bool platform_init(void) {
+    // Mạng cho game online (socket:// và http://); lỗi thì game chỉ không kết nối được
+    socketInitializeDefault();
     Result rc = plInitialize(PlServiceType_User);
     if (R_FAILED(rc)) {
         printf("plInitialize failed: 0x%x\n", rc);
@@ -19,6 +21,7 @@ bool platform_init(void) {
 
 void platform_exit(void) {
     plExit();
+    socketExit();
 }
 
 const char *platform_games_dir(void) {

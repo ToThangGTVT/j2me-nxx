@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+MIDlet-Name: NetTest
+MIDlet-1: NetTest, , nt.NetTest

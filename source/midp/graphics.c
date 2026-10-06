@@ -10,6 +10,7 @@
 #include <SDL_ttf.h>
 
 #include "../platform.h"
+#include "../third_party/stb_image.h"
 #include "../vm/vm.h"
 
 // ---------------------------------------------------------------------------
@@ -519,7 +520,20 @@ static NativeResult Image_decode0(VMThread *t, Value *args, Value *ret) {
         return NATIVE_OK;
     }
     int w = 0, h = 0;
-    uint32_t *px = decode_png(ARRAY_DATA(data, uint8_t) + off, (size_t)len, &w, &h);
+    const uint8_t *bytes = ARRAY_DATA(data, uint8_t) + off;
+    uint32_t *px = decode_png(bytes, (size_t)len, &w, &h);
+    if (!px) {
+        // JPEG / GIF / BMP (hoặc PNG mà libpng từ chối)
+        int comp;
+        uint8_t *rgba = stbi_load_from_memory(bytes, len, &w, &h, &comp, 4);
+        if (rgba) {
+            px = malloc((size_t)w * h * 4);
+            for (int i = 0; i < w * h; i++)
+                px[i] = ((uint32_t)rgba[i * 4 + 3] << 24) | ((uint32_t)rgba[i * 4] << 16) |
+                        ((uint32_t)rgba[i * 4 + 1] << 8) | rgba[i * 4 + 2];
+            stbi_image_free(rgba);
+        }
+    }
     if (!px) {
         const uint8_t *d = ARRAY_DATA(data, uint8_t) + off;
         vm_log("Khong doc duoc anh (%d byte, dau %02x %02x %02x %02x)", len, len > 0 ? d[0] : 0,

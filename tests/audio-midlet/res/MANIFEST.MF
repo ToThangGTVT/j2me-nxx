@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+MIDlet-Name: AudioTest
+MIDlet-1: AudioTest, , at.AudioTest

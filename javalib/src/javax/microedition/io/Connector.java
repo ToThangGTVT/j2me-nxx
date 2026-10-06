@@ -26,6 +26,24 @@ public class Connector {
         if (name == null) {
             throw new IllegalArgumentException();
         }
+        String lower = name.toLowerCase();
+        if (lower.startsWith("socket://")) {
+            String hp = name.substring(9);
+            int colon = hp.lastIndexOf(':');
+            if (colon <= 0) {
+                throw new IllegalArgumentException("Thieu cong: " + name);
+            }
+            int port;
+            try {
+                port = Integer.parseInt(hp.substring(colon + 1));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Cong khong hop le: " + name);
+            }
+            return new j2menx.SocketConn(hp.substring(0, colon), port);
+        }
+        if (lower.startsWith("http://")) {
+            return new j2menx.HttpConn(name);
+        }
         System.out.println("Connector.open chua ho tro: " + name);
         throw new ConnectionNotFoundException(name);
     }

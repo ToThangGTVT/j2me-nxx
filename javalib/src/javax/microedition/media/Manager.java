@@ -28,6 +28,13 @@ public final class Manager {
         if (locator == null) {
             throw new IllegalArgumentException();
         }
+        if (locator.startsWith("resource:")) {
+            InputStream in = Manager.class.getResourceAsStream(locator.substring(9));
+            if (in == null) {
+                throw new MediaException("Khong tim thay " + locator);
+            }
+            return createPlayer(in, null);
+        }
         return new j2menx.AudioPlayer(null, locator.startsWith(TONE_DEVICE_LOCATOR) ? "audio/x-tone-seq" : "audio/midi");
     }
 
@@ -45,6 +52,10 @@ public final class Manager {
     }
 
     public static void playTone(int note, int duration, int volume) throws MediaException {
+        if (note < 0 || note > 127 || duration <= 0) {
+            throw new IllegalArgumentException();
+        }
+        j2menx.AudioPlayer.playTone(note, duration, volume);
     }
 
     public static TimeBase getSystemTimeBase() {

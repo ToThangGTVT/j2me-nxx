@@ -8,6 +8,7 @@ typedef enum {
     MENU_LAUNCH,    // chọn game: menu.cursor là index trong list
     MENU_RESCAN,
     MENU_SETTINGS,
+    MENU_GAME_OPTIONS,  // tuỳ chọn riêng của game menu.cursor
     MENU_QUIT,
 } MenuAction;
 

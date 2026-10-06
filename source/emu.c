@@ -17,8 +17,6 @@
 extern const unsigned char classlib_jar[];
 extern const size_t classlib_jar_size;
 
-#define DEFAULT_SCREEN_W 240
-#define DEFAULT_SCREEN_H 320
 #define VM_BUDGET_MS     12
 #define REPEAT_DELAY_MS  400
 #define REPEAT_RATE_MS   100
@@ -39,6 +37,7 @@ static FILE *log_file;
 
 static SDL_Texture *screen_tex;
 static int scr_w, scr_h;
+static int fps_limit;
 static SDL_Rect dst;
 
 // Phím J2ME đang giữ (đếm số nguồn: tay cầm + bàn phím)
@@ -200,9 +199,15 @@ static void base_name(const char *path, char *out, size_t size) {
         *dot = '\0';
 }
 
-static void parse_screen_size(void) {
-    scr_w = DEFAULT_SCREEN_W;
-    scr_h = DEFAULT_SCREEN_H;
+// Ưu tiên: tuỳ chọn riêng của game > khai báo trong MANIFEST/JAD > cài đặt chung
+static void parse_screen_size(const GameSettings *gs) {
+    if (gs->screen_w) {
+        scr_w = gs->screen_w;
+        scr_h = gs->screen_h;
+        return;
+    }
+    scr_w = settings()->screen_w;
+    scr_h = settings()->screen_h;
     const char *v = get_prop("Nokia-MIDlet-Original-Display-Size");
     if (!v)
         v = get_prop("J2ME-NX-Screen-Size");
@@ -284,7 +289,10 @@ bool emu_start(const char *jar_path, char *err, size_t err_size) {
     if (log_file)
         fprintf(log_file, "J2ME-NX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
 
-    parse_screen_size();
+    GameSettings gs;
+    game_settings_load(base, &gs);
+    fps_limit = gs.fps_limit >= 0 ? gs.fps_limit : settings()->fps_limit;
+    parse_screen_size(&gs);
     compute_dst();
 
     VMHost host = {
@@ -307,7 +315,7 @@ bool emu_start(const char *jar_path, char *err, size_t err_size) {
         .app_property = host_app_property,
         .keyboard = platform_keyboard,
         .vibrate = NULL,
-        .fps_limit = settings()->fps_limit,
+        .fps_limit = fps_limit,
     };
     if (!midp_start(&mc, cls)) {
         snprintf(err, err_size, "Khong chay duoc MIDlet: %s", vm_last_error());
@@ -584,6 +592,7 @@ bool emu_update(void) {
         return false;
     }
     update_repeat();
+    midp_audio_poll();
     if (!vm_run(VM_BUDGET_MS)) {
         snprintf(exit_msg, sizeof(exit_msg), "Game da ket thuc (khong con thread nao chay)");
         return false;
@@ -620,8 +629,8 @@ static void draw_help(void) {
     gfx_text(FONT_LARGE, x, y, panel_w - 48, ALIGN_LEFT, COL_TEXT, game_name);
     y += gfx_font_height(FONT_LARGE) + 4;
     char info[64];
-    if (settings()->fps_limit > 0)
-        snprintf(info, sizeof(info), "%dx%d  -  gioi han %d FPS", scr_w, scr_h, settings()->fps_limit);
+    if (fps_limit > 0)
+        snprintf(info, sizeof(info), "%dx%d  -  gioi han %d FPS", scr_w, scr_h, fps_limit);
     else
         snprintf(info, sizeof(info), "%dx%d", scr_w, scr_h);
     gfx_text(FONT_SMALL, x, y, 0, ALIGN_LEFT, COL_DIM, info);

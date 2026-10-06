@@ -16,6 +16,7 @@ enum {
     MIDP_EV_SERIAL = 8,
     MIDP_EV_PAUSE = 9,
     MIDP_EV_RESUME = 10,
+    MIDP_EV_MEDIA_END = 12,
 };
 
 // Mã phím J2ME (kiểu Nokia)
@@ -55,6 +56,15 @@ void midp_post_key(int code, bool pressed);
 // Framebuffer ARGB của màn hình J2ME. *dirty = có khung hình mới từ lần gọi trước
 const uint32_t *midp_framebuffer(int *w, int *h, bool *dirty);
 bool midp_exit_requested(void);
+
+// audio.c
+void midp_audio_register(void);
+void midp_audio_poll(void);         // gọi mỗi frame: báo END_OF_MEDIA
+void midp_audio_shutdown(void);
+
+// net.c
+void midp_net_register(void);
+void midp_net_shutdown(void);
 
 // graphics.c
 void midp_graphics_register(void);

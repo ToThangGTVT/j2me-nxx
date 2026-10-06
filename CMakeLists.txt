@@ -87,6 +87,9 @@ add_executable(j2me-nx
     source/vm/zip.c
     source/midp/midp.c
     source/midp/graphics.c
+    source/midp/net.c
+    source/midp/audio.c
+    source/third_party/stb_image.c
     "${CLASSLIB_C}"
 )
 

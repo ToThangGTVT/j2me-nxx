@@ -354,6 +354,8 @@ void midp_register_natives(void) {
     native_register(R, "list0", "()[Ljava/lang/String;", RecordStore_list0);
 
     midp_graphics_register();
+    midp_net_register();
+    midp_audio_register();
 }
 
 bool midp_start(const MidpConfig *c, const char *midlet_class) {
@@ -394,4 +396,6 @@ void midp_shutdown(void) {
     fb_w = fb_h = 0;
     event_waiter = NULL;
     midp_graphics_shutdown();
+    midp_net_shutdown();
+    midp_audio_shutdown();
 }

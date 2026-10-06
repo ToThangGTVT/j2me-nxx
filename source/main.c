@@ -75,6 +75,11 @@ int main(int argc, char *argv[]) {
                 const char *msg = emu_exit_message();
                 snprintf(menu.status, sizeof(menu.status), "%s", msg[0] ? msg : "Da thoat game");
                 emu_stop();
+#ifndef __SWITCH__
+                // Kịch bản test (J2ME_NX_QUIT): thoát app luôn khi game kết thúc
+                if (SDL_getenv("J2ME_NX_QUIT"))
+                    running = false;
+#endif
             } else {
                 emu_draw();
                 gfx_present();
@@ -104,6 +109,16 @@ int main(int argc, char *argv[]) {
         case MENU_SETTINGS:
             settings_screen_open();
             in_settings = true;
+            break;
+        case MENU_GAME_OPTIONS:
+            if (list.demo) {
+                snprintf(menu.status, sizeof(menu.status), "Day la list demo");
+            } else {
+                char id[256];
+                game_list_id(&list.items[menu.cursor], id, sizeof(id));
+                settings_screen_open_game(id, list.items[menu.cursor].name);
+                in_settings = true;
+            }
             break;
         case MENU_LAUNCH:
             if (list.demo)

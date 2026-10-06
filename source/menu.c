@@ -39,6 +39,8 @@ MenuAction menu_update(Menu *m, const GameList *list) {
         return MENU_RESCAN;
     if (input_pressed(BTN_X))
         return MENU_SETTINGS;
+    if (input_pressed(BTN_MINUS) && list->count > 0)
+        return MENU_GAME_OPTIONS;
     if (list->count == 0)
         return MENU_NONE;
 
@@ -150,7 +152,7 @@ static void draw_footer(const Menu *m, const GameList *list) {
     gfx_fill_rect(0, y0, SCREEN_W, 1, COL_TRACK);
 
     if (m->status[0]) {
-        gfx_text(FONT_NORMAL, LIST_X, text_y, 620, ALIGN_LEFT, COL_WARN, m->status);
+        gfx_text(FONT_NORMAL, LIST_X, text_y, 440, ALIGN_LEFT, COL_WARN, m->status);
     } else {
         char pos[32];
         snprintf(pos, sizeof(pos), "%d / %d", list->count ? m->cursor + 1 : 0, list->count);
@@ -158,7 +160,7 @@ static void draw_footer(const Menu *m, const GameList *list) {
     }
 
     gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, text_y, 0, ALIGN_RIGHT, COL_TEXT,
-             "(A) Chon   (X) Cai dat   (Y) Quet lai   (L/R) Trang   (+) Thoat");
+             "(A) Chon   (-) Tuy chon game   (X) Cai dat   (Y) Quet lai   (+) Thoat");
 }
 
 void menu_draw(const Menu *m, const GameList *list, const char *games_dir) {

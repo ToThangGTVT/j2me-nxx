@@ -26,6 +26,7 @@ public class Display {
     static final int EV_PAUSE = 9;
     static final int EV_RESUME = 10;
     static final int EV_DESTROY = 11;
+    static final int EV_MEDIA_END = 12;
 
     private static Display instance;
     static final Object paintLock = new Object();
@@ -424,6 +425,9 @@ public class Display {
             if (c != null) {
                 c.hideNotify0();
             }
+            break;
+        case EV_MEDIA_END:
+            j2menx.AudioPlayer.mediaEnded(ev[1]);
             break;
         case EV_RESUME:
             if (c != null) {

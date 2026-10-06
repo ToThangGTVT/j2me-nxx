@@ -9,29 +9,41 @@
 const int SETTINGS_FPS_CHOICES[] = { 0, 15, 20, 30, 60 };
 const int SETTINGS_FPS_CHOICE_COUNT = sizeof(SETTINGS_FPS_CHOICES) / sizeof(SETTINGS_FPS_CHOICES[0]);
 
+const ScreenSize SETTINGS_SCREEN_CHOICES[] = {
+    { 128, 128 }, { 128, 160 }, { 176, 208 }, { 176, 220 }, { 208, 208 },
+    { 240, 320 }, { 320, 240 }, { 352, 416 }, { 360, 640 }, { 480, 800 },
+};
+const int SETTINGS_SCREEN_CHOICE_COUNT = sizeof(SETTINGS_SCREEN_CHOICES) / sizeof(SETTINGS_SCREEN_CHOICES[0]);
+
 static Settings current = {
     .fps_limit = 0,
+    .screen_w = 240,
+    .screen_h = 320,
 };
 
 Settings *settings(void) {
     return &current;
 }
 
-static void settings_path(char *out, size_t size) {
-    snprintf(out, size, "%s/settings.ini", platform_data_dir());
+static bool valid_screen(int w, int h) {
+    return w >= 96 && h >= 64 && w <= 800 && h <= 800;
 }
 
 void settings_load(void) {
     char path[512];
-    settings_path(path, sizeof(path));
+    snprintf(path, sizeof(path), "%s/settings.ini", platform_data_dir());
     FILE *f = fopen(path, "r");
     if (!f)
         return;
     char line[256];
     while (fgets(line, sizeof(line), f)) {
-        int v;
+        int v, w, h;
         if (sscanf(line, "fps_limit=%d", &v) == 1 && v >= 0 && v <= 240)
             current.fps_limit = v;
+        else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && valid_screen(w, h)) {
+            current.screen_w = w;
+            current.screen_h = h;
+        }
     }
     fclose(f);
 }
@@ -39,10 +51,57 @@ void settings_load(void) {
 bool settings_save(void) {
     mkdir(platform_data_dir(), 0777);
     char path[512];
-    settings_path(path, sizeof(path));
+    snprintf(path, sizeof(path), "%s/settings.ini", platform_data_dir());
     FILE *f = fopen(path, "w");
     if (!f)
         return false;
     fprintf(f, "fps_limit=%d\n", current.fps_limit);
+    fprintf(f, "screen=%dx%d\n", current.screen_w, current.screen_h);
+    return fclose(f) == 0;
+}
+
+static void game_path(const char *game, char *out, size_t size) {
+    snprintf(out, size, "%s/games/%s.ini", platform_data_dir(), game);
+}
+
+void game_settings_load(const char *game, GameSettings *out) {
+    out->fps_limit = -1;
+    out->screen_w = out->screen_h = 0;
+    char path[512];
+    game_path(game, path, sizeof(path));
+    FILE *f = fopen(path, "r");
+    if (!f)
+        return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        int v, w, h;
+        if (sscanf(line, "fps_limit=%d", &v) == 1 && v >= -1 && v <= 240)
+            out->fps_limit = v;
+        else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && valid_screen(w, h)) {
+            out->screen_w = w;
+            out->screen_h = h;
+        }
+    }
+    fclose(f);
+}
+
+bool game_settings_save(const char *game, const GameSettings *gs) {
+    char dir[512];
+    mkdir(platform_data_dir(), 0777);
+    snprintf(dir, sizeof(dir), "%s/games", platform_data_dir());
+    mkdir(dir, 0777);
+    char path[512];
+    game_path(game, path, sizeof(path));
+    // Toàn mặc định thì xoá file cho gọn
+    if (gs->fps_limit < 0 && gs->screen_w == 0) {
+        remove(path);
+        return true;
+    }
+    FILE *f = fopen(path, "w");
+    if (!f)
+        return false;
+    fprintf(f, "fps_limit=%d\n", gs->fps_limit);
+    if (gs->screen_w)
+        fprintf(f, "screen=%dx%d\n", gs->screen_w, gs->screen_h);
     return fclose(f) == 0;
 }

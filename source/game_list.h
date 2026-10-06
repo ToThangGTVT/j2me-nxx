@@ -2,6 +2,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct {
     char name[256];
@@ -16,4 +17,6 @@ typedef struct {
 } GameList;
 
 void game_list_scan(GameList *list, const char *dir);
+// Tên file không có đuôi .jar: dùng làm khoá cho save RMS / tuỳ chọn riêng
+void game_list_id(const GameEntry *g, char *out, size_t size);
 void game_list_free(GameList *list);

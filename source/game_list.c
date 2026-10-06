@@ -70,6 +70,13 @@ void game_list_scan(GameList *list, const char *dir) {
     qsort(list->items, list->count, sizeof(GameEntry), cmp_entries);
 }
 
+void game_list_id(const GameEntry *g, char *out, size_t size) {
+    snprintf(out, size, "%s", g->name);
+    size_t n = strlen(out);
+    if (n > 4 && strcasecmp(out + n - 4, ".jar") == 0)
+        out[n - 4] = '\0';
+}
+
 void game_list_free(GameList *list) {
     free(list->items);
     list->items = NULL;

@@ -62,6 +62,10 @@ void midp_post_key(int code, bool pressed);
 const uint32_t *midp_framebuffer(int *w, int *h, bool *dirty);
 bool midp_exit_requested(void);
 
+// m3g.c
+void midp_m3g_register(void);
+void midp_m3g_shutdown(void);
+
 // fileio.c
 void midp_fileio_register(void);
 

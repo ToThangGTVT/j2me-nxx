@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+MIDlet-Name: M3G Test
+MIDlet-1: Khoi lap phuong, , mt.Cube3D
+MIDlet-2: Nap file m3g, , ml.LoadTest

@@ -12,7 +12,7 @@ Chạy file `.jar` của game điện thoại Java cũ trực tiếp trên Switc
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; font Google Sans (OFL) có đủ chữ tiếng Việt |
 | `source/` | App: danh sách game, cài đặt, phiên chạy game (`emu.c`), lớp nền tảng Switch/desktop |
-| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://) |
+| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
 
 Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng vào binary dưới dạng `classlib.jar`.
 
@@ -87,7 +87,8 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 - API của hãng: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
 - Giả lập để game không lỗi thiếu lớp: Bluetooth (JSR-82), SMS (JSR-120, gửi luôn báo lỗi), `PushRegistry`.
 - Kiểu phím theo hãng (Nokia, Sony Ericsson, Samsung, Motorola, Siemens, LG) trong Cài đặt / Tuỳ chọn game; JAR nhiều MIDlet có hộp chọn MIDlet.
-- Chưa có: JSR-184 M3G (3D), JSR-226 SVG, AMR, cảm biến.
+- 3D: JSR-184 M3G (`javax.microedition.m3g`) với bộ dựng hình phần mềm (`source/midp/m3g.c`): Z-buffer, texture có hiệu chỉnh phối cảnh, chiếu sáng theo đỉnh (ambient/directional/omni/spot), fog, blend, Sprite3D, Skinned/MorphingMesh, animation keyframe, `Loader` đọc file `.m3g` (kể cả section nén zlib), `Group.pick`.
+- Chưa có: MascotCapsule 3D (game Sony Ericsson), JSR-226 SVG, AMR, cảm biến.
 
 ### Test tự động trên desktop
 

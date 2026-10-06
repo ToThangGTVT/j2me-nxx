@@ -105,6 +105,7 @@ add_executable(j2me-nx
     source/midp/tls.c
     source/midp/audio.c
     source/midp/fileio.c
+    source/midp/m3g.c
     source/third_party/stb_image.c
     source/third_party/dr_mp3.c
     "${CLASSLIB_C}"

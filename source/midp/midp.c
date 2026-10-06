@@ -358,6 +358,7 @@ void midp_register_natives(void) {
     midp_tls_register();
     midp_audio_register();
     midp_fileio_register();
+    midp_m3g_register();
 }
 
 bool midp_start(const MidpConfig *c, const char *midlet_class) {
@@ -415,4 +416,5 @@ void midp_shutdown(void) {
     midp_tls_shutdown();
     midp_net_shutdown();
     midp_audio_shutdown();
+    midp_m3g_shutdown();
 }

@@ -30,6 +30,19 @@ public final class DisplayAccess {
         }
     }
 
+    // Cho M3G: mảng pixel đích và info = {transX, transY, clipX, clipY, clipW, clipH, imgW, imgH}
+    public static int[] graphicsTarget(Graphics g, int[] info) {
+        info[0] = g.transX;
+        info[1] = g.transY;
+        info[2] = g.clipX;
+        info[3] = g.clipY;
+        info[4] = g.clipW;
+        info[5] = g.clipH;
+        info[6] = g.img.width;
+        info[7] = g.img.height;
+        return g.img.pixels;
+    }
+
     public static int[] pixels(Image img) {
         return img.pixels;
     }

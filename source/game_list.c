@@ -42,7 +42,7 @@ static bool has_jar_ext(const char *name) {
 
 static void base_title(GameEntry *g) {
     const char *s = strrchr(g->name, '/');
-    snprintf(g->title, sizeof(g->title), "%s", s ? s + 1 : g->name);
+    snprintf(g->title, sizeof(g->title), "%.127s", s ? s + 1 : g->name);
     size_t n = strlen(g->title);
     if (n > 4 && strcasecmp(g->title + n - 4, ".jar") == 0)
         g->title[n - 4] = '\0';
@@ -82,7 +82,11 @@ static void scan_dir(GameList *list, const char *root, const char *rel, int dept
         GameEntry *g = &list->items[list->count++];
         memset(g, 0, sizeof(*g));
         snprintf(g->name, sizeof(g->name), "%s", child_rel);
-        snprintf(g->path, sizeof(g->path), "%s", full);
+        if (strlen(full) >= sizeof(g->path)) {
+            list->count--;
+            continue;
+        }
+        snprintf(g->path, sizeof(g->path), "%.511s", full);
         g->size = (long)st.st_size;
         base_title(g);
     }

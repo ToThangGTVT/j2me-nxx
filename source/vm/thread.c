@@ -228,7 +228,7 @@ jlong vm_next_wakeup(void) {
     return best;
 }
 
-// J2ME_NX_PROF=1: lấy mẫu method đang chạy sau mỗi lượt, in các chỗ tốn CPU nhất mỗi 5 giây
+// Khi bật log đo hiệu năng: lấy mẫu method đang chạy sau mỗi lượt, in các chỗ tốn CPU nhất mỗi 5 giây
 #define PROF_SLOTS 256
 typedef struct {
     int tid;
@@ -237,7 +237,6 @@ typedef struct {
 } ProfSample;
 static ProfSample prof_tab[PROF_SLOTS];
 static int prof_total;
-static int prof_on = -1;
 static jlong prof_last;
 
 static void prof_record(VMThread *t) {
@@ -269,13 +268,15 @@ static void prof_dump(void) {
     if (prof_total == 0)
         return;
     qsort(prof_tab, PROF_SLOTS, sizeof(ProfSample), prof_cmp);
-    fprintf(stderr, "[prof] --- %d lượt ---\n", prof_total);
+    vm_prof_log("--- %d lượt ---", prof_total);
     for (int i = 0; i < 8 && prof_tab[i].count; i++) {
         ProfSample *e = &prof_tab[i];
-        fprintf(stderr, "[prof] %3d%% T%d", e->count * 100 / prof_total, e->tid);
-        for (int k = 0; k < 3 && e->m[k]; k++)
-            fprintf(stderr, " %s %s.%s", k ? "<" : "", e->m[k]->owner->name, e->m[k]->name);
-        fprintf(stderr, "\n");
+        char line[512];
+        int n = snprintf(line, sizeof(line), "%3d%% T%d", e->count * 100 / prof_total, e->tid);
+        for (int k = 0; k < 3 && e->m[k] && n < (int)sizeof(line); k++)
+            n += snprintf(line + n, sizeof(line) - n, " %s %s.%s", k ? "<" : "", e->m[k]->owner->name,
+                          e->m[k]->name);
+        vm_prof_log("%s", line);
     }
     memset(prof_tab, 0, sizeof(prof_tab));
     prof_total = 0;
@@ -290,8 +291,7 @@ jlong vm_take_idle_ms(void) {
 }
 
 bool vm_run(int budget_ms) {
-    if (prof_on < 0)
-        prof_on = getenv("J2ME_NX_PROF") != NULL;
+    bool prof_on = vm_prof_on();
     if (prof_on && vm_time_ms() - prof_last >= 5000) {
         prof_dump();
         prof_last = vm_time_ms();

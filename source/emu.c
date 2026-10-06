@@ -37,9 +37,21 @@ static SDL_Texture *screen_tex;
 // Sharp-bilinear: phóng nguyên lần (giữ điểm ảnh) vào texture trung gian rồi thu mịn xuống màn hình
 static SDL_Texture *sharp_tex;
 static bool sharp_dirty;
-// Đo hiệu năng (Cài đặt -> Hiện FPS; J2ME_NX_PROF=1 in thêm ra stderr)
+// Đo hiệu năng. Cài đặt -> Hiện FPS: hiện ở góc màn hình và ghi log ra <data>/log.txt
+// (desktop: J2ME_NX_PROF=1 ghi ra stderr)
 static double stat_vm_max, stat_vm_sum;
-static int stat_prof;
+static Uint64 stat_last_frame;
+
+// Gọi sau khi đã mở log_file
+static void prof_start(void) {
+    FILE *f = SDL_getenv("J2ME_NX_PROF") ? stderr : settings()->show_fps ? log_file : NULL;
+    vm_prof_open(f);
+}
+
+static void prof_stop(void) {
+    vm_prof_flush();
+    vm_prof_open(NULL);
+}
 static int scr_w, scr_h;
 static int fps_limit;
 static const KeyMap *keymap;
@@ -178,6 +190,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     log_file = fopen(log_path, "w");
     if (log_file)
         fprintf(log_file, "J2ME-NX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
+    prof_start();
 
     GameSettings gs;
     game_settings_load(base, &gs);
@@ -239,8 +252,9 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         sharp_dirty = true;
     }
     running = true;
-    stat_prof = SDL_getenv("J2ME_NX_PROF") != NULL;
     stat_vm_max = 0;
+    stat_last_frame = 0;
+    vm_prof_log("screen %dx%d  scale %d  fps_limit %d", scr_w, scr_h, settings()->scale_mode, fps_limit);
     return true;
 }
 
@@ -250,6 +264,7 @@ void emu_stop(void) {
         midp_shutdown();
     }
     running = false;
+    prof_stop();
     if (screen_tex)
         SDL_DestroyTexture(screen_tex);
     screen_tex = NULL;
@@ -512,15 +527,14 @@ bool emu_update(void) {
     }
     update_repeat();
     midp_audio_poll();
-    int prof = stat_prof;
     Uint64 t0 = SDL_GetPerformanceCounter();
     bool alive = vm_run(VM_BUDGET_MS);
     double ms = (SDL_GetPerformanceCounter() - t0) * 1000.0 / SDL_GetPerformanceFrequency();
     if (ms > stat_vm_max)
         stat_vm_max = ms;
     stat_vm_sum += ms;
-    if (prof && ms > 30)
-        fprintf(stderr, "[prof] vm_run %.1f ms\n", ms);
+    if (ms > 30)
+        vm_prof_log("vm_run %.1f ms", ms);
     if (!alive) {
         snprintf(exit_msg, sizeof(exit_msg), "%s", tr(S_GAME_ENDED));
         return false;
@@ -574,9 +588,20 @@ static void draw_help(void) {
 static void draw_stats(bool dirty) {
     static Uint32 window_start;
     static int frames, shown_fps, shown_busy;
-    static double shown_vm;
+    static double shown_vm, frame_max;
+
     if (dirty)
         frames++;
+    // Khoảng cách giữa 2 lần vẽ của app (gồm cả VM, vẽ, chờ vsync): lớn = khựng
+    Uint64 pc = SDL_GetPerformanceCounter();
+    if (stat_last_frame) {
+        double gap = (pc - stat_last_frame) * 1000.0 / SDL_GetPerformanceFrequency();
+        if (gap > frame_max)
+            frame_max = gap;
+        if (gap > 50)
+            vm_prof_log("frame gap %.1f ms", gap);
+    }
+    stat_last_frame = pc;
     Uint32 now = SDL_GetTicks();
     if (!window_start)
         window_start = now;
@@ -587,9 +612,10 @@ static void draw_stats(bool dirty) {
         shown_busy = (int)((stat_vm_sum - (double)vm_take_idle_ms()) * 100.0 / elapsed);
         if (shown_busy < 0)
             shown_busy = 0;
-        if (stat_prof)
-            fprintf(stderr, "[prof] fps %d  vm max %.1f ms  cpu %d%%  heap %zuK\n", shown_fps, shown_vm,
-                    shown_busy, heap_used() / 1024);
+        vm_prof_log("fps %d  cpu %d%%  vm max %.1f ms  frame max %.1f ms  heap %zuK", shown_fps, shown_busy,
+                    shown_vm, frame_max, heap_used() / 1024);
+        vm_prof_flush();
+        frame_max = 0;
         frames = 0;
         stat_vm_max = 0;
         stat_vm_sum = 0;

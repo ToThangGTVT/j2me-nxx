@@ -202,10 +202,7 @@ static double now_ms(void) {
 
 void heap_gc(void) {
     gc_requested = false;
-    // J2ME_NX_PROF=1: in thời gian mỗi lần GC ra stderr
-    static int prof = -1;
-    if (prof < 0)
-        prof = getenv("J2ME_NX_PROF") != NULL;
+    bool prof = vm_prof_on();
     double t0 = prof ? now_ms() : 0;
     size_t before = obj_count;
 
@@ -239,7 +236,7 @@ void heap_gc(void) {
     alloc_since_gc = 0;
     gc_threshold = used_bytes > GC_MIN_THRESHOLD ? used_bytes : GC_MIN_THRESHOLD;
     if (prof)
-        fprintf(stderr, "[prof] gc %.1f ms  objs %zu -> %zu  live %zuK\n",
+        vm_prof_log("gc %.1f ms  objs %zu -> %zu  live %zuK",
                 now_ms() - t0, before, obj_count, used_bytes / 1024);
 }
 

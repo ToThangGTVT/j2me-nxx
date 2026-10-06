@@ -271,6 +271,13 @@ const VMHost *vm_host(void);
 bool vm_run(int budget_ms);
 // Tổng thời gian vm_run ngủ chờ (không có thread nào chạy) kể từ lần gọi trước
 jlong vm_take_idle_ms(void);
+
+// Log đo hiệu năng (GC, khung hình, method tốn CPU) ra 1 file. NULL = tắt.
+// Dòng nào cũng có thời gian tính từ lúc mở log.
+void vm_prof_open(void *file);      // FILE *
+bool vm_prof_on(void);
+void vm_prof_log(const char *fmt, ...);
+void vm_prof_flush(void);
 // Thời điểm sớm nhất (ms) có thread thức dậy, hoặc -1 nếu không có thread hẹn giờ
 jlong vm_next_wakeup(void);
 bool vm_has_runnable(void);

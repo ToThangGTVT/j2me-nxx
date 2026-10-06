@@ -19,6 +19,35 @@ const VMHost *vm_host(void) {
     return &host;
 }
 
+static FILE *prof_file;
+static jlong prof_start;
+
+void vm_prof_open(void *file) {
+    prof_file = file;
+    prof_start = vm_time_ms();
+}
+
+bool vm_prof_on(void) {
+    return prof_file != NULL;
+}
+
+void vm_prof_log(const char *fmt, ...) {
+    if (!prof_file)
+        return;
+    jlong t = vm_time_ms() - prof_start;
+    fprintf(prof_file, "[%4lld.%03lld] ", (long long)(t / 1000), (long long)(t % 1000));
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(prof_file, fmt, ap);
+    va_end(ap);
+    fputc('\n', prof_file);
+}
+
+void vm_prof_flush(void) {
+    if (prof_file)
+        fflush(prof_file);
+}
+
 void vm_log(const char *fmt, ...) {
     char buf[1024];
     va_list ap;

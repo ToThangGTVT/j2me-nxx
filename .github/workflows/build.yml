@@ -40,6 +40,7 @@ jobs:
           cp build/j2me-nx.nro pkg/switch/
           cp dist/CHEP_GAME_VAO_DAY.txt pkg/switch/j2me-nx/games/
           (cd pkg && zip -r "../j2me-nx-$VERSION.zip" switch)
+          cp build/j2me-nx.nro j2me-nx.nro
           echo "zip=j2me-nx-$VERSION.zip" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
@@ -51,5 +52,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.pack.outputs.zip }}
+          files: |
+            ${{ steps.pack.outputs.zip }}
+            j2me-nx.nro
           body_path: dist/RELEASE_NOTES.md

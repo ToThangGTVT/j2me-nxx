@@ -11,6 +11,11 @@ on:
 permissions:
   contents: write
 
+# Không chạy song song (push main + push tag cùng lúc): máy chủ gói của devkitPro hay từ chối
+concurrency:
+  group: build
+  cancel-in-progress: false
+
 jobs:
   switch:
     runs-on: ubuntu-latest
@@ -19,10 +24,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Cai cong cu va thu vien
+        # Máy chủ gói đôi khi lỗi tạm thời: thử lại tối đa 5 lần
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends openjdk-17-jdk-headless cmake ninja-build pkg-config zip
-          dkp-pacman -Sy --noconfirm --needed switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls
+          retry() { for i in 1 2 3 4 5; do "$@" && return 0; echo "Lan $i loi, thu lai sau $((i * 20))s"; sleep $((i * 20)); done; return 1; }
+          retry apt-get update
+          retry apt-get install -y --no-install-recommends openjdk-17-jdk-headless cmake ninja-build pkg-config zip
+          retry dkp-pacman -Sy --noconfirm --needed switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls
 
       - name: Build
         run: |

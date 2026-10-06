@@ -48,7 +48,7 @@ Biến môi trường: `J2ME_NX_GAMES` (thư mục game, mặc định `./games`
 ## Dùng trên Switch
 
 1. Chép `j2me-nx.nro` vào `sdmc:/switch/`.
-2. Chép game `.jar` (và `.jad` nếu có) vào `sdmc:/switch/j2me-nx/games/`.
+2. Chép game `.jar` (và `.jad` cùng tên nếu có) vào `sdmc:/switch/j2me-nx/games/`. Có thể chia thư mục con (tối đa 3 cấp), app tự tạo thư mục `games` ở lần chạy đầu.
 3. Mở bằng hbmenu. Save game ở `sdmc:/switch/j2me-nx/rms/`, log ở `sdmc:/switch/j2me-nx/log.txt`.
 
 | Nút | Phím J2ME |
@@ -64,6 +64,8 @@ Biến môi trường: `J2ME_NX_GAMES` (thư mục game, mặc định `./games`
 | − (2 lần) | Thoát game |
 
 Màn hình cảm ứng được chuyển thành sự kiện pointer.
+
+Danh sách game hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng game (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
 Trong danh sách game:
 - **X**: Cài đặt chung (giới hạn FPS, kích thước màn hình mặc định).
@@ -85,4 +87,4 @@ Bản desktop đọc vài biến môi trường để chạy kịch bản (tính
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nx game.jar
 ```
 
-`J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 22050Hz) ra file, `J2ME_NX_SCREEN=settings` mở thẳng màn hình cài đặt.
+`J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách game) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 22050Hz) ra file, `J2ME_NX_SCREEN=settings` mở thẳng màn hình cài đặt.

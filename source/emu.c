@@ -1,12 +1,12 @@
 #include "emu.h"
 
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
 #include "gfx.h"
+#include "manifest.h"
 #include "midp/midp.h"
 #include "platform.h"
 #include "settings.h"
@@ -22,14 +22,9 @@ extern const size_t classlib_jar_size;
 #define REPEAT_RATE_MS   100
 #define EXIT_CONFIRM_MS  2000
 
-typedef struct {
-    char *key, *value;
-} Prop;
-
 static bool running;
 static ZipFile *syslib, *game;
-static Prop *props;
-static int prop_count;
+static Manifest manifest;
 static char game_name[128];
 static char rms_dir[512];
 static char exit_msg[256];
@@ -48,111 +43,6 @@ static Uint32 key_repeat_at[KEY_SLOTS];
 static Uint32 exit_confirm_until;
 static bool exit_now;
 static bool pointer_down;
-
-// ---------------------------------------------------------------------------
-// Manifest / JAD
-
-static char *trim(char *s) {
-    while (*s && isspace((unsigned char)*s))
-        s++;
-    char *e = s + strlen(s);
-    while (e > s && isspace((unsigned char)e[-1]))
-        *--e = '\0';
-    return s;
-}
-
-static void set_prop(const char *key, const char *value, bool override) {
-    for (int i = 0; i < prop_count; i++) {
-        if (strcmp(props[i].key, key) == 0) {
-            if (override) {
-                free(props[i].value);
-                props[i].value = strdup(value);
-            }
-            return;
-        }
-    }
-    props = realloc(props, sizeof(Prop) * (prop_count + 1));
-    props[prop_count].key = strdup(key);
-    props[prop_count].value = strdup(value);
-    prop_count++;
-}
-
-// Định dạng "Key: Value", dòng bắt đầu bằng dấu cách là phần nối của dòng trước
-static void parse_props(const char *text, bool override) {
-    char *buf = strdup(text);
-    char *key = NULL;
-    char *value = NULL;
-    char *save = NULL;
-    for (char *line = strtok_r(buf, "\n", &save); line; line = strtok_r(NULL, "\n", &save)) {
-        size_t len = strlen(line);
-        if (len && line[len - 1] == '\r')
-            line[--len] = '\0';
-        if (line[0] == ' ' && value) {
-            size_t vl = strlen(value);
-            value = realloc(value, vl + len);
-            memcpy(value + vl, line + 1, len);
-            continue;
-        }
-        if (key) {
-            set_prop(key, trim(value), override);
-            free(key);
-            free(value);
-            key = value = NULL;
-        }
-        char *colon = strchr(line, ':');
-        if (!colon)
-            continue;
-        *colon = '\0';
-        key = strdup(trim(line));
-        value = strdup(colon + 1);
-    }
-    if (key) {
-        set_prop(key, trim(value), override);
-        free(key);
-        free(value);
-    }
-    free(buf);
-}
-
-static const char *get_prop(const char *key) {
-    for (int i = 0; i < prop_count; i++) {
-        if (strcmp(props[i].key, key) == 0)
-            return props[i].value;
-    }
-    for (int i = 0; i < prop_count; i++) {
-        if (strcasecmp(props[i].key, key) == 0)
-            return props[i].value;
-    }
-    return NULL;
-}
-
-static void free_props(void) {
-    for (int i = 0; i < prop_count; i++) {
-        free(props[i].key);
-        free(props[i].value);
-    }
-    free(props);
-    props = NULL;
-    prop_count = 0;
-}
-
-// "MIDlet-1: Tên, /icon.png, com.example.Main" -> lớp MIDlet dạng a/b/C
-static bool midlet_class(char *out, size_t size) {
-    const char *v = get_prop("MIDlet-1");
-    if (!v)
-        return false;
-    const char *c1 = strchr(v, ',');
-    const char *c2 = c1 ? strchr(c1 + 1, ',') : NULL;
-    if (!c2)
-        return false;
-    char buf[256];
-    snprintf(buf, sizeof(buf), "%s", c2 + 1);
-    char *cls = trim(buf);
-    if (!*cls)
-        return false;
-    snprintf(out, size, "%s", cls);
-    return true;
-}
 
 // ---------------------------------------------------------------------------
 // Host callback cho VM / MIDP
@@ -185,7 +75,7 @@ static void host_exit(int status) {
 }
 
 static const char *host_app_property(const char *key) {
-    return get_prop(key);
+    return manifest_get(&manifest, key);
 }
 
 // ---------------------------------------------------------------------------
@@ -208,9 +98,9 @@ static void parse_screen_size(const GameSettings *gs) {
     }
     scr_w = settings()->screen_w;
     scr_h = settings()->screen_h;
-    const char *v = get_prop("Nokia-MIDlet-Original-Display-Size");
+    const char *v = manifest_get(&manifest, "Nokia-MIDlet-Original-Display-Size");
     if (!v)
-        v = get_prop("J2ME-NX-Screen-Size");
+        v = manifest_get(&manifest, "J2ME-NX-Screen-Size");
     int w, h;
     if (v && sscanf(v, "%d%*[ ,x]%d", &w, &h) == 2 && w >= 96 && h >= 64 && w <= 800 && h <= 800) {
         scr_w = w;
@@ -228,7 +118,7 @@ static void compute_dst(void) {
     dst.y = (SCREEN_H - dst.h) / 2;
 }
 
-bool emu_start(const char *jar_path, char *err, size_t err_size) {
+bool emu_start(const char *jar_path, const char *game_id, char *err, size_t err_size) {
     emu_stop();
     exit_msg[0] = '\0';
     exit_now = false;
@@ -245,41 +135,25 @@ bool emu_start(const char *jar_path, char *err, size_t err_size) {
     }
 
     // Thuộc tính: JAD (nếu có, cạnh file JAR) ưu tiên hơn MANIFEST.MF
-    char jad[600];
-    snprintf(jad, sizeof(jad), "%s", jar_path);
-    char *dot = strrchr(jad, '.');
-    if (dot) {
-        strcpy(dot, ".jad");
-        FILE *f = fopen(jad, "rb");
-        if (f) {
-            char *buf = calloc(1, 65536);
-            fread(buf, 1, 65535, f);
-            fclose(f);
-            parse_props(buf, true);
-            free(buf);
-        }
-    }
-    size_t mf_size = 0;
-    char *mf = (char *)zip_read(game, "META-INF/MANIFEST.MF", &mf_size);
-    if (mf) {
-        parse_props(mf, false);
-        free(mf);
-    }
+    manifest_load(&manifest, jar_path, game);
 
     char cls[256];
-    if (!midlet_class(cls, sizeof(cls))) {
+    if (!manifest_midlet_field(&manifest, 2, cls, sizeof(cls))) {
         snprintf(err, err_size, "JAR khong co MIDlet-1 trong MANIFEST");
         emu_stop();
         return false;
     }
 
     base_name(jar_path, game_name, sizeof(game_name));
-    const char *name = get_prop("MIDlet-Name");
+    const char *name = manifest_get(&manifest, "MIDlet-Name");
     if (name)
         snprintf(game_name, sizeof(game_name), "%s", name);
 
-    char base[128];
-    base_name(jar_path, base, sizeof(base));
+    char base[256];
+    if (game_id)
+        snprintf(base, sizeof(base), "%s", game_id);
+    else
+        base_name(jar_path, base, sizeof(base));
     snprintf(rms_dir, sizeof(rms_dir), "%s/rms/%s", platform_data_dir(), base);
 
     mkdir(platform_data_dir(), 0777);
@@ -341,7 +215,7 @@ void emu_stop(void) {
     zip_close(syslib);
     zip_close(game);
     syslib = game = NULL;
-    free_props();
+    manifest_free(&manifest);
     if (log_file)
         fclose(log_file);
     log_file = NULL;

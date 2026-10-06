@@ -16,9 +16,9 @@
 #include "settings.h"
 #include "settings_screen.h"
 
-static void launch(Menu *menu, const char *path) {
+static void launch(Menu *menu, const char *path, const char *id) {
     char err[256] = "";
-    if (!emu_start(path, err, sizeof(err)))
+    if (!emu_start(path, id, err, sizeof(err)))
         snprintf(menu->status, sizeof(menu->status), "Loi: %s", err);
     else
         menu->status[0] = '\0';
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
     if (argc > 1)
-        launch(&menu, argv[1]);
+        launch(&menu, argv[1], NULL);
 
     bool running = true;
     while (running) {
@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
             running = false;
             break;
         case MENU_RESCAN:
+            menu_free_textures(&list);
             game_list_scan(&list, games_dir);
             menu.cursor = menu.scroll = 0;
             snprintf(menu.status, sizeof(menu.status), "Da quet lai: %d file", list.demo ? 0 : list.count);
@@ -116,25 +117,42 @@ int main(int argc, char *argv[]) {
             } else {
                 char id[256];
                 game_list_id(&list.items[menu.cursor], id, sizeof(id));
-                settings_screen_open_game(id, list.items[menu.cursor].name);
+                game_list_load_info(&list.items[menu.cursor]);
+                settings_screen_open_game(id, list.items[menu.cursor].title);
                 in_settings = true;
             }
             break;
         case MENU_LAUNCH:
             if (list.demo)
                 snprintf(menu.status, sizeof(menu.status), "Day la list demo: chep file .jar vao %s", games_dir);
-            else
-                launch(&menu, list.items[menu.cursor].path);
+            else {
+                char id[256];
+                game_list_id(&list.items[menu.cursor], id, sizeof(id));
+                launch(&menu, list.items[menu.cursor].path, id);
+            }
             break;
         case MENU_NONE:
             break;
         }
 
         menu_draw(&menu, &list, games_dir);
+#ifndef __SWITCH__
+        // Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây rồi thoát
+        const char *appshot = SDL_getenv("J2ME_NX_APPSHOT");
+        if (appshot && SDL_GetTicks() > 1500) {
+            SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, SCREEN_W, SCREEN_H, 32, SDL_PIXELFORMAT_ARGB8888);
+            SDL_Rect vp = { 0, 0, SCREEN_W, SCREEN_H };
+            SDL_RenderReadPixels(gfx_renderer(), &vp, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
+            SDL_SaveBMP(surf, appshot);
+            SDL_FreeSurface(surf);
+            running = false;
+        }
+#endif
         gfx_present();
     }
 
     emu_stop();
+    menu_free_textures(&list);
     game_list_free(&list);
     input_exit();
 out:

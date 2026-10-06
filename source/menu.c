@@ -1,6 +1,7 @@
 #include "menu.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #include "gfx.h"
 #include "input.h"
@@ -10,7 +11,9 @@
 #define LIST_X      40
 #define LIST_W      (SCREEN_W - 2 * LIST_X)
 #define LIST_TOP    136
-#define ROW_H       52
+#define ROW_H       66
+#define ICON_SIZE   48
+#define INFO_PER_FRAME 3    // số JAR đọc thông tin mỗi frame (giữ menu mượt)
 #define LIST_ROWS   ((SCREEN_H - FOOTER_H - 12 - LIST_TOP) / ROW_H)
 #define SCROLLBAR_W 6
 
@@ -101,16 +104,43 @@ static void draw_header(const GameList *list, const char *games_dir) {
     gfx_text(FONT_SMALL, LIST_X, HEADER_H + 18, LIST_W, ALIGN_LEFT, list->demo ? COL_WARN : COL_DIM, line);
 }
 
-static void draw_list(const Menu *m, const GameList *list) {
-    int font_y = (ROW_H - gfx_font_height(FONT_NORMAL)) / 2;
+static void draw_icon(GameEntry *g, int x, int y) {
+    if (g->icon && !g->icon_tex)
+        g->icon_tex = gfx_texture_argb(g->icon, g->icon_w, g->icon_h);
+    if (g->icon_tex) {
+        // Giữ tỉ lệ, phóng to số nguyên lần cho icon pixel nhỏ
+        int s = ICON_SIZE / (g->icon_w > g->icon_h ? g->icon_w : g->icon_h);
+        int w = s >= 1 ? g->icon_w * s : ICON_SIZE;
+        int h = s >= 1 ? g->icon_h * s : ICON_SIZE * g->icon_h / g->icon_w;
+        gfx_draw_texture(g->icon_tex, x + (ICON_SIZE - w) / 2, y + (ICON_SIZE - h) / 2, w, h);
+        return;
+    }
+    // Không có icon: ô màu theo tên + chữ cái đầu
+    uint32_t hsh = 2166136261u;
+    for (const char *p = g->title; *p; p++)
+        hsh = (hsh ^ (uint8_t)*p) * 16777619u;
+    gfx_fill_rect(x, y, ICON_SIZE, ICON_SIZE, RGB(0x40 + (hsh & 0x3f), 0x40 + ((hsh >> 8) & 0x3f), 0x60 + ((hsh >> 16) & 0x3f)));
+    char letter[2] = { g->title[0] ? g->title[0] : '?', '\0' };
+    if (letter[0] >= 'a' && letter[0] <= 'z')
+        letter[0] -= 32;
+    gfx_text(FONT_LARGE, x + ICON_SIZE / 2, y + (ICON_SIZE - gfx_font_height(FONT_LARGE)) / 2, 0, ALIGN_CENTER,
+             COL_TEXT, letter);
+}
+
+static void draw_list(const Menu *m, GameList *list) {
     int row_w = LIST_W - SCROLLBAR_W - 12;
+    int loaded = 0;
 
     for (int row = 0; row < LIST_ROWS; row++) {
         int idx = m->scroll + row;
         if (idx >= list->count)
             break;
 
-        const GameEntry *g = &list->items[idx];
+        GameEntry *g = &list->items[idx];
+        if (!g->info_loaded && (loaded < INFO_PER_FRAME || idx == m->cursor)) {
+            game_list_load_info(g);
+            loaded++;
+        }
         int y = LIST_TOP + row * ROW_H;
         bool sel = idx == m->cursor;
 
@@ -121,13 +151,36 @@ static void draw_list(const Menu *m, const GameList *list) {
             gfx_fill_rect(LIST_X + 20, y, row_w - 40, 1, COL_TRACK);
         }
 
-        char num[16], size[16];
-        snprintf(num, sizeof(num), "%d", idx + 1);
-        format_size(g->size, size, sizeof(size));
+        int x = LIST_X + 24;
+        draw_icon(g, x, y + (ROW_H - ICON_SIZE) / 2);
+        x += ICON_SIZE + 20;
 
-        gfx_text(FONT_NORMAL, LIST_X + 80, y + font_y, 0, ALIGN_RIGHT, sel ? COL_ACCENT : COL_DIM, num);
-        gfx_text(FONT_NORMAL, LIST_X + 104, y + font_y, row_w - 104 - 160, ALIGN_LEFT, COL_TEXT, g->name);
-        gfx_text(FONT_NORMAL, LIST_X + row_w - 24, y + font_y, 0, ALIGN_RIGHT, COL_DIM, size);
+        char size[16];
+        format_size(g->size, size, sizeof(size));
+        int size_w = gfx_text(FONT_SMALL, LIST_X + row_w - 24, y + (ROW_H - gfx_font_height(FONT_SMALL)) / 2, 0,
+                              ALIGN_RIGHT, COL_DIM, size);
+
+        int text_w = LIST_X + row_w - 24 - size_w - 24 - x;
+        int title_h = gfx_font_height(FONT_NORMAL), sub_h = gfx_font_height(FONT_SMALL);
+        int ty = y + (ROW_H - title_h - sub_h - 2) / 2;
+        gfx_text(FONT_NORMAL, x, ty, text_w, ALIGN_LEFT, COL_TEXT, g->title);
+
+        // Dòng phụ: nhà phát hành, phiên bản, thư mục con
+        char sub[256] = "";
+        if (!g->info_loaded) {
+            snprintf(sub, sizeof(sub), "...");
+        } else if (!g->valid) {
+            snprintf(sub, sizeof(sub), "Khong co MIDlet-1 trong MANIFEST: co the khong chay duoc");
+        } else {
+            const char *slash = strrchr(g->name, '/');
+            char folder[128] = "";
+            if (slash)
+                snprintf(folder, sizeof(folder), "%.*s/", (int)(slash - g->name), g->name);
+            snprintf(sub, sizeof(sub), "%s%s%s%s%s", g->vendor, g->vendor[0] && g->version[0] ? "  -  v" : "",
+                     g->version, folder[0] && (g->vendor[0] || g->version[0]) ? "  -  " : "", folder);
+        }
+        gfx_text(FONT_SMALL, x, ty + title_h + 2, text_w, ALIGN_LEFT, g->info_loaded && !g->valid ? COL_WARN : COL_DIM,
+                 sub);
     }
 
     // Thanh cuộn
@@ -163,7 +216,15 @@ static void draw_footer(const Menu *m, const GameList *list) {
              "(A) Chon   (-) Tuy chon game   (X) Cai dat   (Y) Quet lai   (+) Thoat");
 }
 
-void menu_draw(const Menu *m, const GameList *list, const char *games_dir) {
+void menu_free_textures(GameList *list) {
+    for (int i = 0; i < list->count; i++) {
+        if (list->items[i].icon_tex)
+            SDL_DestroyTexture(list->items[i].icon_tex);
+        list->items[i].icon_tex = NULL;
+    }
+}
+
+void menu_draw(const Menu *m, GameList *list, const char *games_dir) {
     gfx_clear(COL_BG);
     draw_header(list, games_dir);
     draw_list(m, list);

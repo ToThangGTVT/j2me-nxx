@@ -104,6 +104,20 @@ void gfx_fill_rect(int x, int y, int w, int h, SDL_Color c) {
     SDL_RenderFillRect(renderer, &r);
 }
 
+SDL_Texture *gfx_texture_argb(const uint32_t *pixels, int w, int h) {
+    SDL_Texture *t = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, w, h);
+    if (!t)
+        return NULL;
+    SDL_UpdateTexture(t, NULL, pixels, w * 4);
+    SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+    return t;
+}
+
+void gfx_draw_texture(SDL_Texture *tex, int x, int y, int w, int h) {
+    SDL_Rect r = { x, y, w, h };
+    SDL_RenderCopy(renderer, tex, NULL, &r);
+}
+
 int gfx_font_height(FontId font) {
     return TTF_FontHeight(fonts[font]);
 }

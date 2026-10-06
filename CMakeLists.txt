@@ -74,6 +74,7 @@ add_executable(j2me-nx
     source/game_list.c
     source/menu.c
     source/emu.c
+    source/manifest.c
     source/settings.c
     source/settings_screen.c
     source/vm/class.c

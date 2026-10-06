@@ -19,4 +19,7 @@ typedef struct {
 } Menu;
 
 MenuAction menu_update(Menu *m, const GameList *list);
-void menu_draw(const Menu *m, const GameList *list, const char *games_dir);
+// Vẽ danh sách; đọc dần thông tin (MANIFEST, icon) của các game đang hiện
+void menu_draw(const Menu *m, GameList *list, const char *games_dir);
+// Giải phóng texture icon trước khi quét lại / thoát
+void menu_free_textures(GameList *list);

@@ -8,6 +8,8 @@
 typedef struct ZipFile ZipFile;
 
 ZipFile *zip_open_file(const char *path);
+// Chỉ đọc mục lục, entry đọc thẳng từ file khi cần (dùng cho danh sách game)
+ZipFile *zip_open_file_lazy(const char *path);
 // data phải sống lâu hơn ZipFile nếu owned = false
 ZipFile *zip_open_mem(const uint8_t *data, size_t size, bool owned);
 void zip_close(ZipFile *z);

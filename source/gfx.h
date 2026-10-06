@@ -33,6 +33,10 @@ void gfx_fill_rect(int x, int y, int w, int h, SDL_Color c);
 
 int gfx_font_height(FontId font);
 
+// Texture từ ảnh ARGB (dùng cho icon game)
+SDL_Texture *gfx_texture_argb(const uint32_t *pixels, int w, int h);
+void gfx_draw_texture(SDL_Texture *tex, int x, int y, int w, int h);
+
 // Vẽ chữ UTF-8, cắt bớt nếu rộng hơn max_w (0 = không giới hạn).
 // y là cạnh trên của dòng chữ. Trả về độ rộng đã vẽ.
 int gfx_text(FontId font, int x, int y, int max_w, TextAlign align, SDL_Color c, const char *text);

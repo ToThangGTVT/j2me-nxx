@@ -6,6 +6,8 @@
 typedef struct {
     int fps_limit;          // 0 = không giới hạn
     int screen_w, screen_h; // kích thước màn hình mặc định cho game
+    int lang;               // Lang (lang.h)
+    bool show_help;         // hiện bảng phím bên trái khi chơi
 } Settings;
 
 typedef struct {

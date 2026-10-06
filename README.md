@@ -10,7 +10,7 @@ Chạy file `.jar` của game điện thoại Java cũ trực tiếp trên Switc
 | `source/vm/` | Máy ảo Java tự viết: đọc class file, trình thông dịch bytecode (đủ ~200 opcode, kể cả `jsr/ret`), green thread + monitor, GC mark-sweep, đọc JAR (zip + zlib) |
 | `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media` (chưa có tiếng), API Nokia (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
-| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain |
+| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; font Google Sans (OFL) có đủ chữ tiếng Việt |
 | `source/` | App: danh sách game, cài đặt, phiên chạy game (`emu.c`), lớp nền tảng Switch/desktop |
 | `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://) |
 
@@ -73,7 +73,7 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 Danh sách game hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng game (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
 Trong danh sách game:
-- **X**: Cài đặt chung (giới hạn FPS, kích thước màn hình mặc định).
+- **X**: Cài đặt chung: giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chơi, ngôn ngữ (Tiếng Việt / English).
 - **−**: Tuỳ chọn riêng cho game đang chọn (FPS, kích thước màn hình), lưu ở `sdmc:/switch/j2me-nx/games/<tên>.ini`.
 
 Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng của game > `Nokia-MIDlet-Original-Display-Size` trong MANIFEST/JAD > cài đặt chung (mặc định 240x320).

@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 
 #include "gfx.h"
+#include "lang.h"
 #include "manifest.h"
 #include "midp/midp.h"
 #include "platform.h"
@@ -129,7 +130,7 @@ bool emu_start(const char *jar_path, const char *game_id, char *err, size_t err_
     syslib = zip_open_mem(classlib_jar, classlib_jar_size, false);
     game = zip_open_file(jar_path);
     if (!syslib || !game) {
-        snprintf(err, err_size, "%s", !syslib ? "Thu vien he thong hong" : "Khong mo duoc file JAR");
+        snprintf(err, err_size, "%s", tr(!syslib ? S_ERR_SYSLIB : S_ERR_OPEN_JAR));
         emu_stop();
         return false;
     }
@@ -139,7 +140,7 @@ bool emu_start(const char *jar_path, const char *game_id, char *err, size_t err_
 
     char cls[256];
     if (!manifest_midlet_field(&manifest, 2, cls, sizeof(cls))) {
-        snprintf(err, err_size, "JAR khong co MIDlet-1 trong MANIFEST");
+        snprintf(err, err_size, "%s", tr(S_ERR_NO_MIDLET));
         emu_stop();
         return false;
     }
@@ -177,7 +178,7 @@ bool emu_start(const char *jar_path, const char *game_id, char *err, size_t err_
     };
     midp_register_natives();
     if (!vm_init(&host)) {
-        snprintf(err, err_size, "Loi khoi dong VM: %s", vm_last_error());
+        snprintf(err, err_size, tr(S_ERR_VM), vm_last_error());
         emu_stop();
         return false;
     }
@@ -190,9 +191,10 @@ bool emu_start(const char *jar_path, const char *game_id, char *err, size_t err_
         .keyboard = platform_keyboard,
         .vibrate = NULL,
         .fps_limit = fps_limit,
+        .lang = lang_code(lang_get()),
     };
     if (!midp_start(&mc, cls)) {
-        snprintf(err, err_size, "Khong chay duoc MIDlet: %s", vm_last_error());
+        snprintf(err, err_size, tr(S_ERR_MIDLET), vm_last_error());
         emu_stop();
         return false;
     }
@@ -468,7 +470,7 @@ bool emu_update(void) {
     update_repeat();
     midp_audio_poll();
     if (!vm_run(VM_BUDGET_MS)) {
-        snprintf(exit_msg, sizeof(exit_msg), "Game da ket thuc (khong con thread nao chay)");
+        snprintf(exit_msg, sizeof(exit_msg), "%s", tr(S_GAME_ENDED));
         return false;
     }
     if (midp_exit_requested() || exit_now)
@@ -485,16 +487,16 @@ bool emu_update(void) {
 #define COL_WARN  RGB(0xff, 0xc1, 0x4d)
 
 static void draw_help(void) {
-    static const char *lines[][2] = {
-        { "D-pad / L-stick", "Dieu huong" },
+    const char *lines[][2] = {
+        { "D-pad / L-stick", tr(S_HELP_DPAD) },
         { "A", "Fire (5)" },
-        { "B / R", "Phim mem phai" },
-        { "L / +", "Phim mem trai" },
+        { "B / R", tr(S_HELP_SOFT_RIGHT) },
+        { "L / +", tr(S_HELP_SOFT_LEFT) },
         { "Y / X", "* / #" },
         { "ZL / ZR", "1 / 3" },
         { "R-stick", "2 4 6 8" },
-        { "Bam L / R stick", "5 / 0" },
-        { "-", "Thoat game" },
+        { tr(S_HELP_STICK_CLICK), "5 / 0" },
+        { "-", tr(S_HELP_EXIT) },
     };
     int panel_w = dst.x;
     if (panel_w < 200)
@@ -502,9 +504,9 @@ static void draw_help(void) {
     int x = 32, y = 40;
     gfx_text(FONT_LARGE, x, y, panel_w - 48, ALIGN_LEFT, COL_TEXT, game_name);
     y += gfx_font_height(FONT_LARGE) + 4;
-    char info[64];
+    char info[96];
     if (fps_limit > 0)
-        snprintf(info, sizeof(info), "%dx%d  -  gioi han %d FPS", scr_w, scr_h, fps_limit);
+        snprintf(info, sizeof(info), tr(S_SCREEN_INFO_FPS), scr_w, scr_h, fps_limit);
     else
         snprintf(info, sizeof(info), "%dx%d", scr_w, scr_h);
     gfx_text(FONT_SMALL, x, y, 0, ALIGN_LEFT, COL_DIM, info);
@@ -526,11 +528,12 @@ void emu_draw(void) {
     if (fb && dirty)
         SDL_UpdateTexture(screen_tex, NULL, fb, w * 4);
     SDL_RenderCopy(gfx_renderer(), screen_tex, NULL, &dst);
-    draw_help();
+    if (settings()->show_help)
+        draw_help();
 
     if (exit_confirm_until && !SDL_TICKS_PASSED(SDL_GetTicks(), exit_confirm_until)) {
-        const char *msg = "Nhan - (hoac Esc) lan nua de thoat game";
-        int tw = 560, th = 56;
+        const char *msg = tr(S_EXIT_CONFIRM);
+        int tw = gfx_text_width(FONT_NORMAL, msg) + 80, th = 56;
         gfx_fill_rect((SCREEN_W - tw) / 2, SCREEN_H - th - 24, tw, th, RGB(0x30, 0x30, 0x30));
         gfx_text(FONT_NORMAL, SCREEN_W / 2, SCREEN_H - th - 24 + (th - gfx_font_height(FONT_NORMAL)) / 2, 0,
                  ALIGN_CENTER, COL_WARN, msg);

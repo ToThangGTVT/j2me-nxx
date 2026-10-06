@@ -11,6 +11,7 @@
 #include "game_list.h"
 #include "gfx.h"
 #include "input.h"
+#include "lang.h"
 #include "menu.h"
 #include "platform.h"
 #include "settings.h"
@@ -35,7 +36,7 @@ static bool debug_appshot(void) {
 static void launch(Menu *menu, const char *path, const char *id) {
     char err[256] = "";
     if (!emu_start(path, id, err, sizeof(err)))
-        snprintf(menu->status, sizeof(menu->status), "Loi: %s", err);
+        snprintf(menu->status, sizeof(menu->status), tr(S_ERROR_FMT), err);
     else
         menu->status[0] = '\0';
 }
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]) {
         if (emu_running()) {
             if (!emu_update()) {
                 const char *msg = emu_exit_message();
-                snprintf(menu.status, sizeof(menu.status), "%s", msg[0] ? msg : "Da thoat game");
+                snprintf(menu.status, sizeof(menu.status), "%s", msg[0] ? msg : tr(S_GAME_EXITED));
                 emu_stop();
 #ifndef __SWITCH__
                 // Kịch bản test (J2ME_NX_QUIT): thoát app luôn khi game kết thúc
@@ -112,7 +113,7 @@ int main(int argc, char *argv[]) {
                 gfx_present();
                 continue;
             }
-            snprintf(menu.status, sizeof(menu.status), "Da luu cai dat");
+            snprintf(menu.status, sizeof(menu.status), "%s", tr(S_SETTINGS_SAVED));
         }
 
         switch (menu_update(&menu, &list)) {
@@ -123,7 +124,7 @@ int main(int argc, char *argv[]) {
             menu_free_textures(&list);
             game_list_scan(&list, games_dir);
             menu.cursor = menu.scroll = 0;
-            snprintf(menu.status, sizeof(menu.status), "Da quet lai: %d file", list.demo ? 0 : list.count);
+            snprintf(menu.status, sizeof(menu.status), tr(S_RESCANNED), list.demo ? 0 : list.count);
             break;
         case MENU_SETTINGS:
             settings_screen_open();
@@ -131,7 +132,7 @@ int main(int argc, char *argv[]) {
             break;
         case MENU_GAME_OPTIONS:
             if (list.demo) {
-                snprintf(menu.status, sizeof(menu.status), "Day la list demo");
+                snprintf(menu.status, sizeof(menu.status), "%s", tr(S_DEMO_LIST));
             } else {
                 char id[256];
                 game_list_id(&list.items[menu.cursor], id, sizeof(id));
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]) {
             break;
         case MENU_LAUNCH:
             if (list.demo)
-                snprintf(menu.status, sizeof(menu.status), "Day la list demo: chep file .jar vao %s", games_dir);
+                snprintf(menu.status, sizeof(menu.status), tr(S_DEMO_LIST_COPY), games_dir);
             else {
                 char id[256];
                 game_list_id(&list.items[menu.cursor], id, sizeof(id));

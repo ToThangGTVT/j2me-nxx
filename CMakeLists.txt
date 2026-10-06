@@ -64,6 +64,17 @@ add_custom_command(
     COMMENT "Nhung classlib.jar"
     VERBATIM)
 
+# Font giao diện (Google Sans, OFL) nhúng vào binary
+set(UI_FONT   "${CMAKE_SOURCE_DIR}/source/third_party/fonts/GoogleSans-Regular.ttf")
+set(UI_FONT_C "${CMAKE_BINARY_DIR}/ui_font_data.c")
+add_custom_command(
+    OUTPUT "${UI_FONT_C}"
+    COMMAND "${CMAKE_COMMAND}" -DIN=${UI_FONT} -DOUT=${UI_FONT_C} -DNAME=ui_font_ttf
+            -P "${CMAKE_SOURCE_DIR}/cmake/bin2c.cmake"
+    DEPENDS "${UI_FONT}" "${CMAKE_SOURCE_DIR}/cmake/bin2c.cmake"
+    COMMENT "Nhung font giao dien"
+    VERBATIM)
+
 # ---------------------------------------------------------------------------
 
 add_executable(j2me-nx
@@ -75,6 +86,7 @@ add_executable(j2me-nx
     source/menu.c
     source/emu.c
     source/manifest.c
+    source/lang.c
     source/settings.c
     source/settings_screen.c
     source/vm/class.c
@@ -94,6 +106,7 @@ add_executable(j2me-nx
     source/third_party/stb_image.c
     source/third_party/dr_mp3.c
     "${CLASSLIB_C}"
+    "${UI_FONT_C}"
 )
 
 target_compile_options(j2me-nx PRIVATE -Wall)

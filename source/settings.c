@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "lang.h"
 #include "platform.h"
 
 const int SETTINGS_FPS_CHOICES[] = { 0, 15, 20, 30, 60 };
@@ -21,6 +22,8 @@ static Settings current = {
     .fps_limit = 0,
     .screen_w = 240,
     .screen_h = 320,
+    .lang = LANG_VI,
+    .show_help = false,
 };
 
 Settings *settings(void) {
@@ -45,9 +48,13 @@ void settings_load(void) {
         else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && settings_valid_screen(w, h)) {
             current.screen_w = w;
             current.screen_h = h;
-        }
+        } else if (strncmp(line, "lang=", 5) == 0)
+            current.lang = lang_from_code(line + 5);
+        else if (sscanf(line, "show_help=%d", &v) == 1)
+            current.show_help = v != 0;
     }
     fclose(f);
+    lang_set((Lang)current.lang);
 }
 
 bool settings_save(void) {
@@ -59,6 +66,8 @@ bool settings_save(void) {
         return false;
     fprintf(f, "fps_limit=%d\n", current.fps_limit);
     fprintf(f, "screen=%dx%d\n", current.screen_w, current.screen_h);
+    fprintf(f, "lang=%s\n", lang_code((Lang)current.lang));
+    fprintf(f, "show_help=%d\n", current.show_help ? 1 : 0);
     return fclose(f) == 0;
 }
 

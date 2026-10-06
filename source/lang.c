@@ -1,0 +1,107 @@
+#include "lang.h"
+
+#include <string.h>
+
+static Lang current = LANG_VI;
+
+static const char *const strings[S_COUNT][LANG_COUNT] = {
+    [S_APP_SUBTITLE]   = { "Trình giả lập J2ME cho Nintendo Switch", "J2ME emulator for Nintendo Switch" },
+    [S_GAME_COUNT]     = { "%d game", "%d games" },
+    [S_NO_JAR]         = { "Không tìm thấy .jar trong %s  ->  đang hiện danh sách demo",
+                           "No .jar found in %s  ->  showing demo list" },
+    [S_FOLDER]         = { "Thư mục: %s", "Folder: %s" },
+    [S_NO_MIDLET]      = { "Không có MIDlet-1 trong MANIFEST: có thể không chạy được",
+                           "No MIDlet-1 in MANIFEST: may not run" },
+    [S_MENU_HINTS]     = { "(A) Chơi   (-) Tùy chọn game   (X) Cài đặt   (Y) Quét lại   (+) Thoát",
+                           "(A) Play   (-) Game options   (X) Settings   (Y) Rescan   (+) Exit" },
+
+    [S_ERROR_FMT]      = { "Lỗi: %s", "Error: %s" },
+    [S_RESCANNED]      = { "Đã quét lại: %d file", "Rescanned: %d files" },
+    [S_DEMO_LIST_COPY] = { "Đây là danh sách demo: chép file .jar vào %s",
+                           "This is a demo list: copy .jar files to %s" },
+    [S_DEMO_LIST]      = { "Đây là danh sách demo", "This is a demo list" },
+    [S_SETTINGS_SAVED] = { "Đã lưu cài đặt", "Settings saved" },
+    [S_GAME_EXITED]    = { "Đã thoát game", "Game closed" },
+
+    [S_ERR_SYSLIB]     = { "Thư viện hệ thống bị hỏng", "System library is corrupted" },
+    [S_ERR_OPEN_JAR]   = { "Không mở được file JAR", "Cannot open the JAR file" },
+    [S_ERR_NO_MIDLET]  = { "JAR không có MIDlet-1 trong MANIFEST", "JAR has no MIDlet-1 in MANIFEST" },
+    [S_ERR_VM]         = { "Lỗi khởi động VM: %s", "VM startup error: %s" },
+    [S_ERR_MIDLET]     = { "Không chạy được MIDlet: %s", "Cannot start MIDlet: %s" },
+    [S_GAME_ENDED]     = { "Game đã kết thúc (không còn thread nào chạy)", "Game ended (no threads left)" },
+
+    [S_EXIT_CONFIRM]   = { "Nhấn - (hoặc Esc) lần nữa để thoát game", "Press - (or Esc) again to exit the game" },
+    [S_SCREEN_INFO_FPS] = { "%dx%d  -  giới hạn %d FPS", "%dx%d  -  %d FPS limit" },
+    [S_HELP_DPAD]      = { "Điều hướng", "Directions" },
+    [S_HELP_SOFT_RIGHT] = { "Phím mềm phải", "Right soft key" },
+    [S_HELP_SOFT_LEFT] = { "Phím mềm trái", "Left soft key" },
+    [S_HELP_STICK_CLICK] = { "Bấm L / R stick", "Click L / R stick" },
+    [S_HELP_EXIT]      = { "Thoát game", "Exit game" },
+
+    [S_SETTINGS]       = { "Cài đặt", "Settings" },
+    [S_GAME_OPTIONS]   = { "Tùy chọn game", "Game options" },
+    [S_FPS_LIMIT]      = { "Giới hạn FPS", "FPS limit" },
+    [S_FPS_HINT]       = { "Số khung hình tối đa mỗi giây của game. Giúp game chạy đúng tốc độ và đỡ tốn pin.",
+                           "Maximum frames per second of the game. Keeps games at the right speed and saves battery." },
+    [S_UNLIMITED]      = { "Không giới hạn", "Unlimited" },
+    [S_DEFAULT_FMT]    = { "Mặc định (%s)", "Default (%s)" },
+    [S_SCREEN_SIZE]    = { "Kích thước màn hình", "Screen size" },
+    [S_SCREEN_SIZE_DEFAULT] = { "Kích thước màn hình mặc định", "Default screen size" },
+    [S_SCREEN_SIZE_HINT_GAME] = { "Tự động: lấy từ MANIFEST của game, nếu không có thì dùng kích thước mặc định. "
+                                  "Chọn 'Tùy chỉnh' để nhập kích thước bất kỳ.",
+                                  "Auto: taken from the game's MANIFEST, otherwise the default size. "
+                                  "Choose 'Custom' to enter any size." },
+    [S_SCREEN_SIZE_HINT] = { "Dùng cho game không khai báo kích thước. Phổ biến nhất là 240x320. "
+                             "Chọn 'Tùy chỉnh' để nhập kích thước bất kỳ.",
+                             "Used for games that do not declare a size. The most common is 240x320. "
+                             "Choose 'Custom' to enter any size." },
+    [S_AUTO]           = { "Tự động", "Auto" },
+    [S_CUSTOM]         = { "Tùy chỉnh", "Custom" },
+    [S_ORIENTATION]    = { "Hướng màn hình", "Orientation" },
+    [S_ORIENT_HINT]    = { "Dọc: cao hơn rộng (điện thoại thường). Ngang: rộng hơn cao (vd 320x240, 640x360).",
+                           "Portrait: taller than wide (common phones). Landscape: wider than tall (e.g. 320x240)." },
+    [S_PORTRAIT]       = { "Dọc", "Portrait" },
+    [S_LANDSCAPE]      = { "Ngang", "Landscape" },
+    [S_SQUARE]         = { "Vuông", "Square" },
+    [S_WIDTH]          = { "Chiều rộng", "Width" },
+    [S_HEIGHT]         = { "Chiều cao", "Height" },
+    [S_SIZE_EDIT_HINT] = { "Trái/Phải: +-1, L/R: +-10, A: nhập số. Giới hạn 64 - 1280.",
+                           "Left/Right: +-1, L/R: +-10, A: type a number. Range 64 - 1280." },
+    [S_KB_WIDTH]       = { "Chiều rộng màn hình", "Screen width" },
+    [S_KB_HEIGHT]      = { "Chiều cao màn hình", "Screen height" },
+    [S_LANGUAGE]       = { "Ngôn ngữ / Language", "Language / Ngôn ngữ" },
+    [S_LANGUAGE_HINT]  = { "Ngôn ngữ của giao diện. Game cũng nhận microedition.locale tương ứng.",
+                           "Interface language. Games also receive the matching microedition.locale." },
+    [S_SHOW_HELP]      = { "Hiện chú thích phím khi chơi", "Show key help while playing" },
+    [S_SHOW_HELP_HINT] = { "Bảng phím ở bên trái màn hình game.", "Key map shown left of the game screen." },
+    [S_ON]             = { "Bật", "On" },
+    [S_OFF]            = { "Tắt", "Off" },
+    [S_SETTINGS_HINTS] = { "(<>) Đổi giá trị   (A) Chọn / nhập số   (B) Lưu và quay lại",
+                           "(<>) Change   (A) Select / enter number   (B) Save and back" },
+};
+
+void lang_set(Lang l) {
+    if (l >= 0 && l < LANG_COUNT)
+        current = l;
+}
+
+Lang lang_get(void) {
+    return current;
+}
+
+const char *lang_code(Lang l) {
+    return l == LANG_EN ? "en" : "vi";
+}
+
+const char *lang_name(Lang l) {
+    return l == LANG_EN ? "English" : "Tiếng Việt";
+}
+
+Lang lang_from_code(const char *code) {
+    return code && strncmp(code, "en", 2) == 0 ? LANG_EN : LANG_VI;
+}
+
+const char *tr(StrId id) {
+    const char *s = id >= 0 && id < S_COUNT ? strings[id][current] : NULL;
+    return s ? s : "?";
+}

@@ -377,7 +377,9 @@ bool midp_start(const MidpConfig *c, const char *midlet_class) {
     vm_set_property("microedition.configuration", "CLDC-1.1");
     vm_set_property("microedition.profiles", "MIDP-2.0");
     vm_set_property("microedition.encoding", "UTF-8");
-    vm_set_property("microedition.locale", "vi-VN");
+    bool en = cfg.lang && strcmp(cfg.lang, "en") == 0;
+    vm_set_property("microedition.locale", en ? "en-US" : "vi-VN");
+    vm_set_property("j2menx.lang", en ? "en" : "vi");
     vm_set_property("microedition.media.version", "1.1");
     vm_set_property("supports.mixing", "false");
 

@@ -84,7 +84,7 @@ public class TextBox extends Screen {
 
     String softLeftLabel() {
         String l = leftLabel();
-        return l != null ? l : "Sua";
+        return l != null ? l : j2menx.Lang.t("Sửa", "Edit");
     }
 
     void showNotify0() {

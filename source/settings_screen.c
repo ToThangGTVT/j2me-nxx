@@ -6,6 +6,7 @@
 
 #include "gfx.h"
 #include "input.h"
+#include "lang.h"
 #include "platform.h"
 #include "settings.h"
 
@@ -28,6 +29,8 @@ typedef enum {
     ITEM_ORIENT,
     ITEM_WIDTH,
     ITEM_HEIGHT,
+    ITEM_LANGUAGE,
+    ITEM_SHOW_HELP,
 } ItemId;
 
 static int cursor;
@@ -85,6 +88,10 @@ static int visible_items(ItemId *out) {
             out[n++] = ITEM_WIDTH;
             out[n++] = ITEM_HEIGHT;
         }
+    }
+    if (!game_mode) {
+        out[n++] = ITEM_SHOW_HELP;
+        out[n++] = ITEM_LANGUAGE;
     }
     return n;
 }
@@ -175,7 +182,7 @@ bool settings_screen_update(void) {
         return false;
     }
 
-    ItemId items[8];
+    ItemId items[10];
     int n = visible_items(items);
     if (cursor >= n)
         cursor = n - 1;
@@ -207,9 +214,19 @@ bool settings_screen_update(void) {
         if (dir || big)
             *v = clamp_size(*v + dir + big);
         if (a)
-            edit_number(v, items[cursor] == ITEM_WIDTH ? "Chieu rong man hinh" : "Chieu cao man hinh");
+            edit_number(v, tr(items[cursor] == ITEM_WIDTH ? S_KB_WIDTH : S_KB_HEIGHT));
         break;
     }
+    case ITEM_LANGUAGE:
+        if (dir || a) {
+            settings()->lang = (settings()->lang + (dir ? dir : 1) + LANG_COUNT) % LANG_COUNT;
+            lang_set((Lang)settings()->lang);
+        }
+        break;
+    case ITEM_SHOW_HELP:
+        if (dir || a)
+            settings()->show_help = !settings()->show_help;
+        break;
     }
     return true;
 }
@@ -218,7 +235,7 @@ static void fps_text(int fps, char *out, size_t size) {
     if (fps > 0)
         snprintf(out, size, "%d FPS", fps);
     else
-        snprintf(out, size, "Khong gioi han");
+        snprintf(out, size, "%s", tr(S_UNLIMITED));
 }
 
 static void item_text(ItemId item, const char **label, const char **hint, char *value, size_t size) {
@@ -227,44 +244,51 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
     int w = *cur_w(), h = *cur_h();
     switch (item) {
     case ITEM_FPS:
-        *label = "Gioi han FPS";
-        *hint = "So khung hinh toi da moi giay cua game. Giup game chay dung toc do va do ton pin.";
+        *label = tr(S_FPS_LIMIT);
+        *hint = tr(S_FPS_HINT);
         if (game_mode && game.fps_limit < 0) {
             fps_text(s->fps_limit, tmp, sizeof(tmp));
-            snprintf(value, size, "Mac dinh (%s)", tmp);
+            snprintf(value, size, tr(S_DEFAULT_FMT), tmp);
         } else {
             fps_text(game_mode ? game.fps_limit : s->fps_limit, value, size);
         }
         break;
     case ITEM_SIZE:
-        *label = game_mode ? "Kich thuoc man hinh" : "Kich thuoc man hinh mac dinh";
-        *hint = game_mode ? "Tu dong: lay tu MANIFEST cua game, neu khong co thi dung kich thuoc mac dinh. "
-                            "Chon 'Tuy chinh' de nhap kich thuoc bat ky."
-                          : "Dung cho game khong khai bao kich thuoc. Pho bien nhat la 240x320. "
-                            "Chon 'Tuy chinh' de nhap kich thuoc bat ky.";
+        *label = tr(game_mode ? S_SCREEN_SIZE : S_SCREEN_SIZE_DEFAULT);
+        *hint = tr(game_mode ? S_SCREEN_SIZE_HINT_GAME : S_SCREEN_SIZE_HINT);
         if (is_auto())
-            snprintf(value, size, "Tu dong");
+            snprintf(value, size, "%s", tr(S_AUTO));
         else if (custom)
-            snprintf(value, size, "Tuy chinh");
+            snprintf(value, size, "%s", tr(S_CUSTOM));
         else {
             int i = preset_index(w, h);
             snprintf(value, size, "%d x %d", SETTINGS_SCREEN_CHOICES[i].w, SETTINGS_SCREEN_CHOICES[i].h);
         }
         break;
     case ITEM_ORIENT:
-        *label = "Huong man hinh";
-        *hint = "Doc: cao hon rong (dien thoai thuong). Ngang: rong hon cao (vd 320x240, 640x360).";
-        snprintf(value, size, "%s  (%d x %d)", w == h ? "Vuong" : w < h ? "Doc" : "Ngang", w, h);
+        *label = tr(S_ORIENTATION);
+        *hint = tr(S_ORIENT_HINT);
+        snprintf(value, size, "%s  (%d x %d)", tr(w == h ? S_SQUARE : w < h ? S_PORTRAIT : S_LANDSCAPE), w, h);
         break;
     case ITEM_WIDTH:
-        *label = "Chieu rong";
-        *hint = "Trai/Phai: +-1, L/R: +-10, A: nhap so. Gioi han 64 - 1280.";
+        *label = tr(S_WIDTH);
+        *hint = tr(S_SIZE_EDIT_HINT);
         snprintf(value, size, "%d px", w);
         break;
     case ITEM_HEIGHT:
-        *label = "Chieu cao";
-        *hint = "Trai/Phai: +-1, L/R: +-10, A: nhap so. Gioi han 64 - 1280.";
+        *label = tr(S_HEIGHT);
+        *hint = tr(S_SIZE_EDIT_HINT);
         snprintf(value, size, "%d px", h);
+        break;
+    case ITEM_LANGUAGE:
+        *label = tr(S_LANGUAGE);
+        *hint = tr(S_LANGUAGE_HINT);
+        snprintf(value, size, "%s", lang_name((Lang)s->lang));
+        break;
+    case ITEM_SHOW_HELP:
+        *label = tr(S_SHOW_HELP);
+        *hint = tr(S_SHOW_HELP_HINT);
+        snprintf(value, size, "%s", tr(s->show_help ? S_ON : S_OFF));
         break;
     }
 }
@@ -293,14 +317,14 @@ void settings_screen_draw(void) {
     gfx_fill_rect(0, 0, SCREEN_W, HEADER_H, COL_BAR);
     gfx_fill_rect(0, HEADER_H, SCREEN_W, 2, COL_ACCENT);
     int ty = (HEADER_H - gfx_font_height(FONT_LARGE)) / 2;
-    int tw = gfx_text(FONT_LARGE, LIST_X, ty, 0, ALIGN_LEFT, COL_TEXT, game_mode ? "Tuy chon game" : "Cai dat");
+    int tw = gfx_text(FONT_LARGE, LIST_X, ty, 0, ALIGN_LEFT, COL_TEXT, tr(game_mode ? S_GAME_OPTIONS : S_SETTINGS));
     if (game_mode)
         gfx_text(FONT_NORMAL, LIST_X + tw + 24, ty + gfx_font_height(FONT_LARGE) - gfx_font_height(FONT_NORMAL) - 4,
                  SCREEN_W - LIST_X * 2 - tw - 24, ALIGN_LEFT, COL_DIM, game_title);
 
     // Cột trái: các mục; cột phải: xem trước tỉ lệ màn hình
     int list_w = SCREEN_W - 2 * LIST_X - 300;
-    ItemId items[8];
+    ItemId items[10];
     int n = visible_items(items);
     if (cursor >= n)
         cursor = n - 1;
@@ -329,5 +353,5 @@ void settings_screen_draw(void) {
     int y0 = SCREEN_H - FOOTER_H;
     gfx_fill_rect(0, y0, SCREEN_W, FOOTER_H, COL_BAR);
     gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, y0 + (FOOTER_H - gfx_font_height(FONT_NORMAL)) / 2, 0, ALIGN_RIGHT,
-             COL_TEXT, "(<>) Doi gia tri   (A) Chon / nhap so   (B) Luu va quay lai");
+             COL_TEXT, tr(S_SETTINGS_HINTS));
 }

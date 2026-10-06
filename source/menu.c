@@ -5,6 +5,7 @@
 
 #include "gfx.h"
 #include "input.h"
+#include "lang.h"
 
 #define HEADER_H    80
 #define FOOTER_H    72
@@ -82,6 +83,12 @@ MenuAction menu_update(Menu *m, const GameList *list) {
     return MENU_NONE;
 }
 
+static const char *line_subtitle(void) {
+    static char buf[160];
+    snprintf(buf, sizeof(buf), "v" APP_VERSION_STR "  -  %s", tr(S_APP_SUBTITLE));
+    return buf;
+}
+
 static void draw_header(const GameList *list, const char *games_dir) {
     gfx_fill_rect(0, 0, SCREEN_W, HEADER_H, COL_BAR);
     gfx_fill_rect(0, HEADER_H, SCREEN_W, 2, COL_ACCENT);
@@ -89,18 +96,18 @@ static void draw_header(const GameList *list, const char *games_dir) {
     int title_y = (HEADER_H - gfx_font_height(FONT_LARGE)) / 2;
     int w = gfx_text(FONT_LARGE, LIST_X, title_y, 0, ALIGN_LEFT, COL_TEXT, "J2ME-NX");
     gfx_text(FONT_SMALL, LIST_X + w + 14, title_y + gfx_font_height(FONT_LARGE) - gfx_font_height(FONT_SMALL) - 4,
-             0, ALIGN_LEFT, COL_DIM, "v" APP_VERSION_STR "  -  J2ME emulator for Nintendo Switch");
+             0, ALIGN_LEFT, COL_DIM, line_subtitle());
 
     char count[32];
-    snprintf(count, sizeof(count), "%d game", list->demo ? 0 : list->count);
+    snprintf(count, sizeof(count), tr(S_GAME_COUNT), list->demo ? 0 : list->count);
     gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, (HEADER_H - gfx_font_height(FONT_NORMAL)) / 2, 0, ALIGN_RIGHT,
              COL_DIM, count);
 
     char line[600];
     if (list->demo)
-        snprintf(line, sizeof(line), "Khong tim thay .jar trong %s  ->  dang hien list demo", games_dir);
+        snprintf(line, sizeof(line), tr(S_NO_JAR), games_dir);
     else
-        snprintf(line, sizeof(line), "Thu muc: %s", games_dir);
+        snprintf(line, sizeof(line), tr(S_FOLDER), games_dir);
     gfx_text(FONT_SMALL, LIST_X, HEADER_H + 18, LIST_W, ALIGN_LEFT, list->demo ? COL_WARN : COL_DIM, line);
 }
 
@@ -170,7 +177,7 @@ static void draw_list(const Menu *m, GameList *list) {
         if (!g->info_loaded) {
             snprintf(sub, sizeof(sub), "...");
         } else if (!g->valid) {
-            snprintf(sub, sizeof(sub), "Khong co MIDlet-1 trong MANIFEST: co the khong chay duoc");
+            snprintf(sub, sizeof(sub), "%s", tr(S_NO_MIDLET));
         } else {
             const char *slash = strrchr(g->name, '/');
             char folder[128] = "";
@@ -213,7 +220,7 @@ static void draw_footer(const Menu *m, const GameList *list) {
     }
 
     gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, text_y, 0, ALIGN_RIGHT, COL_TEXT,
-             "(A) Chon   (-) Tuy chon game   (X) Cai dat   (Y) Quet lai   (+) Thoat");
+             tr(S_MENU_HINTS));
 }
 
 void menu_free_textures(GameList *list) {

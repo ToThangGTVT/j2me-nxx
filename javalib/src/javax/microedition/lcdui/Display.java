@@ -245,7 +245,7 @@ public class Display {
         g.fillRect(0, 0, screenW, screenH);
         g.setColor(0xffffff);
         g.setFont(Font.getFont(Font.FACE_SYSTEM, Font.STYLE_BOLD, Font.SIZE_MEDIUM));
-        g.drawString("Loi", 4, 4, Graphics.TOP | Graphics.LEFT);
+        g.drawString(j2menx.Lang.t("Lỗi", "Error"), 4, 4, Graphics.TOP | Graphics.LEFT);
         g.setFont(Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_SMALL));
         Screen.drawWrapped(g, fatal, 4, 30, screenW - 8);
     }
@@ -282,7 +282,7 @@ public class Display {
             g.setColor(0xffffff);
             g.drawString((i + 1) + ". " + c.getLabel(), x0 + 6, y + 3, Graphics.TOP | Graphics.LEFT);
         }
-        Screen.paintSoftBar(g, "Chon", "Huy");
+        Screen.paintSoftBar(g, j2menx.Lang.t("Chọn", "Select"), j2menx.Lang.t("Hủy", "Cancel"));
     }
 
     private boolean menuKey(int code) {

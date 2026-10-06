@@ -50,7 +50,7 @@ char *platform_keyboard(const char *title, const char *text, int max_len, int ty
     return R_SUCCEEDED(rc) ? strdup(out) : NULL;
 }
 
-TTF_Font *platform_open_font(int ptsize) {
+static TTF_Font *open_shared_font(int ptsize) {
     PlFontData font;
     if (R_FAILED(plGetSharedFontByType(&font, PlSharedFontType_Standard)))
         return NULL;
@@ -87,7 +87,7 @@ char *platform_keyboard(const char *title, const char *text, int max_len, int ty
     return NULL;
 }
 
-TTF_Font *platform_open_font(int ptsize) {
+static TTF_Font *open_system_font(int ptsize) {
     static const char *candidates[] = {
         "/System/Library/Fonts/Supplemental/Arial.ttf",
         "/System/Library/Fonts/Helvetica.ttc",
@@ -103,3 +103,19 @@ TTF_Font *platform_open_font(int ptsize) {
 }
 
 #endif
+
+// Font nhúng (Google Sans, có đủ chữ tiếng Việt); lỗi thì dùng font hệ thống
+extern const unsigned char ui_font_ttf[];
+extern const size_t ui_font_ttf_size;
+
+TTF_Font *platform_open_font(int ptsize) {
+    SDL_RWops *rw = SDL_RWFromConstMem(ui_font_ttf, (int)ui_font_ttf_size);
+    TTF_Font *f = rw ? TTF_OpenFontRW(rw, 1, ptsize) : NULL;
+    if (f)
+        return f;
+#ifdef __SWITCH__
+    return open_shared_font(ptsize);
+#else
+    return open_system_font(ptsize);
+#endif
+}

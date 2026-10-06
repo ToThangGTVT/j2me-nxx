@@ -41,6 +41,7 @@ typedef struct {
     char *(*keyboard)(const char *title, const char *text, int max_len, int type);
     void (*vibrate)(int ms);
     int fps_limit;                                          // 0 = không giới hạn
+    const char *lang;                                       // "vi" / "en": ngôn ngữ giao diện MIDP
 } MidpConfig;
 
 // Đăng ký native (gọi trước vm_init)

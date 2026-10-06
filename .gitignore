@@ -1,0 +1,10 @@
+build/
+cmake-build-*/
+*.nro
+*.nacp
+*.elf
+*.map
+.idea/
+.DS_Store
+/games/
+/data/

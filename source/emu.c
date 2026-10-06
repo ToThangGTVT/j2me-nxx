@@ -1,0 +1,655 @@
+#include "emu.h"
+
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+
+#include "gfx.h"
+#include "midp/midp.h"
+#include "platform.h"
+#include "settings.h"
+#include "vm/vm.h"
+#include "vm/zip.h"
+
+// Thư viện CLDC/MIDP đã biên dịch, nhúng lúc build (classlib_data.c)
+extern const unsigned char classlib_jar[];
+extern const size_t classlib_jar_size;
+
+#define DEFAULT_SCREEN_W 240
+#define DEFAULT_SCREEN_H 320
+#define VM_BUDGET_MS     12
+#define REPEAT_DELAY_MS  400
+#define REPEAT_RATE_MS   100
+#define EXIT_CONFIRM_MS  2000
+
+typedef struct {
+    char *key, *value;
+} Prop;
+
+static bool running;
+static ZipFile *syslib, *game;
+static Prop *props;
+static int prop_count;
+static char game_name[128];
+static char rms_dir[512];
+static char exit_msg[256];
+static FILE *log_file;
+
+static SDL_Texture *screen_tex;
+static int scr_w, scr_h;
+static SDL_Rect dst;
+
+// Phím J2ME đang giữ (đếm số nguồn: tay cầm + bàn phím)
+#define KEY_INDEX(code) ((code) + 16)
+#define KEY_SLOTS 80
+static int key_held[KEY_SLOTS];
+static Uint32 key_repeat_at[KEY_SLOTS];
+static Uint32 exit_confirm_until;
+static bool exit_now;
+static bool pointer_down;
+
+// ---------------------------------------------------------------------------
+// Manifest / JAD
+
+static char *trim(char *s) {
+    while (*s && isspace((unsigned char)*s))
+        s++;
+    char *e = s + strlen(s);
+    while (e > s && isspace((unsigned char)e[-1]))
+        *--e = '\0';
+    return s;
+}
+
+static void set_prop(const char *key, const char *value, bool override) {
+    for (int i = 0; i < prop_count; i++) {
+        if (strcmp(props[i].key, key) == 0) {
+            if (override) {
+                free(props[i].value);
+                props[i].value = strdup(value);
+            }
+            return;
+        }
+    }
+    props = realloc(props, sizeof(Prop) * (prop_count + 1));
+    props[prop_count].key = strdup(key);
+    props[prop_count].value = strdup(value);
+    prop_count++;
+}
+
+// Định dạng "Key: Value", dòng bắt đầu bằng dấu cách là phần nối của dòng trước
+static void parse_props(const char *text, bool override) {
+    char *buf = strdup(text);
+    char *key = NULL;
+    char *value = NULL;
+    char *save = NULL;
+    for (char *line = strtok_r(buf, "\n", &save); line; line = strtok_r(NULL, "\n", &save)) {
+        size_t len = strlen(line);
+        if (len && line[len - 1] == '\r')
+            line[--len] = '\0';
+        if (line[0] == ' ' && value) {
+            size_t vl = strlen(value);
+            value = realloc(value, vl + len);
+            memcpy(value + vl, line + 1, len);
+            continue;
+        }
+        if (key) {
+            set_prop(key, trim(value), override);
+            free(key);
+            free(value);
+            key = value = NULL;
+        }
+        char *colon = strchr(line, ':');
+        if (!colon)
+            continue;
+        *colon = '\0';
+        key = strdup(trim(line));
+        value = strdup(colon + 1);
+    }
+    if (key) {
+        set_prop(key, trim(value), override);
+        free(key);
+        free(value);
+    }
+    free(buf);
+}
+
+static const char *get_prop(const char *key) {
+    for (int i = 0; i < prop_count; i++) {
+        if (strcmp(props[i].key, key) == 0)
+            return props[i].value;
+    }
+    for (int i = 0; i < prop_count; i++) {
+        if (strcasecmp(props[i].key, key) == 0)
+            return props[i].value;
+    }
+    return NULL;
+}
+
+static void free_props(void) {
+    for (int i = 0; i < prop_count; i++) {
+        free(props[i].key);
+        free(props[i].value);
+    }
+    free(props);
+    props = NULL;
+    prop_count = 0;
+}
+
+// "MIDlet-1: Tên, /icon.png, com.example.Main" -> lớp MIDlet dạng a/b/C
+static bool midlet_class(char *out, size_t size) {
+    const char *v = get_prop("MIDlet-1");
+    if (!v)
+        return false;
+    const char *c1 = strchr(v, ',');
+    const char *c2 = c1 ? strchr(c1 + 1, ',') : NULL;
+    if (!c2)
+        return false;
+    char buf[256];
+    snprintf(buf, sizeof(buf), "%s", c2 + 1);
+    char *cls = trim(buf);
+    if (!*cls)
+        return false;
+    snprintf(out, size, "%s", cls);
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Host callback cho VM / MIDP
+
+static uint8_t *host_read_file(const char *name, size_t *size, bool *from_game) {
+    uint8_t *d = zip_read(syslib, name, size);
+    if (d) {
+        *from_game = false;
+        return d;
+    }
+    d = zip_read(game, name, size);
+    *from_game = d != NULL;
+    return d;
+}
+
+static uint8_t *host_read_resource(const char *name, size_t *size) {
+    return zip_read(game, name, size);
+}
+
+static void host_log(const char *msg) {
+    if (log_file) {
+        fprintf(log_file, "%s\n", msg);
+        fflush(log_file);
+    }
+}
+
+static void host_exit(int status) {
+    (void)status;
+    exit_now = true;
+}
+
+static const char *host_app_property(const char *key) {
+    return get_prop(key);
+}
+
+// ---------------------------------------------------------------------------
+
+static void base_name(const char *path, char *out, size_t size) {
+    const char *s = strrchr(path, '/');
+    s = s ? s + 1 : path;
+    snprintf(out, size, "%s", s);
+    char *dot = strrchr(out, '.');
+    if (dot && strcasecmp(dot, ".jar") == 0)
+        *dot = '\0';
+}
+
+static void parse_screen_size(void) {
+    scr_w = DEFAULT_SCREEN_W;
+    scr_h = DEFAULT_SCREEN_H;
+    const char *v = get_prop("Nokia-MIDlet-Original-Display-Size");
+    if (!v)
+        v = get_prop("J2ME-NX-Screen-Size");
+    int w, h;
+    if (v && sscanf(v, "%d%*[ ,x]%d", &w, &h) == 2 && w >= 96 && h >= 64 && w <= 800 && h <= 800) {
+        scr_w = w;
+        scr_h = h;
+    }
+}
+
+static void compute_dst(void) {
+    float s = (float)SCREEN_W / scr_w;
+    if ((float)SCREEN_H / scr_h < s)
+        s = (float)SCREEN_H / scr_h;
+    dst.w = (int)(scr_w * s);
+    dst.h = (int)(scr_h * s);
+    dst.x = (SCREEN_W - dst.w) / 2;
+    dst.y = (SCREEN_H - dst.h) / 2;
+}
+
+bool emu_start(const char *jar_path, char *err, size_t err_size) {
+    emu_stop();
+    exit_msg[0] = '\0';
+    exit_now = false;
+    exit_confirm_until = 0;
+    memset(key_held, 0, sizeof(key_held));
+    pointer_down = false;
+
+    syslib = zip_open_mem(classlib_jar, classlib_jar_size, false);
+    game = zip_open_file(jar_path);
+    if (!syslib || !game) {
+        snprintf(err, err_size, "%s", !syslib ? "Thu vien he thong hong" : "Khong mo duoc file JAR");
+        emu_stop();
+        return false;
+    }
+
+    // Thuộc tính: JAD (nếu có, cạnh file JAR) ưu tiên hơn MANIFEST.MF
+    char jad[600];
+    snprintf(jad, sizeof(jad), "%s", jar_path);
+    char *dot = strrchr(jad, '.');
+    if (dot) {
+        strcpy(dot, ".jad");
+        FILE *f = fopen(jad, "rb");
+        if (f) {
+            char *buf = calloc(1, 65536);
+            fread(buf, 1, 65535, f);
+            fclose(f);
+            parse_props(buf, true);
+            free(buf);
+        }
+    }
+    size_t mf_size = 0;
+    char *mf = (char *)zip_read(game, "META-INF/MANIFEST.MF", &mf_size);
+    if (mf) {
+        parse_props(mf, false);
+        free(mf);
+    }
+
+    char cls[256];
+    if (!midlet_class(cls, sizeof(cls))) {
+        snprintf(err, err_size, "JAR khong co MIDlet-1 trong MANIFEST");
+        emu_stop();
+        return false;
+    }
+
+    base_name(jar_path, game_name, sizeof(game_name));
+    const char *name = get_prop("MIDlet-Name");
+    if (name)
+        snprintf(game_name, sizeof(game_name), "%s", name);
+
+    char base[128];
+    base_name(jar_path, base, sizeof(base));
+    snprintf(rms_dir, sizeof(rms_dir), "%s/rms/%s", platform_data_dir(), base);
+
+    mkdir(platform_data_dir(), 0777);
+    char log_path[600];
+    snprintf(log_path, sizeof(log_path), "%s/log.txt", platform_data_dir());
+    log_file = fopen(log_path, "w");
+    if (log_file)
+        fprintf(log_file, "J2ME-NX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
+
+    parse_screen_size();
+    compute_dst();
+
+    VMHost host = {
+        .read_file = host_read_file,
+        .read_resource = host_read_resource,
+        .log = host_log,
+        .exit_request = host_exit,
+    };
+    midp_register_natives();
+    if (!vm_init(&host)) {
+        snprintf(err, err_size, "Loi khoi dong VM: %s", vm_last_error());
+        emu_stop();
+        return false;
+    }
+
+    MidpConfig mc = {
+        .screen_w = scr_w,
+        .screen_h = scr_h,
+        .rms_dir = rms_dir,
+        .app_property = host_app_property,
+        .keyboard = platform_keyboard,
+        .vibrate = NULL,
+        .fps_limit = settings()->fps_limit,
+    };
+    if (!midp_start(&mc, cls)) {
+        snprintf(err, err_size, "Khong chay duoc MIDlet: %s", vm_last_error());
+        emu_stop();
+        return false;
+    }
+
+    screen_tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, scr_w, scr_h);
+    SDL_SetTextureScaleMode(screen_tex, SDL_ScaleModeLinear);
+    running = true;
+    return true;
+}
+
+void emu_stop(void) {
+    if (running || syslib || game) {
+        vm_shutdown();
+        midp_shutdown();
+    }
+    running = false;
+    if (screen_tex)
+        SDL_DestroyTexture(screen_tex);
+    screen_tex = NULL;
+    zip_close(syslib);
+    zip_close(game);
+    syslib = game = NULL;
+    free_props();
+    if (log_file)
+        fclose(log_file);
+    log_file = NULL;
+}
+
+bool emu_running(void) {
+    return running;
+}
+
+const char *emu_exit_message(void) {
+    return exit_msg;
+}
+
+// ---------------------------------------------------------------------------
+// Phím
+
+static void key_change(int code, bool down) {
+    if (!code)
+        return;
+    int i = KEY_INDEX(code);
+    if (i < 0 || i >= KEY_SLOTS)
+        return;
+    if (down) {
+        if (key_held[i]++ == 0) {
+            midp_post_key(code, true);
+            key_repeat_at[i] = SDL_GetTicks() + REPEAT_DELAY_MS;
+        }
+    } else if (key_held[i] > 0 && --key_held[i] == 0) {
+        midp_post_key(code, false);
+    }
+}
+
+static void update_repeat(void) {
+    Uint32 now = SDL_GetTicks();
+    for (int i = 0; i < KEY_SLOTS; i++) {
+        if (key_held[i] && SDL_TICKS_PASSED(now, key_repeat_at[i])) {
+            midp_post_event(MIDP_EV_KEY_REPEATED, i - 16, 0);
+            key_repeat_at[i] = now + REPEAT_RATE_MS;
+        }
+    }
+}
+
+// Nút joystick của SDL2 bản Switch -> phím J2ME
+static int joy_to_key(int button) {
+    switch (button) {
+    case 0:  return MIDP_KEY_FIRE;          // A
+    case 1:  return MIDP_KEY_SOFT_RIGHT;    // B
+    case 2:  return MIDP_KEY_POUND;         // X
+    case 3:  return MIDP_KEY_STAR;          // Y
+    case 4:  return '5';                    // bấm stick trái
+    case 5:  return '0';                    // bấm stick phải
+    case 6:  return MIDP_KEY_SOFT_LEFT;     // L
+    case 7:  return MIDP_KEY_SOFT_RIGHT;    // R
+    case 8:  return '1';                    // ZL
+    case 9:  return '3';                    // ZR
+    case 10: return MIDP_KEY_SOFT_LEFT;     // +
+    case 12: case 16: return MIDP_KEY_LEFT;
+    case 13: case 17: return MIDP_KEY_UP;
+    case 14: case 18: return MIDP_KEY_RIGHT;
+    case 15: case 19: return MIDP_KEY_DOWN;
+    case 20: return '4';                    // stick phải
+    case 21: return '2';
+    case 22: return '6';
+    case 23: return '8';
+    default: return 0;
+    }
+}
+
+static int keyboard_to_key(SDL_Keycode k) {
+    switch (k) {
+    case SDLK_UP:       return MIDP_KEY_UP;
+    case SDLK_DOWN:     return MIDP_KEY_DOWN;
+    case SDLK_LEFT:     return MIDP_KEY_LEFT;
+    case SDLK_RIGHT:    return MIDP_KEY_RIGHT;
+    case SDLK_RETURN:
+    case SDLK_SPACE:    return MIDP_KEY_FIRE;
+    case SDLK_F1:
+    case SDLK_q:        return MIDP_KEY_SOFT_LEFT;
+    case SDLK_F2:
+    case SDLK_w:
+    case SDLK_BACKSPACE: return MIDP_KEY_SOFT_RIGHT;
+    case SDLK_KP_MULTIPLY:
+    case SDLK_a:        return MIDP_KEY_STAR;
+    case SDLK_KP_DIVIDE:
+    case SDLK_s:        return MIDP_KEY_POUND;
+    case SDLK_KP_0:     return '0';
+    case SDLK_KP_1:     return '1';
+    case SDLK_KP_2:     return '2';
+    case SDLK_KP_3:     return '3';
+    case SDLK_KP_4:     return '4';
+    case SDLK_KP_5:     return '5';
+    case SDLK_KP_6:     return '6';
+    case SDLK_KP_7:     return '7';
+    case SDLK_KP_8:     return '8';
+    case SDLK_KP_9:     return '9';
+    default:
+        if (k >= SDLK_0 && k <= SDLK_9)
+            return '0' + (k - SDLK_0);
+        return 0;
+    }
+}
+
+static void request_exit(void) {
+    Uint32 now = SDL_GetTicks();
+    if (exit_confirm_until && !SDL_TICKS_PASSED(now, exit_confirm_until))
+        exit_now = true;
+    else
+        exit_confirm_until = now + EXIT_CONFIRM_MS;
+}
+
+static bool to_screen(int lx, int ly, int *sx, int *sy) {
+    *sx = (lx - dst.x) * scr_w / dst.w;
+    *sy = (ly - dst.y) * scr_h / dst.h;
+    return lx >= dst.x && ly >= dst.y && lx < dst.x + dst.w && ly < dst.y + dst.h;
+}
+
+static void pointer(int type, int lx, int ly) {
+    int x, y;
+    bool inside = to_screen(lx, ly, &x, &y);
+    if (type == MIDP_EV_POINTER_PRESSED) {
+        if (!inside)
+            return;
+        pointer_down = true;
+    } else if (!pointer_down) {
+        return;
+    }
+    if (!inside) {
+        x = x < 0 ? 0 : x >= scr_w ? scr_w - 1 : x;
+        y = y < 0 ? 0 : y >= scr_h ? scr_h - 1 : y;
+    }
+    if (type == MIDP_EV_POINTER_RELEASED)
+        pointer_down = false;
+    midp_post_event(type, x, y);
+}
+
+void emu_handle_event(const SDL_Event *e) {
+    if (!running)
+        return;
+    switch (e->type) {
+    case SDL_JOYBUTTONDOWN:
+    case SDL_JOYBUTTONUP:
+        if (e->jbutton.button == 11) {          // nút -: thoát game
+            if (e->type == SDL_JOYBUTTONDOWN)
+                request_exit();
+            break;
+        }
+        key_change(joy_to_key(e->jbutton.button), e->type == SDL_JOYBUTTONDOWN);
+        break;
+    case SDL_KEYDOWN:
+    case SDL_KEYUP:
+        if (e->key.repeat)
+            break;
+        if (e->key.keysym.sym == SDLK_ESCAPE) {
+            if (e->type == SDL_KEYDOWN)
+                request_exit();
+            break;
+        }
+        key_change(keyboard_to_key(e->key.keysym.sym), e->type == SDL_KEYDOWN);
+        break;
+    case SDL_FINGERDOWN:
+    case SDL_FINGERUP:
+    case SDL_FINGERMOTION: {
+        int type = e->type == SDL_FINGERDOWN ? MIDP_EV_POINTER_PRESSED
+                 : e->type == SDL_FINGERUP ? MIDP_EV_POINTER_RELEASED : MIDP_EV_POINTER_DRAGGED;
+        pointer(type, (int)(e->tfinger.x * SCREEN_W), (int)(e->tfinger.y * SCREEN_H));
+        break;
+    }
+    case SDL_MOUSEBUTTONDOWN:
+    case SDL_MOUSEBUTTONUP:
+        if (e->button.which == SDL_TOUCH_MOUSEID || e->button.button != SDL_BUTTON_LEFT)
+            break;
+        pointer(e->type == SDL_MOUSEBUTTONDOWN ? MIDP_EV_POINTER_PRESSED : MIDP_EV_POINTER_RELEASED,
+                e->button.x, e->button.y);
+        break;
+    case SDL_MOUSEMOTION:
+        if (e->motion.which != SDL_TOUCH_MOUSEID && (e->motion.state & SDL_BUTTON_LMASK))
+            pointer(MIDP_EV_POINTER_DRAGGED, e->motion.x, e->motion.y);
+        break;
+    default:
+        break;
+    }
+}
+
+#ifndef __SWITCH__
+// Kịch bản test tự động (chỉ bản desktop), theo mốc ms tính từ lúc game chạy:
+//   J2ME_NX_KEYS="1500:-6,2000:-2"        bấm + nhả phím J2ME
+//   J2ME_NX_SHOTS="1000:/tmp/a.bmp,..."   chụp màn hình J2ME ra BMP
+//   J2ME_NX_QUIT=5000                     thoát app
+static Uint32 script_start;
+
+static void script_step(void) {
+    if (!script_start)
+        script_start = SDL_GetTicks();
+    Uint32 t = SDL_GetTicks() - script_start;
+    static Uint32 last;
+    const char *keys = SDL_getenv("J2ME_NX_KEYS");
+    const char *shots = SDL_getenv("J2ME_NX_SHOTS");
+    const char *quit = SDL_getenv("J2ME_NX_QUIT");
+    for (const char *p = keys; p && *p;) {
+        unsigned at;
+        int code, n = 0;
+        if (sscanf(p, "%u:%d%n", &at, &code, &n) != 2)
+            break;
+        if (at > last && at <= t) {
+            midp_post_key(code, true);
+            midp_post_key(code, false);
+        }
+        p += n;
+        if (*p == ',')
+            p++;
+    }
+    for (const char *p = shots; p && *p;) {
+        unsigned at;
+        char path[256];
+        int n = 0;
+        if (sscanf(p, "%u:%255[^,]%n", &at, path, &n) != 2)
+            break;
+        if (at > last && at <= t) {
+            int w, h;
+            const uint32_t *fb = midp_framebuffer(&w, &h, NULL);
+            SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormatFrom((void *)fb, w, h, 32, w * 4,
+                                                                   SDL_PIXELFORMAT_ARGB8888);
+            if (surf) {
+                SDL_SaveBMP(surf, path);
+                SDL_FreeSurface(surf);
+            }
+        }
+        p += n;
+        if (*p == ',')
+            p++;
+    }
+    if (quit && t >= (Uint32)atoi(quit)) {
+        SDL_Event e = { .type = SDL_QUIT };
+        SDL_PushEvent(&e);
+    }
+    last = t;
+}
+#endif
+
+bool emu_update(void) {
+    if (!running)
+        return false;
+#ifndef __SWITCH__
+    script_step();
+#endif
+    if (exit_now) {
+        exit_msg[0] = '\0';
+        return false;
+    }
+    update_repeat();
+    if (!vm_run(VM_BUDGET_MS)) {
+        snprintf(exit_msg, sizeof(exit_msg), "Game da ket thuc (khong con thread nao chay)");
+        return false;
+    }
+    if (midp_exit_requested() || exit_now)
+        return false;
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Vẽ
+
+#define COL_BG    RGB(0x10, 0x11, 0x14)
+#define COL_TEXT  RGB(0xee, 0xee, 0xee)
+#define COL_DIM   RGB(0x8a, 0x8f, 0x98)
+#define COL_WARN  RGB(0xff, 0xc1, 0x4d)
+
+static void draw_help(void) {
+    static const char *lines[][2] = {
+        { "D-pad / L-stick", "Dieu huong" },
+        { "A", "Fire (5)" },
+        { "B / R", "Phim mem phai" },
+        { "L / +", "Phim mem trai" },
+        { "Y / X", "* / #" },
+        { "ZL / ZR", "1 / 3" },
+        { "R-stick", "2 4 6 8" },
+        { "Bam L / R stick", "5 / 0" },
+        { "-", "Thoat game" },
+    };
+    int panel_w = dst.x;
+    if (panel_w < 200)
+        return;
+    int x = 32, y = 40;
+    gfx_text(FONT_LARGE, x, y, panel_w - 48, ALIGN_LEFT, COL_TEXT, game_name);
+    y += gfx_font_height(FONT_LARGE) + 4;
+    char info[64];
+    if (settings()->fps_limit > 0)
+        snprintf(info, sizeof(info), "%dx%d  -  gioi han %d FPS", scr_w, scr_h, settings()->fps_limit);
+    else
+        snprintf(info, sizeof(info), "%dx%d", scr_w, scr_h);
+    gfx_text(FONT_SMALL, x, y, 0, ALIGN_LEFT, COL_DIM, info);
+    y += 48;
+    for (size_t i = 0; i < sizeof(lines) / sizeof(lines[0]); i++) {
+        gfx_text(FONT_SMALL, x, y, 150, ALIGN_LEFT, COL_TEXT, lines[i][0]);
+        gfx_text(FONT_SMALL, x + 160, y, panel_w - x - 170, ALIGN_LEFT, COL_DIM, lines[i][1]);
+        y += gfx_font_height(FONT_SMALL) + 8;
+    }
+}
+
+void emu_draw(void) {
+    gfx_clear(COL_BG);
+    if (!running)
+        return;
+    int w, h;
+    bool dirty;
+    const uint32_t *fb = midp_framebuffer(&w, &h, &dirty);
+    if (fb && dirty)
+        SDL_UpdateTexture(screen_tex, NULL, fb, w * 4);
+    SDL_RenderCopy(gfx_renderer(), screen_tex, NULL, &dst);
+    draw_help();
+
+    if (exit_confirm_until && !SDL_TICKS_PASSED(SDL_GetTicks(), exit_confirm_until)) {
+        const char *msg = "Nhan - (hoac Esc) lan nua de thoat game";
+        int tw = 560, th = 56;
+        gfx_fill_rect((SCREEN_W - tw) / 2, SCREEN_H - th - 24, tw, th, RGB(0x30, 0x30, 0x30));
+        gfx_text(FONT_NORMAL, SCREEN_W / 2, SCREEN_H - th - 24 + (th - gfx_font_height(FONT_NORMAL)) / 2, 0,
+                 ALIGN_CENTER, COL_WARN, msg);
+    }
+}

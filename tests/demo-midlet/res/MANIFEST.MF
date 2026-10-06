@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+MIDlet-Name: J2ME-NX Demo
+MIDlet-Vendor: j2me-nx
+MIDlet-Version: 1.0
+MIDlet-1: Demo, /logo.png, demo.DemoMIDlet
+MicroEdition-Profile: MIDP-2.0
+MicroEdition-Configuration: CLDC-1.1

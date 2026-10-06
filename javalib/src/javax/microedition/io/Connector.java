@@ -45,6 +45,13 @@ public class Connector {
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
             return new j2menx.HttpConn(name);
         }
+        if (lower.startsWith("sms://") || lower.startsWith("mms://") || lower.startsWith("cbs://")) {
+            return new j2menx.SmsConn(name);
+        }
+        if (lower.startsWith("btspp://") || lower.startsWith("btl2cap://") || lower.startsWith("btgoep://")) {
+            throw new javax.bluetooth.BluetoothConnectionException(
+                    javax.bluetooth.BluetoothConnectionException.FAILED_NOINFO, "Bluetooth khong ho tro tren Switch");
+        }
         System.out.println("Connector.open chua ho tro: " + name);
         throw new ConnectionNotFoundException(name);
     }

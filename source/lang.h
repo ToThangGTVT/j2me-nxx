@@ -63,6 +63,8 @@ typedef enum {
     S_KB_HEIGHT,
     S_LANGUAGE,
     S_LANGUAGE_HINT,
+    S_KEYMAP,
+    S_KEYMAP_HINT,
     S_SHOW_HELP,
     S_SHOW_HELP_HINT,
     S_ON,

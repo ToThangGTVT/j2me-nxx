@@ -6,6 +6,7 @@
 
 #include "gfx.h"
 #include "input.h"
+#include "keymap.h"
 #include "lang.h"
 #include "platform.h"
 #include "settings.h"
@@ -31,6 +32,7 @@ typedef enum {
     ITEM_HEIGHT,
     ITEM_LANGUAGE,
     ITEM_SHOW_HELP,
+    ITEM_KEYMAP,
 } ItemId;
 
 static int cursor;
@@ -89,6 +91,7 @@ static int visible_items(ItemId *out) {
             out[n++] = ITEM_HEIGHT;
         }
     }
+    out[n++] = ITEM_KEYMAP;
     if (!game_mode) {
         out[n++] = ITEM_SHOW_HELP;
         out[n++] = ITEM_LANGUAGE;
@@ -227,6 +230,15 @@ bool settings_screen_update(void) {
         if (dir || a)
             settings()->show_help = !settings()->show_help;
         break;
+    case ITEM_KEYMAP:
+        if (dir || a) {
+            // Chế độ game có thêm "Mặc định" (-1)
+            int lo = game_mode ? -1 : 0;
+            int count = KEYMAP_COUNT - lo;
+            int *v = game_mode ? &game.keymap : &settings()->keymap;
+            *v = ((*v - lo + (dir ? dir : 1)) % count + count) % count + lo;
+        }
+        break;
     }
     return true;
 }
@@ -284,6 +296,14 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
         *label = tr(S_LANGUAGE);
         *hint = tr(S_LANGUAGE_HINT);
         snprintf(value, size, "%s", lang_name((Lang)s->lang));
+        break;
+    case ITEM_KEYMAP:
+        *label = tr(S_KEYMAP);
+        *hint = tr(S_KEYMAP_HINT);
+        if (game_mode && game.keymap < 0)
+            snprintf(value, size, tr(S_DEFAULT_FMT), keymap_get(s->keymap)->name);
+        else
+            snprintf(value, size, "%s", keymap_get(game_mode ? game.keymap : s->keymap)->name);
         break;
     case ITEM_SHOW_HELP:
         *label = tr(S_SHOW_HELP);

@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 
 #include "gfx.h"
+#include "keymap.h"
 #include "lang.h"
 #include "manifest.h"
 #include "midp/midp.h"
@@ -34,6 +35,7 @@ static FILE *log_file;
 static SDL_Texture *screen_tex;
 static int scr_w, scr_h;
 static int fps_limit;
+static const KeyMap *keymap;
 static SDL_Rect dst;
 
 // Phím J2ME đang giữ (đếm số nguồn: tay cầm + bàn phím)
@@ -169,6 +171,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     GameSettings gs;
     game_settings_load(base, &gs);
     fps_limit = gs.fps_limit >= 0 ? gs.fps_limit : settings()->fps_limit;
+    keymap = keymap_get(gs.keymap >= 0 ? gs.keymap : settings()->keymap);
     parse_screen_size(&gs);
     compute_dst();
 
@@ -194,6 +197,9 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         .vibrate = NULL,
         .fps_limit = fps_limit,
         .lang = lang_code(lang_get()),
+        .platform = keymap->platform,
+        .keycodes = { keymap->up, keymap->down, keymap->left, keymap->right, keymap->fire, keymap->soft_left,
+                      keymap->soft_right, keymap->clear },
     };
     if (!midp_start(&mc, cls)) {
         snprintf(err, err_size, tr(S_ERR_MIDLET), vm_last_error());
@@ -244,11 +250,11 @@ static void key_change(int code, bool down) {
         return;
     if (down) {
         if (key_held[i]++ == 0) {
-            midp_post_key(code, true);
+            midp_post_key(keymap_translate(keymap, code), true);
             key_repeat_at[i] = SDL_GetTicks() + REPEAT_DELAY_MS;
         }
     } else if (key_held[i] > 0 && --key_held[i] == 0) {
-        midp_post_key(code, false);
+        midp_post_key(keymap_translate(keymap, code), false);
     }
 }
 
@@ -256,7 +262,7 @@ static void update_repeat(void) {
     Uint32 now = SDL_GetTicks();
     for (int i = 0; i < KEY_SLOTS; i++) {
         if (key_held[i] && SDL_TICKS_PASSED(now, key_repeat_at[i])) {
-            midp_post_event(MIDP_EV_KEY_REPEATED, i - 16, 0);
+            midp_post_event(MIDP_EV_KEY_REPEATED, keymap_translate(keymap, i - 16), 0);
             key_repeat_at[i] = now + REPEAT_RATE_MS;
         }
     }
@@ -424,8 +430,8 @@ static void script_step(void) {
         if (sscanf(p, "%u:%d%n", &at, &code, &n) != 2)
             break;
         if (at > last && at <= t) {
-            midp_post_key(code, true);
-            midp_post_key(code, false);
+            midp_post_key(keymap_translate(keymap, code), true);
+            midp_post_key(keymap_translate(keymap, code), false);
         }
         p += n;
         if (*p == ',')

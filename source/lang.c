@@ -74,6 +74,11 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_LANGUAGE]       = { "Ngôn ngữ / Language", "Language / Ngôn ngữ" },
     [S_LANGUAGE_HINT]  = { "Ngôn ngữ của giao diện. Game cũng nhận microedition.locale tương ứng.",
                            "Interface language. Games also receive the matching microedition.locale." },
+    [S_KEYMAP]         = { "Kiểu phím", "Key layout" },
+    [S_KEYMAP_HINT]    = { "Mã phím mềm / điều hướng theo hãng điện thoại mà game được làm cho. "
+                           "Dùng khi phím mềm hoặc phím Fire không ăn.",
+                           "Soft key / navigation codes of the phone brand the game was made for. "
+                           "Use it when soft keys or Fire do not work." },
     [S_SHOW_HELP]      = { "Hiện chú thích phím khi chơi", "Show key help while playing" },
     [S_SHOW_HELP_HINT] = { "Bảng phím ở bên trái màn hình game.", "Key map shown left of the game screen." },
     [S_ON]             = { "Bật", "On" },

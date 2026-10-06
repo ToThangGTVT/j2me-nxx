@@ -24,15 +24,45 @@ public abstract class Canvas extends Displayable {
     public static final int KEY_STAR = 42;
     public static final int KEY_POUND = 35;
 
-    // Mã phím kiểu Nokia (khớp với source/midp)
-    static final int KEY_UP = -1;
-    static final int KEY_DOWN = -2;
-    static final int KEY_LEFT = -3;
-    static final int KEY_RIGHT = -4;
-    static final int KEY_FIRE = -5;
-    static final int KEY_SOFT_LEFT = -6;
-    static final int KEY_SOFT_RIGHT = -7;
-    static final int KEY_CLEAR = -8;
+    // Mã phím theo hãng (mặc định Nokia), app truyền qua thuộc tính j2menx.keys
+    static int KEY_UP = -1;
+    static int KEY_DOWN = -2;
+    static int KEY_LEFT = -3;
+    static int KEY_RIGHT = -4;
+    static int KEY_FIRE = -5;
+    static int KEY_SOFT_LEFT = -6;
+    static int KEY_SOFT_RIGHT = -7;
+    static int KEY_CLEAR = -8;
+
+    static {
+        String p = System.getProperty("j2menx.keys");
+        if (p != null) {
+            int[] v = new int[8];
+            int n = 0, start = 0;
+            try {
+                while (n < 8) {
+                    int comma = p.indexOf(',', start);
+                    v[n++] = Integer.parseInt(comma < 0 ? p.substring(start) : p.substring(start, comma));
+                    if (comma < 0) {
+                        break;
+                    }
+                    start = comma + 1;
+                }
+            } catch (NumberFormatException e) {
+                n = 0;
+            }
+            if (n == 8) {
+                KEY_UP = v[0];
+                KEY_DOWN = v[1];
+                KEY_LEFT = v[2];
+                KEY_RIGHT = v[3];
+                KEY_FIRE = v[4];
+                KEY_SOFT_LEFT = v[5];
+                KEY_SOFT_RIGHT = v[6];
+                KEY_CLEAR = v[7];
+            }
+        }
+    }
 
     boolean fullScreen;
 
@@ -56,12 +86,12 @@ public abstract class Canvas extends Displayable {
     }
 
     static int actionOf(int keyCode) {
+        if (keyCode == KEY_UP || keyCode == KEY_NUM2) return UP;
+        if (keyCode == KEY_DOWN || keyCode == KEY_NUM8) return DOWN;
+        if (keyCode == KEY_LEFT || keyCode == KEY_NUM4) return LEFT;
+        if (keyCode == KEY_RIGHT || keyCode == KEY_NUM6) return RIGHT;
+        if (keyCode == KEY_FIRE || keyCode == KEY_NUM5) return FIRE;
         switch (keyCode) {
-        case KEY_UP: case KEY_NUM2: return UP;
-        case KEY_DOWN: case KEY_NUM8: return DOWN;
-        case KEY_LEFT: case KEY_NUM4: return LEFT;
-        case KEY_RIGHT: case KEY_NUM6: return RIGHT;
-        case KEY_FIRE: case KEY_NUM5: return FIRE;
         case KEY_NUM7: return GAME_A;
         case KEY_NUM9: return GAME_B;
         case KEY_STAR: return GAME_C;
@@ -94,19 +124,17 @@ public abstract class Canvas extends Displayable {
         if (keyCode >= KEY_NUM0 && keyCode <= KEY_NUM9) {
             return String.valueOf((char) keyCode);
         }
-        switch (keyCode) {
-        case KEY_STAR: return "*";
-        case KEY_POUND: return "#";
-        case KEY_UP: return "Up";
-        case KEY_DOWN: return "Down";
-        case KEY_LEFT: return "Left";
-        case KEY_RIGHT: return "Right";
-        case KEY_FIRE: return "Select";
-        case KEY_SOFT_LEFT: return "Soft1";
-        case KEY_SOFT_RIGHT: return "Soft2";
-        case KEY_CLEAR: return "Clear";
-        default: return "Key" + keyCode;
-        }
+        if (keyCode == KEY_STAR) return "*";
+        if (keyCode == KEY_POUND) return "#";
+        if (keyCode == KEY_UP) return "Up";
+        if (keyCode == KEY_DOWN) return "Down";
+        if (keyCode == KEY_LEFT) return "Left";
+        if (keyCode == KEY_RIGHT) return "Right";
+        if (keyCode == KEY_FIRE) return "Select";
+        if (keyCode == KEY_SOFT_LEFT) return "Soft1";
+        if (keyCode == KEY_SOFT_RIGHT) return "Soft2";
+        if (keyCode == KEY_CLEAR) return "Clear";
+        return "Key" + keyCode;
     }
 
     public int getGameAction(int keyCode) {

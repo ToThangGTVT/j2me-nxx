@@ -7,12 +7,14 @@ typedef struct {
     int fps_limit;          // 0 = không giới hạn
     int screen_w, screen_h; // kích thước màn hình mặc định cho game
     int lang;               // Lang (lang.h)
+    int keymap;             // KeyMapId (keymap.h)
     bool show_help;         // hiện bảng phím bên trái khi chơi
 } Settings;
 
 typedef struct {
     int fps_limit;          // -1 = theo cài đặt chung
     int screen_w, screen_h; // 0 = tự động (MANIFEST, rồi tới cài đặt chung)
+    int keymap;             // -1 = theo cài đặt chung
 } GameSettings;
 
 typedef struct {

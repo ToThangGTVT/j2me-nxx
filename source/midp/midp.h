@@ -42,6 +42,9 @@ typedef struct {
     void (*vibrate)(int ms);
     int fps_limit;                                          // 0 = không giới hạn
     const char *lang;                                       // "vi" / "en": ngôn ngữ giao diện MIDP
+    const char *platform;                                   // microedition.platform
+    // Mã phím của hãng: lên, xuống, trái, phải, fire, mềm trái, mềm phải, xoá
+    int keycodes[8];
 } MidpConfig;
 
 // Đăng ký native (gọi trước vm_init)

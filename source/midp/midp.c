@@ -373,7 +373,11 @@ bool midp_start(const MidpConfig *c, const char *midlet_class) {
     framebuffer = calloc((size_t)fb_w * fb_h, 4);
     fb_dirty = true;
 
-    vm_set_property("microedition.platform", "Nokia6300/J2ME-NX");
+    vm_set_property("microedition.platform", cfg.platform ? cfg.platform : "Nokia6300/07.21");
+    char keys[96];
+    snprintf(keys, sizeof(keys), "%d,%d,%d,%d,%d,%d,%d,%d", cfg.keycodes[0], cfg.keycodes[1], cfg.keycodes[2],
+             cfg.keycodes[3], cfg.keycodes[4], cfg.keycodes[5], cfg.keycodes[6], cfg.keycodes[7]);
+    vm_set_property("j2menx.keys", keys);
     vm_set_property("microedition.configuration", "CLDC-1.1");
     vm_set_property("microedition.profiles", "MIDP-2.0");
     vm_set_property("microedition.encoding", "UTF-8");

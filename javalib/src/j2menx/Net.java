@@ -31,7 +31,7 @@ public final class Net {
         }
     }
 
-    static void sleep() throws IOException {
+    public static void sleep() throws IOException {
         try {
             Thread.sleep(POLL_MS);
         } catch (InterruptedException e) {
@@ -124,6 +124,15 @@ public final class Net {
     public static native String tlsCipher0(int h);
 
     public static native String tlsVersion0(int h);
+
+    // UDP: mở socket (bind cổng cục bộ, 0 = tuỳ ý)
+    static native int udpOpen0(int localPort) throws IOException;
+
+    // số byte đã gửi, 0 = bộ đệm đầy
+    static native int udpSend0(int fd, String host, int port, byte[] b, int off, int len) throws IOException;
+
+    // số byte nhận được, 0 = chưa có gói; from = 4 byte IP + cổng
+    static native int udpRecv0(int fd, byte[] b, int off, int len, int[] from) throws IOException;
 
     static native int socket0(String host, int port) throws IOException;
 

@@ -204,6 +204,93 @@ static NativeResult Net_localPort0(VMThread *t, Value *args, Value *ret) {
     return NATIVE_OK;
 }
 
+// ---------------------------------------------------------------------------
+// UDP
+
+static NativeResult Net_udpOpen0(VMThread *t, Value *args, Value *ret) {
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+        return io_error(t, "socket");
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    int one = 1;
+    setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));
+    if (args[0].i > 0) {
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+        struct sockaddr_in a;
+        memset(&a, 0, sizeof(a));
+        a.sin_family = AF_INET;
+        a.sin_addr.s_addr = htonl(INADDR_ANY);
+        a.sin_port = htons((uint16_t)args[0].i);
+        if (bind(fd, (struct sockaddr *)&a, sizeof(a)) < 0) {
+            NativeResult r = io_error(t, "bind");
+            close(fd);
+            return r;
+        }
+    }
+    track(fd);
+    ret->i = fd;
+    return NATIVE_OK;
+}
+
+static NativeResult Net_udpSend0(VMThread *t, Value *args, Value *ret) {
+    char host[256], port[16];
+    if (!args[1].l) {
+        throw_null(t);
+        return NATIVE_EXCEPTION;
+    }
+    Object *b = args[3].l;
+    jint off = args[4].i, len = args[5].i;
+    if (!check_range(t, b, off, len))
+        return NATIVE_EXCEPTION;
+    jstring_to_cstr(args[1].l, host, sizeof(host));
+    snprintf(port, sizeof(port), "%d", args[2].i);
+    struct addrinfo hints, *res = NULL;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    if (getaddrinfo(host, port, &hints, &res) != 0 || !res) {
+        throw_new(t, "java/io/IOException", "Khong phan giai duoc ten mien");
+        return NATIVE_EXCEPTION;
+    }
+    ssize_t n = sendto(args[0].i, ARRAY_DATA(b, uint8_t) + off, (size_t)len, SEND_FLAGS, res->ai_addr, res->ai_addrlen);
+    freeaddrinfo(res);
+    if (n >= 0)
+        ret->i = (jint)n;
+    else if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+        ret->i = 0;
+    else
+        return io_error(t, "sendto");
+    return NATIVE_OK;
+}
+
+static NativeResult Net_udpRecv0(VMThread *t, Value *args, Value *ret) {
+    Object *b = args[1].l, *from = args[4].l;
+    jint off = args[2].i, len = args[3].i;
+    if (!check_range(t, b, off, len))
+        return NATIVE_EXCEPTION;
+    struct sockaddr_in a;
+    socklen_t alen = sizeof(a);
+    ssize_t n = recvfrom(args[0].i, ARRAY_DATA(b, uint8_t) + off, (size_t)len, 0, (struct sockaddr *)&a, &alen);
+    if (n > 0) {
+        if (from && ARRAY_LEN(from) >= 5) {
+            uint32_t ip = ntohl(a.sin_addr.s_addr);
+            jint *f = ARRAY_DATA(from, jint);
+            f[0] = (jint)(ip >> 24);
+            f[1] = (jint)((ip >> 16) & 0xff);
+            f[2] = (jint)((ip >> 8) & 0xff);
+            f[3] = (jint)(ip & 0xff);
+            f[4] = ntohs(a.sin_port);
+        }
+        ret->i = (jint)n;
+    } else if (n == 0 || errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+        ret->i = 0;
+    } else {
+        return io_error(t, "recvfrom");
+    }
+    return NATIVE_OK;
+}
+
 void midp_net_register(void) {
     const char *N = "j2menx/Net";
     native_register(N, "socket0", "(Ljava/lang/String;I)I", Net_socket0);
@@ -214,4 +301,7 @@ void midp_net_register(void) {
     native_register(N, "close0", "(I)V", Net_close0);
     native_register(N, "localAddress0", "(I)Ljava/lang/String;", Net_localAddress0);
     native_register(N, "localPort0", "(I)I", Net_localPort0);
+    native_register(N, "udpOpen0", "(I)I", Net_udpOpen0);
+    native_register(N, "udpSend0", "(ILjava/lang/String;I[BII)I", Net_udpSend0);
+    native_register(N, "udpRecv0", "(I[BII[I)I", Net_udpRecv0);
 }

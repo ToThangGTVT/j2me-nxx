@@ -45,6 +45,9 @@ public class Connector {
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
             return new j2menx.HttpConn(name);
         }
+        if (lower.startsWith("datagram://")) {
+            return new j2menx.UdpConn(name);
+        }
         if (lower.startsWith("sms://") || lower.startsWith("mms://") || lower.startsWith("cbs://")) {
             return new j2menx.SmsConn(name);
         }

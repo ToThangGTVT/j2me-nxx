@@ -1,7 +1,5 @@
 #!/bin/sh
 # MIDlet test HTTPS / ssl:// (kết nối example.com, cần Internet)
-#   python3 echo_server.py &                      (echo TCP ở 127.0.0.1:5555)
-#   mkdir -p www && echo hi > www/hello.txt && (cd www && python3 -m http.server 8765 --bind 127.0.0.1 &)
 # Đóng gói: ./build.sh <classlib dir> <output.jar>
 set -e
 cd "$(dirname "$0")"

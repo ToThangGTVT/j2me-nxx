@@ -333,8 +333,8 @@ void settings_screen_draw(void) {
     for (int i = 0; i < n; i++) {
         int y = LIST_TOP + i * ROW_H;
         bool sel = i == cursor;
-        const char *label, *hint;
-        char value[96];
+        const char *label = "", *hint = "";
+        char value[96] = "";
         item_text(items[i], &label, &hint, value, sizeof(value));
         if (sel) {
             gfx_fill_rect(LIST_X, y, list_w, ROW_H, COL_ROW_SEL);

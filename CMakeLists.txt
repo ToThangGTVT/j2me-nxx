@@ -88,8 +88,10 @@ add_executable(j2me-nx
     source/midp/midp.c
     source/midp/graphics.c
     source/midp/net.c
+    source/midp/tls.c
     source/midp/audio.c
     source/third_party/stb_image.c
+    source/third_party/dr_mp3.c
     "${CLASSLIB_C}"
 )
 
@@ -112,11 +114,34 @@ if(NOT DEPS_FOUND)
     endif()
 endif()
 
+# mbedTLS cho https:// / ssl:// (không bắt buộc: thiếu thì build không có TLS)
+if(NINTENDO_SWITCH)
+    find_library(MBEDTLS_LIB mbedtls)
+    find_library(MBEDX509_LIB mbedx509)
+    find_library(MBEDCRYPTO_LIB mbedcrypto)
+    if(MBEDTLS_LIB AND MBEDX509_LIB AND MBEDCRYPTO_LIB)
+        set(TLS_LIBS ${MBEDTLS_LIB} ${MBEDX509_LIB} ${MBEDCRYPTO_LIB})
+    endif()
+else()
+    pkg_check_modules(MBEDTLS mbedtls mbedx509 mbedcrypto)
+    if(MBEDTLS_FOUND)
+        target_include_directories(j2me-nx PRIVATE ${MBEDTLS_INCLUDE_DIRS})
+        set(TLS_LIBS ${MBEDTLS_LINK_LIBRARIES})
+    endif()
+endif()
+if(TLS_LIBS)
+    message(STATUS "HTTPS: dung mbedTLS")
+else()
+    message(WARNING "Khong tim thay mbedTLS: build khong co HTTPS. Switch: sudo dkp-pacman -S switch-mbedtls, Mac: brew install mbedtls")
+    target_compile_definitions(j2me-nx PRIVATE J2ME_NX_NO_TLS)
+endif()
+
 target_include_directories(j2me-nx PRIVATE ${DEPS_INCLUDE_DIRS})
 target_compile_options(j2me-nx PRIVATE ${DEPS_CFLAGS_OTHER})
 
 if(NINTENDO_SWITCH)
-    target_link_libraries(j2me-nx PRIVATE ${DEPS_LDFLAGS})
+    # mbedTLS phải đứng trước libnx trong lệnh link
+    target_link_libraries(j2me-nx PRIVATE ${TLS_LIBS} ${DEPS_LDFLAGS})
 
     nx_generate_nacp(j2me-nx.nacp
         NAME    "${APP_TITLE}"
@@ -128,5 +153,5 @@ if(NINTENDO_SWITCH)
         NACP j2me-nx.nacp
     )
 else()
-    target_link_libraries(j2me-nx PRIVATE ${DEPS_LINK_LIBRARIES} m)
+    target_link_libraries(j2me-nx PRIVATE ${TLS_LIBS} ${DEPS_LINK_LIBRARIES} m)
 endif()

@@ -27,8 +27,9 @@ public class Connector {
             throw new IllegalArgumentException();
         }
         String lower = name.toLowerCase();
-        if (lower.startsWith("socket://")) {
-            String hp = name.substring(9);
+        if (lower.startsWith("socket://") || lower.startsWith("ssl://")) {
+            boolean secure = lower.startsWith("ssl://");
+            String hp = name.substring(secure ? 6 : 9);
             int colon = hp.lastIndexOf(':');
             if (colon <= 0) {
                 throw new IllegalArgumentException("Thieu cong: " + name);
@@ -39,9 +40,9 @@ public class Connector {
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Cong khong hop le: " + name);
             }
-            return new j2menx.SocketConn(hp.substring(0, colon), port);
+            return new j2menx.SocketConn(hp.substring(0, colon), port, secure);
         }
-        if (lower.startsWith("http://")) {
+        if (lower.startsWith("http://") || lower.startsWith("https://")) {
             return new j2menx.HttpConn(name);
         }
         System.out.println("Connector.open chua ho tro: " + name);

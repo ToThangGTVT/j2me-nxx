@@ -7,6 +7,7 @@
 #include <string.h>
 #include <SDL.h>
 
+#include "../third_party/dr_mp3.h"
 #include "../vm/vm.h"
 
 #define RATE        22050
@@ -526,6 +527,23 @@ static int16_t ima_step(uint8_t nib, int *pred, int *idx) {
     return (int16_t)*pred;
 }
 
+// Đổi tần số mẫu về RATE (nội suy tuyến tính) và gán làm dữ liệu phát của player
+static void set_pcm(Player *p, const int16_t *src, uint32_t frames, int rate) {
+    uint32_t out_len = frames ? (uint32_t)((uint64_t)frames * RATE / rate) : 0;
+    p->pcm = malloc(sizeof(int16_t) * (out_len ? out_len : 1));
+    for (uint32_t i = 0; i < out_len; i++) {
+        double sp = (double)i * rate / RATE;
+        uint32_t a = (uint32_t)sp;
+        double f = sp - a;
+        int16_t s0 = src[a < frames ? a : frames - 1];
+        int16_t s1 = src[a + 1 < frames ? a + 1 : frames - 1];
+        p->pcm[i] = (int16_t)(s0 + (s1 - s0) * f);
+    }
+    p->pcm_len = out_len;
+    p->kind = KIND_WAV;
+    p->total_samples = out_len;
+}
+
 static bool load_wav(Player *p, const uint8_t *d, size_t size) {
     if (size < 12 || memcmp(d, "RIFF", 4) || memcmp(d + 8, "WAVE", 4))
         return false;
@@ -602,21 +620,35 @@ static bool load_wav(Player *p, const uint8_t *d, size_t size) {
         return false;
     }
 
-    // Đổi tần số mẫu (nội suy tuyến tính)
-    uint32_t out_len = (uint32_t)((uint64_t)frames * RATE / rate);
-    p->pcm = malloc(sizeof(int16_t) * (out_len ? out_len : 1));
-    for (uint32_t i = 0; i < out_len; i++) {
-        double sp = (double)i * rate / RATE;
-        uint32_t a = (uint32_t)sp;
-        double f = sp - a;
-        int16_t s0 = src[a < frames ? a : frames - 1];
-        int16_t s1 = src[a + 1 < frames ? a + 1 : frames - 1];
-        p->pcm[i] = (int16_t)(s0 + (s1 - s0) * f);
-    }
+    set_pcm(p, src, frames, rate);
     free(src);
-    p->pcm_len = out_len;
-    p->kind = KIND_WAV;
-    p->total_samples = out_len;
+    return true;
+}
+
+// MP3 -> mono int16
+static bool load_mp3(Player *p, const uint8_t *d, size_t size) {
+    // Nhận dạng: thẻ ID3 hoặc frame sync 0xFFE
+    bool id3 = size > 10 && memcmp(d, "ID3", 3) == 0;
+    bool sync = size > 4 && d[0] == 0xFF && (d[1] & 0xE0) == 0xE0;
+    if (!id3 && !sync)
+        return false;
+    drmp3_config cfg;
+    drmp3_uint64 frames = 0;
+    drmp3_int16 *pcm = drmp3_open_memory_and_read_pcm_frames_s16(d, size, &cfg, &frames, NULL);
+    if (!pcm || frames == 0 || cfg.channels == 0) {
+        drmp3_free(pcm, NULL);
+        return false;
+    }
+    int16_t *mono = malloc(sizeof(int16_t) * (size_t)frames);
+    for (drmp3_uint64 i = 0; i < frames; i++) {
+        int acc = 0;
+        for (drmp3_uint32 c = 0; c < cfg.channels; c++)
+            acc += pcm[i * cfg.channels + c];
+        mono[i] = (int16_t)(acc / (int)cfg.channels);
+    }
+    drmp3_free(pcm, NULL);
+    set_pcm(p, mono, (uint32_t)frames, (int)cfg.sampleRate);
+    free(mono);
     return true;
 }
 
@@ -848,7 +880,7 @@ static NativeResult A_create0(VMThread *t, Value *args, Value *ret) {
         Player *p = &players[h];
         const uint8_t *d = ARRAY_DATA(data, uint8_t);
         size_t n = (size_t)ARRAY_LEN(data);
-        if (!load_wav(p, d, n) && !load_midi(p, d, n)) {
+        if (!load_wav(p, d, n) && !load_midi(p, d, n) && !load_mp3(p, d, n)) {
             player_free(p);
             h = 0;
         }

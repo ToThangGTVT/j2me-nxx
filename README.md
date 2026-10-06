@@ -9,9 +9,10 @@ Chạy file `.jar` của game điện thoại Java cũ trực tiếp trên Switc
 |---|---|
 | `source/vm/` | Máy ảo Java tự viết: đọc class file, trình thông dịch bytecode (đủ ~200 opcode, kể cả `jsr/ret`), green thread + monitor, GC mark-sweep, đọc JAR (zip + zlib) |
 | `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media` (chưa có tiếng), API Nokia (`FullCanvas`, `DirectGraphics`) |
-| `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV + tổng hợp MIDI/tone), socket/HTTP |
+| `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
+| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain |
 | `source/` | App: danh sách game, cài đặt, phiên chạy game (`emu.c`), lớp nền tảng Switch/desktop |
-| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, tone), `net-midlet` (socket, HTTP) |
+| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://) |
 
 Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng vào binary dưới dạng `classlib.jar`.
 
@@ -20,18 +21,18 @@ Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng v�
 Cần: [devkitPro](https://devkitpro.org/wiki/Getting_Started) (gói `switch-dev`), JDK (`javac`, `jar`), CMake.
 
 ```bash
-sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib
+sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls
 export DEVKITPRO=/opt/devkitpro
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
 ```
 
-Kết quả: `build/j2me-nx.nro`.
+Kết quả: `build/j2me-nx.nro`. Thiếu mbedTLS thì vẫn build được, chỉ không có `https://` / `ssl://`.
 
 ### Bản desktop (test nhanh trên Mac/Linux)
 
 ```bash
-brew install sdl2 sdl2_ttf libpng pkgconf
+brew install sdl2 sdl2_ttf libpng mbedtls pkgconf
 cmake -B build-desktop -DJ2ME_NX_DESKTOP=ON
 cmake --build build-desktop
 ./build-desktop/j2me-nx path/to/game.jar
@@ -73,8 +74,8 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 ## Trạng thái
 
 - Đã chạy: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (bàn phím ảo của Switch), RecordStore, Timer, thread / wait / notify.
-- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MIDI (tổng hợp bằng sóng cơ bản + trống, không cần soundfont), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. MP3/AMR chưa phát được (game vẫn chạy, chỉ im lặng).
-- Mạng: `socket://` và `http://` (chưa có `https://`, `datagram://`).
+- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (tổng hợp bằng sóng cơ bản + trống, không cần soundfont), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR chưa phát được (game vẫn chạy, chỉ im lặng).
+- Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ). Chưa có `datagram://`.
 
 ### Test tự động trên desktop
 

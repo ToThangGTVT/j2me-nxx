@@ -7,11 +7,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Vector;
-import javax.microedition.io.HttpConnection;
+import javax.microedition.io.HttpsConnection;
+import javax.microedition.io.SecurityInfo;
 
-// HTTP/1.1 tối giản trên socket (chưa hỗ trợ https)
-public class HttpConn implements HttpConnection {
+// HTTP/1.1 tối giản trên socket, https qua TLS (mbedTLS)
+public class HttpConn implements HttpsConnection {
     private final String url;
+    private final boolean secure;
     private final String host;
     private final int port;
     private final String file;
@@ -32,6 +34,7 @@ public class HttpConn implements HttpConnection {
 
     public HttpConn(String url) throws IOException {
         this.url = url;
+        secure = url.toLowerCase().startsWith("https://");
         String rest = url.substring(url.indexOf("://") + 3);
         int hashPos = rest.indexOf('#');
         ref = hashPos >= 0 ? rest.substring(hashPos + 1) : null;
@@ -50,9 +53,9 @@ public class HttpConn implements HttpConnection {
             port = Integer.parseInt(hostPort.substring(colon + 1));
         } else {
             host = hostPort;
-            port = 80;
+            port = secure ? 443 : 80;
         }
-        setRequestProperty("Host", port == 80 ? host : host + ":" + port);
+        setRequestProperty("Host", port == (secure ? 443 : 80) ? host : host + ":" + port);
         setRequestProperty("User-Agent", "Nokia6300/2.0 Profile/MIDP-2.0 Configuration/CLDC-1.1");
     }
 
@@ -66,7 +69,7 @@ public class HttpConn implements HttpConnection {
     }
 
     public String getURL() { return url; }
-    public String getProtocol() { return "http"; }
+    public String getProtocol() { return secure ? "https" : "http"; }
     public String getHost() { return host; }
     public String getFile() { return file; }
     public String getRef() { return ref; }
@@ -107,7 +110,7 @@ public class HttpConn implements HttpConnection {
         if (closed) {
             throw new IOException("Connection closed");
         }
-        sock = new SocketConn(host, port);
+        sock = new SocketConn(host, port, secure);
         StringBuffer sb = new StringBuffer();
         sb.append(method).append(' ').append(file);
         if (query != null) {
@@ -247,6 +250,11 @@ public class HttpConn implements HttpConnection {
         } catch (Exception e) {
             return -1;
         }
+    }
+
+    public SecurityInfo getSecurityInfo() throws IOException {
+        connect();
+        return sock.getSecurityInfo();
     }
 
     public InputStream openInputStream() throws IOException {

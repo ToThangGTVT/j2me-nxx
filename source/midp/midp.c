@@ -355,6 +355,7 @@ void midp_register_natives(void) {
 
     midp_graphics_register();
     midp_net_register();
+    midp_tls_register();
     midp_audio_register();
 }
 
@@ -396,6 +397,7 @@ void midp_shutdown(void) {
     fb_w = fb_h = 0;
     event_waiter = NULL;
     midp_graphics_shutdown();
+    midp_tls_shutdown();
     midp_net_shutdown();
     midp_audio_shutdown();
 }

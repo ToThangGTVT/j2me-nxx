@@ -62,9 +62,11 @@ void midp_audio_register(void);
 void midp_audio_poll(void);         // gọi mỗi frame: báo END_OF_MEDIA
 void midp_audio_shutdown(void);
 
-// net.c
+// net.c, tls.c
 void midp_net_register(void);
 void midp_net_shutdown(void);
+void midp_tls_register(void);
+void midp_tls_shutdown(void);
 
 // graphics.c
 void midp_graphics_register(void);

@@ -20,6 +20,9 @@ public class AudioTest extends MIDlet implements PlayerListener, Runnable {
             Player tp = (Player) tc; tc.setSequence(new byte[]{ToneControl.VERSION,1,ToneControl.TEMPO,30,67,16,69,16,71,32});
             tp.addPlayerListener(this); tp.start(); Thread.sleep(1500);
             Manager.playTone(72, 300, 80); Thread.sleep(500);
+            Player mp3 = Manager.createPlayer(getClass().getResourceAsStream("/tone.mp3"), "audio/mpeg");
+            mp3.addPlayerListener(this); mp3.realize(); System.out.println("MP3 duration us=" + mp3.getDuration());
+            mp3.start(); Thread.sleep(1200);
         } catch (Throwable e) { e.printStackTrace(); }
         notifyDestroyed();
     }

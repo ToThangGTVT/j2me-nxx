@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+MIDlet-Name: HttpsTest
+MIDlet-1: HttpsTest, , hs.HttpsTest

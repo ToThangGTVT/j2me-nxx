@@ -65,6 +65,66 @@ public final class Net {
         }
     }
 
+    // Bắt tay TLS trên socket đã kết nối, trả về handle TLS
+    public static int tlsConnect(int fd, String host) throws IOException {
+        int h = tlsNew0(fd, host);
+        long deadline = System.currentTimeMillis() + CONNECT_TIMEOUT;
+        try {
+            while (tlsHandshake0(h) == 0) {
+                if (System.currentTimeMillis() > deadline) {
+                    throw new InterruptedIOException("Het thoi gian bat tay TLS voi " + host);
+                }
+                sleep();
+            }
+        } catch (IOException e) {
+            tlsClose0(h);
+            throw e;
+        }
+        return h;
+    }
+
+    public static int tlsRead(int h, byte[] b, int off, int len) throws IOException {
+        if (len == 0) {
+            return 0;
+        }
+        while (true) {
+            int n = tlsRead0(h, b, off, len);
+            if (n != 0) {
+                return n;
+            }
+            sleep();
+        }
+    }
+
+    public static void tlsWrite(int h, byte[] b, int off, int len) throws IOException {
+        while (len > 0) {
+            int n = tlsWrite0(h, b, off, len);
+            if (n == 0) {
+                sleep();
+                continue;
+            }
+            off += n;
+            len -= n;
+        }
+    }
+
+    static native int tlsNew0(int fd, String host) throws IOException;
+
+    // 1 = xong, 0 = đang bắt tay
+    static native int tlsHandshake0(int h) throws IOException;
+
+    static native int tlsRead0(int h, byte[] b, int off, int len) throws IOException;
+
+    static native int tlsWrite0(int h, byte[] b, int off, int len) throws IOException;
+
+    public static native int tlsAvailable0(int h);
+
+    public static native void tlsClose0(int h);
+
+    public static native String tlsCipher0(int h);
+
+    public static native String tlsVersion0(int h);
+
     static native int socket0(String host, int port) throws IOException;
 
     // 1 = đã kết nối, 0 = đang kết nối, -1 = lỗi

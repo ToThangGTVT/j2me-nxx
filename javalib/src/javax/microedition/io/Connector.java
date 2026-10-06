@@ -45,6 +45,9 @@ public class Connector {
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
             return new j2menx.HttpConn(name);
         }
+        if (lower.startsWith("file:///")) {
+            return new j2menx.FileConn(name, mode);
+        }
         if (lower.startsWith("datagram://")) {
             return new j2menx.UdpConn(name);
         }

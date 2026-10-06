@@ -36,6 +36,7 @@ enum {
 typedef struct {
     int screen_w, screen_h;
     const char *rms_dir;                                    // thư mục lưu RecordStore của game
+    const char *files_dir;                                  // gốc FileConnection (C:/, E:/) của game
     const char *(*app_property)(const char *key);          // thuộc tính trong MANIFEST.MF / JAD
     // Bàn phím ảo: trả về chuỗi UTF-8 malloc, NULL nếu huỷ
     char *(*keyboard)(const char *title, const char *text, int max_len, int type);
@@ -60,6 +61,9 @@ void midp_post_key(int code, bool pressed);
 // Framebuffer ARGB của màn hình J2ME. *dirty = có khung hình mới từ lần gọi trước
 const uint32_t *midp_framebuffer(int *w, int *h, bool *dirty);
 bool midp_exit_requested(void);
+
+// fileio.c
+void midp_fileio_register(void);
 
 // audio.c
 void midp_audio_register(void);

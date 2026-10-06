@@ -29,6 +29,7 @@ static ZipFile *syslib, *game;
 static Manifest manifest;
 static char game_name[128];
 static char rms_dir[512];
+static char files_dir[512];
 static char exit_msg[256];
 static FILE *log_file;
 
@@ -160,6 +161,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     else
         base_name(jar_path, base, sizeof(base));
     snprintf(rms_dir, sizeof(rms_dir), "%s/rms/%s", platform_data_dir(), base);
+    snprintf(files_dir, sizeof(files_dir), "%s/files/%s", platform_data_dir(), base);
 
     mkdir(platform_data_dir(), 0777);
     char log_path[600];
@@ -192,6 +194,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         .screen_w = scr_w,
         .screen_h = scr_h,
         .rms_dir = rms_dir,
+        .files_dir = files_dir,
         .app_property = host_app_property,
         .keyboard = platform_keyboard,
         .vibrate = NULL,

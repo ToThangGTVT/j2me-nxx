@@ -357,6 +357,7 @@ void midp_register_natives(void) {
     midp_net_register();
     midp_tls_register();
     midp_audio_register();
+    midp_fileio_register();
 }
 
 bool midp_start(const MidpConfig *c, const char *midlet_class) {
@@ -386,6 +387,14 @@ bool midp_start(const MidpConfig *c, const char *midlet_class) {
     vm_set_property("j2menx.lang", en ? "en" : "vi");
     vm_set_property("microedition.media.version", "1.1");
     vm_set_property("supports.mixing", "false");
+    // JSR-75 FileConnection
+    vm_set_property("microedition.io.file.FileConnection.version", "1.0");
+    vm_set_property("fileconn.dir.memorycard", "file:///E:/");
+    vm_set_property("fileconn.dir.photos", "file:///E:/Images/");
+    vm_set_property("fileconn.dir.music", "file:///E:/Sounds/");
+    vm_set_property("fileconn.dir.private", "file:///C:/private/");
+    if (cfg.files_dir)
+        vm_set_property("j2menx.files", cfg.files_dir);
 
     if (!vm_spawn_static("javax/microedition/lcdui/Display", "eventLoop", "()V", NULL, 0))
         return false;

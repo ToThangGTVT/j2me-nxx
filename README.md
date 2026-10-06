@@ -82,7 +82,12 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 
 - Đã chạy: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (bàn phím ảo của Switch), RecordStore, Timer, thread / wait / notify.
 - Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (tổng hợp bằng sóng cơ bản + trống, không cần soundfont), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR chưa phát được (game vẫn chạy, chỉ im lặng).
-- Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ). Chưa có `datagram://`.
+- Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ), `datagram://` (UDP).
+- File: JSR-75 FileConnection với ổ `C:/`, `E:/` trong sandbox riêng của từng game (`sdmc:/switch/j2me-nx/files/<game>/`).
+- API của hãng: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
+- Giả lập để game không lỗi thiếu lớp: Bluetooth (JSR-82), SMS (JSR-120, gửi luôn báo lỗi), `PushRegistry`.
+- Kiểu phím theo hãng (Nokia, Sony Ericsson, Samsung, Motorola, Siemens, LG) trong Cài đặt / Tuỳ chọn game; JAR nhiều MIDlet có hộp chọn MIDlet.
+- Chưa có: JSR-184 M3G (3D), JSR-226 SVG, AMR, cảm biến.
 
 ### Test tự động trên desktop
 

@@ -19,7 +19,7 @@ if(NOT J2ME_NX_DESKTOP AND NOT CMAKE_TOOLCHAIN_FILE)
     endif()
 endif()
 
-project(j2me-nx VERSION 0.1.0 LANGUAGES C CXX)
+project(j2me-nx VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -104,6 +104,7 @@ add_executable(j2me-nx
     source/midp/net.c
     source/midp/tls.c
     source/midp/audio.c
+    source/midp/fileio.c
     source/third_party/stb_image.c
     source/third_party/dr_mp3.c
     "${CLASSLIB_C}"

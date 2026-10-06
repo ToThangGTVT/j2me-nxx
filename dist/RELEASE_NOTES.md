@@ -21,6 +21,8 @@ Trong danh sách game: **X** cài đặt, **−** tuỳ chọn riêng cho game (
 
 ## Hỗ trợ
 
-MIDP 2.0 / CLDC 1.1, GameCanvas, Sprite, TiledLayer, RMS, âm thanh (WAV, MP3, MIDI, tone), mạng (socket, HTTP, HTTPS), API Nokia, Bluetooth / SMS dạng giả lập.
+MIDP 2.0 / CLDC 1.1, GameCanvas, Sprite, TiledLayer, RMS, âm thanh (WAV, MP3, MIDI, tone), mạng (socket, HTTP, HTTPS, UDP), FileConnection (JSR-75), API Nokia / Siemens / Samsung / Motorola, kiểu phím theo hãng, Bluetooth / SMS / PushRegistry dạng giả lập.
+
+Cài đặt (nút X): giới hạn FPS, kích thước màn hình (20 cỡ, dọc/ngang, tuỳ chỉnh), kiểu phím, ngôn ngữ Tiếng Việt / English.
 
 Game lỗi: gửi kèm file `sdmc:/switch/j2me-nx/log.txt` khi báo lỗi.

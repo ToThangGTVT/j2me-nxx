@@ -32,6 +32,9 @@ void gfx_present(void);
 void gfx_fill_rect(int x, int y, int w, int h, SDL_Color c);
 
 int gfx_font_height(FontId font);
+int gfx_text_width(FontId font, const char *text);
+// Vẽ đoạn chữ tự xuống dòng theo từ; trả về chiều cao đã dùng
+int gfx_text_wrapped(FontId font, int x, int y, int max_w, SDL_Color c, const char *text);
 
 // Texture từ ảnh ARGB (dùng cho icon game)
 SDL_Texture *gfx_texture_argb(const uint32_t *pixels, int w, int h);

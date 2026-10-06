@@ -102,7 +102,7 @@ static void parse_screen_size(const GameSettings *gs) {
     if (!v)
         v = manifest_get(&manifest, "J2ME-NX-Screen-Size");
     int w, h;
-    if (v && sscanf(v, "%d%*[ ,x]%d", &w, &h) == 2 && w >= 96 && h >= 64 && w <= 800 && h <= 800) {
+    if (v && sscanf(v, "%d%*[ ,xX]%d", &w, &h) == 2 && settings_valid_screen(w, h)) {
         scr_w = w;
         scr_h = h;
     }

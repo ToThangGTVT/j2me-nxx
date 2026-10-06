@@ -27,5 +27,10 @@ bool game_settings_save(const char *game, const GameSettings *gs);
 // Các lựa chọn
 extern const int SETTINGS_FPS_CHOICES[];
 extern const int SETTINGS_FPS_CHOICE_COUNT;
+// Cỡ màn hình có sẵn, ghi theo hướng dọc (w <= h); hướng ngang = đảo w/h
 extern const ScreenSize SETTINGS_SCREEN_CHOICES[];
 extern const int SETTINGS_SCREEN_CHOICE_COUNT;
+
+#define SCREEN_MIN 64
+#define SCREEN_MAX 1280
+bool settings_valid_screen(int w, int h);

@@ -10,8 +10,10 @@ const int SETTINGS_FPS_CHOICES[] = { 0, 15, 20, 30, 60 };
 const int SETTINGS_FPS_CHOICE_COUNT = sizeof(SETTINGS_FPS_CHOICES) / sizeof(SETTINGS_FPS_CHOICES[0]);
 
 const ScreenSize SETTINGS_SCREEN_CHOICES[] = {
-    { 128, 128 }, { 128, 160 }, { 176, 208 }, { 176, 220 }, { 208, 208 },
-    { 240, 320 }, { 320, 240 }, { 352, 416 }, { 360, 640 }, { 480, 800 },
+    { 96, 128 },  { 101, 128 }, { 128, 128 }, { 128, 160 }, { 132, 176 }, { 176, 208 },
+    { 176, 220 }, { 208, 208 }, { 240, 240 }, { 240, 320 }, { 240, 400 }, { 320, 320 },
+    { 320, 480 }, { 352, 416 }, { 360, 480 }, { 360, 640 }, { 480, 640 }, { 480, 800 },
+    { 540, 960 }, { 720, 1280 },
 };
 const int SETTINGS_SCREEN_CHOICE_COUNT = sizeof(SETTINGS_SCREEN_CHOICES) / sizeof(SETTINGS_SCREEN_CHOICES[0]);
 
@@ -25,8 +27,8 @@ Settings *settings(void) {
     return &current;
 }
 
-static bool valid_screen(int w, int h) {
-    return w >= 96 && h >= 64 && w <= 800 && h <= 800;
+bool settings_valid_screen(int w, int h) {
+    return w >= SCREEN_MIN && h >= SCREEN_MIN && w <= SCREEN_MAX && h <= SCREEN_MAX;
 }
 
 void settings_load(void) {
@@ -40,7 +42,7 @@ void settings_load(void) {
         int v, w, h;
         if (sscanf(line, "fps_limit=%d", &v) == 1 && v >= 0 && v <= 240)
             current.fps_limit = v;
-        else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && valid_screen(w, h)) {
+        else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && settings_valid_screen(w, h)) {
             current.screen_w = w;
             current.screen_h = h;
         }
@@ -77,7 +79,7 @@ void game_settings_load(const char *game, GameSettings *out) {
         int v, w, h;
         if (sscanf(line, "fps_limit=%d", &v) == 1 && v >= -1 && v <= 240)
             out->fps_limit = v;
-        else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && valid_screen(w, h)) {
+        else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && settings_valid_screen(w, h)) {
             out->screen_w = w;
             out->screen_h = h;
         }

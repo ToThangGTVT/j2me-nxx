@@ -122,6 +122,49 @@ int gfx_font_height(FontId font) {
     return TTF_FontHeight(fonts[font]);
 }
 
+int gfx_text_width(FontId font, const char *text) {
+    int w = 0, h = 0;
+    if (text && *text)
+        TTF_SizeUTF8(fonts[font], text, &w, &h);
+    return w;
+}
+
+int gfx_text_wrapped(FontId font, int x, int y, int max_w, SDL_Color c, const char *text) {
+    int line_h = gfx_font_height(font);
+    int dy = 0;
+    char line[512];
+    const char *p = text;
+    while (*p) {
+        // Lấy nhiều từ nhất còn vừa max_w
+        size_t best = 0, len = 0;
+        while (p[len]) {
+            size_t next = len;
+            while (p[next] == ' ')
+                next++;
+            while (p[next] && p[next] != ' ')
+                next++;
+            if (next >= sizeof(line))
+                break;
+            memcpy(line, p, next);
+            line[next] = '\0';
+            if (best && gfx_text_width(font, line) > max_w)
+                break;
+            best = next;
+            len = next;
+        }
+        if (!best)
+            break;
+        memcpy(line, p, best);
+        line[best] = '\0';
+        gfx_text(font, x, y + dy, max_w, ALIGN_LEFT, c, line);
+        dy += line_h;
+        p += best;
+        while (*p == ' ')
+            p++;
+    }
+    return dy;
+}
+
 static Uint32 pack_color(SDL_Color c) {
     return ((Uint32)c.r << 24) | ((Uint32)c.g << 16) | ((Uint32)c.b << 8) | c.a;
 }

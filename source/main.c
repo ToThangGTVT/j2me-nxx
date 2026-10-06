@@ -16,6 +16,22 @@
 #include "settings.h"
 #include "settings_screen.h"
 
+// Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây; trả về true khi đã chụp
+static bool debug_appshot(void) {
+#ifndef __SWITCH__
+    const char *appshot = SDL_getenv("J2ME_NX_APPSHOT");
+    if (appshot && SDL_GetTicks() > 1500) {
+        SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, SCREEN_W, SCREEN_H, 32, SDL_PIXELFORMAT_ARGB8888);
+        SDL_Rect vp = { 0, 0, SCREEN_W, SCREEN_H };
+        SDL_RenderReadPixels(gfx_renderer(), &vp, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
+        SDL_SaveBMP(surf, appshot);
+        SDL_FreeSurface(surf);
+        return true;
+    }
+#endif
+    return false;
+}
+
 static void launch(Menu *menu, const char *path, const char *id) {
     char err[256] = "";
     if (!emu_start(path, id, err, sizeof(err)))
@@ -91,6 +107,8 @@ int main(int argc, char *argv[]) {
             in_settings = settings_screen_update();
             if (in_settings) {
                 settings_screen_draw();
+                if (debug_appshot())
+                    running = false;
                 gfx_present();
                 continue;
             }
@@ -136,18 +154,8 @@ int main(int argc, char *argv[]) {
         }
 
         menu_draw(&menu, &list, games_dir);
-#ifndef __SWITCH__
-        // Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây rồi thoát
-        const char *appshot = SDL_getenv("J2ME_NX_APPSHOT");
-        if (appshot && SDL_GetTicks() > 1500) {
-            SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, SCREEN_W, SCREEN_H, 32, SDL_PIXELFORMAT_ARGB8888);
-            SDL_Rect vp = { 0, 0, SCREEN_W, SCREEN_H };
-            SDL_RenderReadPixels(gfx_renderer(), &vp, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
-            SDL_SaveBMP(surf, appshot);
-            SDL_FreeSurface(surf);
+        if (debug_appshot())
             running = false;
-        }
-#endif
         gfx_present();
     }
 

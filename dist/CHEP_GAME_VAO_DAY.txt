@@ -1,0 +1,6 @@
+Chep file game .jar (va .jad cung ten neu co) vao thu muc nay.
+Co the chia thu muc con, vi du: games/RPG/game.jar
+
+Save game nam o:   sdmc:/switch/j2me-nx/rms/
+Cai dat:           sdmc:/switch/j2me-nx/settings.ini
+Log khi loi:       sdmc:/switch/j2me-nx/log.txt

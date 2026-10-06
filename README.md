@@ -45,6 +45,11 @@ Biến môi trường: `J2ME_NX_GAMES` (thư mục game, mặc định `./games`
 - Profile Switch: CMake options `-DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake`, Environment `DEVKITPRO=/opt/devkitpro`. Build target `j2me-nx_nro` (hoặc Build Project).
 - Profile Desktop: CMake options `-DJ2ME_NX_DESKTOP=ON`, chạy được bằng nút Run.
 
+## Tải bản build
+
+Bản phát hành có sẵn ở trang [Releases](https://github.com/ToThangGTVT/j2me-nxx/releases): giải nén zip vào gốc thẻ SD.
+GitHub Actions tự build mỗi lần push; push tag `v*` (vd `git tag v0.1.0 && git push origin v0.1.0`) sẽ tạo bản phát hành mới.
+
 ## Dùng trên Switch
 
 1. Chép `j2me-nx.nro` vào `sdmc:/switch/`.

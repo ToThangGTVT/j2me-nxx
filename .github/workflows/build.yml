@@ -1,0 +1,55 @@
+# Build J2ME-NX cho Switch. Push tag v* (vd v0.1.0) để tạo bản phát hành kèm file zip.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cai cong cu va thu vien
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends openjdk-17-jdk-headless cmake ninja-build pkg-config zip
+          dkp-pacman -Sy --noconfirm --needed switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls
+
+      - name: Build
+        run: |
+          cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
+          cmake --build build
+
+      - name: Dong goi
+        id: pack
+        run: |
+          case "$GITHUB_REF" in
+            refs/tags/*) VERSION="$GITHUB_REF_NAME" ;;
+            *) VERSION="dev-$(echo "$GITHUB_SHA" | cut -c1-7)" ;;
+          esac
+          mkdir -p pkg/switch/j2me-nx/games
+          cp build/j2me-nx.nro pkg/switch/
+          cp dist/CHEP_GAME_VAO_DAY.txt pkg/switch/j2me-nx/games/
+          (cd pkg && zip -r "../j2me-nx-$VERSION.zip" switch)
+          echo "zip=j2me-nx-$VERSION.zip" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pack.outputs.zip }}
+          path: ${{ steps.pack.outputs.zip }}
+
+      - name: Tao ban phat hanh
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.pack.outputs.zip }}
+          body_path: dist/RELEASE_NOTES.md

@@ -1,4 +1,6 @@
 build/
+/pkg/
+*.zip
 cmake-build-*/
 *.nro
 *.nacp

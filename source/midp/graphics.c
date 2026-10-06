@@ -599,6 +599,8 @@ static TTF_Font *get_font(int key) {
             if (key & 2)
                 style |= TTF_STYLE_ITALIC;
             TTF_SetFontStyle(fonts[key], style);
+            // Chữ điểm ảnh như điện thoại thật: căn lưới đơn sắc, không khử răng cưa
+            TTF_SetFontHinting(fonts[key], TTF_HINTING_MONO);
         }
     }
     return fonts[key];
@@ -634,7 +636,7 @@ static TextMask *get_mask(int key, const char *utf8) {
     if (!f)
         return NULL;
     SDL_Color white = { 255, 255, 255, 255 };
-    SDL_Surface *s = TTF_RenderUTF8_Blended(f, utf8, white);
+    SDL_Surface *s = TTF_RenderUTF8_Solid(f, utf8, white);
     if (!s)
         return NULL;
     SDL_Surface *conv = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ARGB8888, 0);

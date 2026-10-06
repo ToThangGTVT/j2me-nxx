@@ -80,13 +80,13 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
                            "Soft key / navigation codes of the phone brand the game was made for. "
                            "Use it when soft keys or Fire do not work." },
     [S_SCALE_MODE]     = { "Kiểu phóng to", "Scaling" },
-    [S_SCALE_HINT]     = { "Phóng màn hình game lên màn hình Switch bằng GPU. Sắc nét (số nguyên) cho điểm ảnh đều nhau. "
-                           "Kích thước màn hình game càng lớn thì CPU càng phải vẽ nhiều: nên để kích thước gốc của game.",
-                           "The game screen is upscaled by the GPU. Sharp (integer) keeps pixels even. "
-                           "A bigger game screen means more CPU drawing: keep the game's native size." },
-    [S_SCALE_SMOOTH]   = { "Mượt", "Smooth" },
-    [S_SCALE_SHARP]    = { "Sắc nét", "Sharp" },
-    [S_SCALE_INTEGER]  = { "Sắc nét (số nguyên)", "Sharp (integer)" },
+    [S_SCALE_HINT]     = { "Phóng màn hình game bằng GPU. Sắc nét: giữ điểm ảnh rõ mà vẫn đều (khuyên dùng). "
+                           "Điểm ảnh: nét nhất nhưng điểm ảnh có thể to nhỏ không đều. Số nguyên: đúng 2x/3x, có viền.",
+                           "The game screen is upscaled by the GPU. Sharp: crisp, even pixels (recommended). "
+                           "Pixel: crispest but pixels may be uneven. Integer: exact 2x/3x with borders." },
+    [S_SCALE_SMOOTH]   = { "Sắc nét", "Sharp" },
+    [S_SCALE_SHARP]    = { "Điểm ảnh", "Pixel" },
+    [S_SCALE_INTEGER]  = { "Điểm ảnh (số nguyên)", "Pixel (integer)" },
     [S_SHOW_HELP]      = { "Hiện chú thích phím khi chơi", "Show key help while playing" },
     [S_SHOW_HELP_HINT] = { "Bảng phím ở bên trái màn hình game.", "Key map shown left of the game screen." },
     [S_ON]             = { "Bật", "On" },

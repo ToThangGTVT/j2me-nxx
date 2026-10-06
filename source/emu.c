@@ -34,6 +34,9 @@ static char exit_msg[256];
 static FILE *log_file;
 
 static SDL_Texture *screen_tex;
+// Sharp-bilinear: phóng nguyên lần (giữ điểm ảnh) vào texture trung gian rồi thu mịn xuống màn hình
+static SDL_Texture *sharp_tex;
+static bool sharp_dirty;
 static int scr_w, scr_h;
 static int fps_limit;
 static const KeyMap *keymap;
@@ -220,7 +223,18 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     }
 
     screen_tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, scr_w, scr_h);
-    SDL_SetTextureScaleMode(screen_tex, settings()->scale_mode == 0 ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+    SDL_SetTextureScaleMode(screen_tex, SDL_ScaleModeNearest);
+    // Hệ số nguyên nhỏ nhất >= tỉ lệ phóng; tỉ lệ đã là số nguyên thì không cần texture trung gian
+    int k = (dst.h + scr_h - 1) / scr_h;
+    if (settings()->scale_mode == 0 && dst.h % scr_h != 0 && k >= 2) {
+        if (k > 4)
+            k = 4;
+        sharp_tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, scr_w * k,
+                                      scr_h * k);
+        if (sharp_tex)
+            SDL_SetTextureScaleMode(sharp_tex, SDL_ScaleModeLinear);
+        sharp_dirty = true;
+    }
     running = true;
     return true;
 }
@@ -234,6 +248,9 @@ void emu_stop(void) {
     if (screen_tex)
         SDL_DestroyTexture(screen_tex);
     screen_tex = NULL;
+    if (sharp_tex)
+        SDL_DestroyTexture(sharp_tex);
+    sharp_tex = NULL;
     zip_close(syslib);
     zip_close(game);
     syslib = game = NULL;
@@ -548,7 +565,18 @@ void emu_draw(void) {
     const uint32_t *fb = midp_framebuffer(&w, &h, &dirty);
     if (fb && dirty)
         SDL_UpdateTexture(screen_tex, NULL, fb, w * 4);
-    SDL_RenderCopy(gfx_renderer(), screen_tex, NULL, &dst);
+    if (sharp_tex) {
+        SDL_Renderer *r = gfx_renderer();
+        if (dirty || sharp_dirty) {
+            SDL_SetRenderTarget(r, sharp_tex);
+            SDL_RenderCopy(r, screen_tex, NULL, NULL);
+            SDL_SetRenderTarget(r, NULL);
+            sharp_dirty = false;
+        }
+        SDL_RenderCopy(r, sharp_tex, NULL, &dst);
+    } else {
+        SDL_RenderCopy(gfx_renderer(), screen_tex, NULL, &dst);
+    }
     if (settings()->show_help)
         draw_help();
 

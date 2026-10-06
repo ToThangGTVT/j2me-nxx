@@ -130,6 +130,8 @@ int main(int argc, char *argv[]) {
 #endif
             } else {
                 emu_draw();
+                if (debug_appshot())
+                    running = false;
                 gfx_present();
                 continue;
             }

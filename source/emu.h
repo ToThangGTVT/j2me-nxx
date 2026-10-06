@@ -6,7 +6,8 @@
 #include <SDL.h>
 
 // game_id: khoá cho save RMS / tuỳ chọn riêng (NULL = tên file JAR)
-bool emu_start(const char *jar_path, const char *game_id, char *err, size_t err_size);
+// midlet: chạy MIDlet-<midlet> (từ 1)
+bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err, size_t err_size);
 void emu_stop(void);
 bool emu_running(void);
 

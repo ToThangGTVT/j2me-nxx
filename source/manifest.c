@@ -116,7 +116,24 @@ void manifest_load(Manifest *m, const char *jar_path, ZipFile *zip) {
 }
 
 bool manifest_midlet_field(const Manifest *m, int field, char *out, size_t size) {
-    const char *v = manifest_get(m, "MIDlet-1");
+    return manifest_midlet_entry(m, 1, field, out, size);
+}
+
+int manifest_midlet_count(const Manifest *m) {
+    int n = 0;
+    char key[32];
+    for (;;) {
+        snprintf(key, sizeof(key), "MIDlet-%d", n + 1);
+        if (!manifest_get(m, key))
+            return n;
+        n++;
+    }
+}
+
+bool manifest_midlet_entry(const Manifest *m, int index, int field, char *out, size_t size) {
+    char key[32];
+    snprintf(key, sizeof(key), "MIDlet-%d", index);
+    const char *v = manifest_get(m, key);
     if (!v)
         return false;
     for (int i = 0; i < field; i++) {

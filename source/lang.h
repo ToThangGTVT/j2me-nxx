@@ -15,6 +15,7 @@ typedef enum {
     S_FOLDER,               // %s
     S_NO_MIDLET,
     S_MENU_HINTS,
+    S_PICK_MIDLET,
     // Thông báo ở thanh dưới
     S_ERROR_FMT,            // %s
     S_RESCANNED,            // %d

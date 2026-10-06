@@ -15,6 +15,8 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_MENU_HINTS]     = { "(A) Chơi   (-) Tùy chọn game   (X) Cài đặt   (Y) Quét lại   (+) Thoát",
                            "(A) Play   (-) Game options   (X) Settings   (Y) Rescan   (+) Exit" },
 
+    [S_PICK_MIDLET]    = { "Chọn MIDlet:  (A) Chạy   (B) Quay lại", "Choose MIDlet:  (A) Run   (B) Back" },
+
     [S_ERROR_FMT]      = { "Lỗi: %s", "Error: %s" },
     [S_RESCANNED]      = { "Đã quét lại: %d file", "Rescanned: %d files" },
     [S_DEMO_LIST_COPY] = { "Đây là danh sách demo: chép file .jar vào %s",

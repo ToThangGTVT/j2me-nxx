@@ -5,6 +5,7 @@
 // Desktop: có thể truyền đường dẫn .jar làm tham số để chạy thẳng game.
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <SDL.h>
 
 #include "emu.h"
@@ -33,9 +34,38 @@ static bool debug_appshot(void) {
     return false;
 }
 
-static void launch(Menu *menu, const char *path, const char *id) {
+// Test desktop: J2ME_NX_PRESS="1000:Return,1300:Down" bấm phím bàn phím (tên theo SDL) theo mốc ms
+static void debug_press(void) {
+#ifndef __SWITCH__
+    static Uint32 last;
+    const char *spec = SDL_getenv("J2ME_NX_PRESS");
+    Uint32 now = SDL_GetTicks();
+    for (const char *p = spec; p && *p;) {
+        unsigned at;
+        char name[32];
+        int n = 0;
+        if (sscanf(p, "%u:%31[^,]%n", &at, name, &n) != 2)
+            break;
+        // Nhấn tại mốc at, nhả sau 80ms (để vòng lặp kịp thấy phím được giữ)
+        for (int phase = 0; phase < 2; phase++) {
+            Uint32 t = at + (phase ? 80 : 0);
+            if (t > last && t <= now) {
+                SDL_Event e = { .type = phase ? SDL_KEYUP : SDL_KEYDOWN };
+                e.key.keysym.sym = SDL_GetKeyFromName(name);
+                SDL_PushEvent(&e);
+            }
+        }
+        p += n;
+        if (*p == ',')
+            p++;
+    }
+    last = now;
+#endif
+}
+
+static void launch(Menu *menu, const char *path, const char *id, int midlet) {
     char err[256] = "";
-    if (!emu_start(path, id, err, sizeof(err)))
+    if (!emu_start(path, id, midlet, err, sizeof(err)))
         snprintf(menu->status, sizeof(menu->status), tr(S_ERROR_FMT), err);
     else
         menu->status[0] = '\0';
@@ -73,10 +103,11 @@ int main(int argc, char *argv[]) {
     }
 #endif
     if (argc > 1)
-        launch(&menu, argv[1], NULL);
+        launch(&menu, argv[1], NULL, argc > 2 ? atoi(argv[2]) : 1);
 
     bool running = true;
     while (running) {
+        debug_press();
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT)
@@ -147,7 +178,7 @@ int main(int argc, char *argv[]) {
             else {
                 char id[256];
                 game_list_id(&list.items[menu.cursor], id, sizeof(id));
-                launch(&menu, list.items[menu.cursor].path, id);
+                launch(&menu, list.items[menu.cursor].path, id, menu.midlet);
             }
             break;
         case MENU_NONE:

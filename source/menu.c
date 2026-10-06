@@ -36,7 +36,23 @@ static void format_size(long size, char *out, size_t len) {
         snprintf(out, len, "%ld KB", (size + 1023) / 1024);
 }
 
-MenuAction menu_update(Menu *m, const GameList *list) {
+MenuAction menu_update(Menu *m, GameList *list) {
+    if (m->picking) {
+        GameEntry *g = &list->items[m->cursor];
+        int n = g->midlet_count;
+        if (input_pressed(BTN_B) || input_pressed(BTN_PLUS)) {
+            m->picking = false;
+        } else if (input_pressed(BTN_DOWN)) {
+            m->pick = (m->pick + 1) % n;
+        } else if (input_pressed(BTN_UP)) {
+            m->pick = (m->pick + n - 1) % n;
+        } else if (input_pressed(BTN_A)) {
+            m->picking = false;
+            m->midlet = m->pick + 1;
+            return MENU_LAUNCH;
+        }
+        return MENU_NONE;
+    }
     if (input_pressed(BTN_PLUS))
         return MENU_QUIT;
     if (input_pressed(BTN_Y))
@@ -78,8 +94,17 @@ MenuAction menu_update(Menu *m, const GameList *list) {
     else if (m->cursor >= m->scroll + LIST_ROWS)
         m->scroll = m->cursor - LIST_ROWS + 1;
 
-    if (input_pressed(BTN_A))
+    if (input_pressed(BTN_A)) {
+        GameEntry *g = &list->items[m->cursor];
+        game_list_load_info(g);
+        m->midlet = 1;
+        if (!list->demo && g->midlet_count > 1) {
+            m->picking = true;
+            m->pick = 0;
+            return MENU_NONE;
+        }
         return MENU_LAUNCH;
+    }
     return MENU_NONE;
 }
 
@@ -231,9 +256,33 @@ void menu_free_textures(GameList *list) {
     }
 }
 
+static void draw_picker(const Menu *m, const GameList *list) {
+    const GameEntry *g = &list->items[m->cursor];
+    int n = g->midlet_count;
+    int row_h = 56, w = 640;
+    int h = 90 + n * row_h + 20;
+    int x = (SCREEN_W - w) / 2, y = (SCREEN_H - h) / 2;
+    gfx_fill_rect(0, 0, SCREEN_W, SCREEN_H, (SDL_Color){ 0, 0, 0, 160 });
+    gfx_fill_rect(x, y, w, h, COL_BAR);
+    gfx_fill_rect(x, y, w, 3, COL_ACCENT);
+    gfx_text(FONT_NORMAL, x + 32, y + 24, w - 64, ALIGN_LEFT, COL_TEXT, g->title);
+    gfx_text(FONT_SMALL, x + w - 32, y + 30, 0, ALIGN_RIGHT, COL_DIM, tr(S_PICK_MIDLET));
+    for (int i = 0; i < n; i++) {
+        int ry = y + 80 + i * row_h;
+        if (i == m->pick) {
+            gfx_fill_rect(x + 16, ry, w - 32, row_h, COL_ROW_SEL);
+            gfx_fill_rect(x + 16, ry, 6, row_h, COL_ACCENT);
+        }
+        gfx_text(FONT_NORMAL, x + 48, ry + (row_h - gfx_font_height(FONT_NORMAL)) / 2, w - 96, ALIGN_LEFT,
+                 i == m->pick ? COL_TEXT : COL_DIM, g->midlets[i]);
+    }
+}
+
 void menu_draw(const Menu *m, GameList *list, const char *games_dir) {
     gfx_clear(COL_BG);
     draw_header(list, games_dir);
     draw_list(m, list);
     draw_footer(m, list);
+    if (m->picking)
+        draw_picker(m, list);
 }

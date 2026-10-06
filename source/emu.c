@@ -119,7 +119,7 @@ static void compute_dst(void) {
     dst.y = (SCREEN_H - dst.h) / 2;
 }
 
-bool emu_start(const char *jar_path, const char *game_id, char *err, size_t err_size) {
+bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err, size_t err_size) {
     emu_stop();
     exit_msg[0] = '\0';
     exit_now = false;
@@ -139,7 +139,9 @@ bool emu_start(const char *jar_path, const char *game_id, char *err, size_t err_
     manifest_load(&manifest, jar_path, game);
 
     char cls[256];
-    if (!manifest_midlet_field(&manifest, 2, cls, sizeof(cls))) {
+    if (midlet < 1)
+        midlet = 1;
+    if (!manifest_midlet_entry(&manifest, midlet, 2, cls, sizeof(cls))) {
         snprintf(err, err_size, "%s", tr(S_ERR_NO_MIDLET));
         emu_stop();
         return false;

@@ -154,6 +154,13 @@ void game_list_load_info(GameEntry *g) {
 
     char cls[256];
     g->valid = manifest_midlet_field(&m, 2, cls, sizeof(cls));
+    g->midlet_count = manifest_midlet_count(&m);
+    if (g->midlet_count > 8)
+        g->midlet_count = 8;
+    for (int i = 0; i < g->midlet_count; i++) {
+        if (!manifest_midlet_entry(&m, i + 1, 0, g->midlets[i], sizeof(g->midlets[i])))
+            snprintf(g->midlets[i], sizeof(g->midlets[i]), "MIDlet-%d", i + 1);
+    }
     const char *v;
     if ((v = manifest_get(&m, "MIDlet-Name")) && *v)
         snprintf(g->title, sizeof(g->title), "%s", v);

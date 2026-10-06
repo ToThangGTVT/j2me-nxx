@@ -16,6 +16,8 @@ typedef struct {
     char title[128];        // MIDlet-Name, hoặc tên file
     char vendor[96];
     char version[32];
+    int midlet_count;       // số MIDlet trong suite (MIDlet-1..N)
+    char midlets[8][64];    // tên hiển thị của từng MIDlet
     uint32_t *icon;         // ARGB, NULL nếu không có
     int icon_w, icon_h;
     void *icon_tex;         // texture SDL do menu tạo (menu_free_textures giải phóng)

@@ -16,9 +16,12 @@ typedef struct {
     int cursor;
     int scroll;
     char status[160];
+    bool picking;       // đang hiện hộp chọn MIDlet
+    int pick;           // MIDlet đang chọn (0-based)
+    int midlet;         // MIDlet sẽ chạy khi MENU_LAUNCH (từ 1)
 } Menu;
 
-MenuAction menu_update(Menu *m, const GameList *list);
+MenuAction menu_update(Menu *m, GameList *list);
 // Vẽ danh sách; đọc dần thông tin (MANIFEST, icon) của các game đang hiện
 void menu_draw(const Menu *m, GameList *list, const char *games_dir);
 // Giải phóng texture icon trước khi quét lại / thoát

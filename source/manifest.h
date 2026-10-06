@@ -22,5 +22,9 @@ void manifest_free(Manifest *m);
 struct ZipFile;
 void manifest_load(Manifest *m, const char *jar_path, struct ZipFile *zip);
 
-// Trường thứ n (0-based) của "MIDlet-1: Tên, /icon.png, lớp.Main", đã bỏ khoảng trắng
+// Trường thứ field (0-based) của "MIDlet-<index>: Tên, /icon.png, lớp.Main", đã bỏ khoảng trắng
+bool manifest_midlet_entry(const Manifest *m, int index, int field, char *out, size_t size);
+// Như trên với MIDlet-1
 bool manifest_midlet_field(const Manifest *m, int field, char *out, size_t size);
+// Số MIDlet khai báo liên tiếp MIDlet-1, MIDlet-2, ...
+int manifest_midlet_count(const Manifest *m);

@@ -323,8 +323,17 @@ static NativeResult Thread_sleep(VMThread *t, Value *args, Value *ret) {
 static NativeResult Thread_yield(VMThread *t, Value *args, Value *ret) {
     (void)args;
     (void)ret;
+    // Nhường cho thread khác nếu có. Nếu chỉ còn mình nó (game hay chờ khung hình bằng
+    // vòng lặp yield + currentTimeMillis) thì ngủ 1ms thay vì quay tít đốt CPU.
+    bool others = false;
+    for (VMThread *x = thread_list(); x; x = x->next) {
+        if (x != t && x->state == TS_RUNNABLE) {
+            others = true;
+            break;
+        }
+    }
     t->state = TS_SLEEPING;
-    t->wake_time = vm_time_ms();
+    t->wake_time = vm_time_ms() + (others ? 0 : 1);
     return NATIVE_OK;
 }
 

@@ -26,6 +26,7 @@ static Settings current = {
     .keymap = 0,
     .scale_mode = 0,
     .show_help = false,
+    .show_fps = false,
 };
 
 Settings *settings(void) {
@@ -54,6 +55,8 @@ void settings_load(void) {
             current.lang = lang_from_code(line + 5);
         else if (sscanf(line, "show_help=%d", &v) == 1)
             current.show_help = v != 0;
+        else if (sscanf(line, "show_fps=%d", &v) == 1)
+            current.show_fps = v != 0;
         else if (sscanf(line, "keymap=%d", &v) == 1 && v >= 0 && v < 16)
             current.keymap = v;
         else if (sscanf(line, "scale_mode=%d", &v) == 1 && v >= 0 && v <= 2)
@@ -74,6 +77,7 @@ bool settings_save(void) {
     fprintf(f, "screen=%dx%d\n", current.screen_w, current.screen_h);
     fprintf(f, "lang=%s\n", lang_code((Lang)current.lang));
     fprintf(f, "show_help=%d\n", current.show_help ? 1 : 0);
+    fprintf(f, "show_fps=%d\n", current.show_fps ? 1 : 0);
     fprintf(f, "keymap=%d\n", current.keymap);
     fprintf(f, "scale_mode=%d\n", current.scale_mode);
     return fclose(f) == 0;

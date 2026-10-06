@@ -32,6 +32,7 @@ typedef enum {
     ITEM_HEIGHT,
     ITEM_LANGUAGE,
     ITEM_SHOW_HELP,
+    ITEM_SHOW_FPS,
     ITEM_KEYMAP,
     ITEM_SCALE,
 } ItemId;
@@ -96,6 +97,7 @@ static int visible_items(ItemId *out) {
     if (!game_mode) {
         out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;
+        out[n++] = ITEM_SHOW_FPS;
         out[n++] = ITEM_LANGUAGE;
     }
     return n;
@@ -232,6 +234,10 @@ bool settings_screen_update(void) {
         if (dir || a)
             settings()->show_help = !settings()->show_help;
         break;
+    case ITEM_SHOW_FPS:
+        if (dir || a)
+            settings()->show_fps = !settings()->show_fps;
+        break;
     case ITEM_SCALE:
         if (dir || a)
             settings()->scale_mode = (settings()->scale_mode + (dir ? dir : 1) + 3) % 3;
@@ -321,6 +327,11 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
         *label = tr(S_SHOW_HELP);
         *hint = tr(S_SHOW_HELP_HINT);
         snprintf(value, size, "%s", tr(s->show_help ? S_ON : S_OFF));
+        break;
+    case ITEM_SHOW_FPS:
+        *label = tr(S_SHOW_FPS);
+        *hint = tr(S_SHOW_FPS_HINT);
+        snprintf(value, size, "%s", tr(s->show_fps ? S_ON : S_OFF));
         break;
     }
 }

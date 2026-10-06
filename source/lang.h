@@ -72,6 +72,8 @@ typedef enum {
     S_SCALE_INTEGER,
     S_SHOW_HELP,
     S_SHOW_HELP_HINT,
+    S_SHOW_FPS,
+    S_SHOW_FPS_HINT,
     S_ON,
     S_OFF,
     S_SETTINGS_HINTS,

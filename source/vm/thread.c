@@ -1,6 +1,7 @@
 // Green thread, monitor và scheduler
 #include "vm_internal.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -227,7 +228,74 @@ jlong vm_next_wakeup(void) {
     return best;
 }
 
+// J2ME_NX_PROF=1: lấy mẫu method đang chạy sau mỗi lượt, in các chỗ tốn CPU nhất mỗi 5 giây
+#define PROF_SLOTS 256
+typedef struct {
+    int tid;
+    Method *m[3];   // đỉnh stack và 2 frame gọi nó
+    int count;
+} ProfSample;
+static ProfSample prof_tab[PROF_SLOTS];
+static int prof_total;
+static int prof_on = -1;
+static jlong prof_last;
+
+static void prof_record(VMThread *t) {
+    if (t->frame_count == 0)
+        return;
+    ProfSample key = { t->id, { NULL, NULL, NULL }, 0 };
+    for (int i = 0; i < 3 && i < t->frame_count; i++)
+        key.m[i] = t->frames[t->frame_count - 1 - i].m;
+    uint32_t h = (uint32_t)key.tid * 31u + (uint32_t)((uintptr_t)key.m[0] >> 4) * 17u +
+                 (uint32_t)((uintptr_t)key.m[1] >> 4);
+    for (int i = 0; i < PROF_SLOTS; i++) {
+        ProfSample *e = &prof_tab[(h + i) % PROF_SLOTS];
+        if (e->count == 0) {
+            *e = key;
+        } else if (e->tid != key.tid || memcmp(e->m, key.m, sizeof(key.m)) != 0) {
+            continue;
+        }
+        e->count++;
+        prof_total++;
+        return;
+    }
+}
+
+static int prof_cmp(const void *a, const void *b) {
+    return ((const ProfSample *)b)->count - ((const ProfSample *)a)->count;
+}
+
+static void prof_dump(void) {
+    if (prof_total == 0)
+        return;
+    qsort(prof_tab, PROF_SLOTS, sizeof(ProfSample), prof_cmp);
+    fprintf(stderr, "[prof] --- %d lượt ---\n", prof_total);
+    for (int i = 0; i < 8 && prof_tab[i].count; i++) {
+        ProfSample *e = &prof_tab[i];
+        fprintf(stderr, "[prof] %3d%% T%d", e->count * 100 / prof_total, e->tid);
+        for (int k = 0; k < 3 && e->m[k]; k++)
+            fprintf(stderr, " %s %s.%s", k ? "<" : "", e->m[k]->owner->name, e->m[k]->name);
+        fprintf(stderr, "\n");
+    }
+    memset(prof_tab, 0, sizeof(prof_tab));
+    prof_total = 0;
+}
+
+static jlong idle_ms;
+
+jlong vm_take_idle_ms(void) {
+    jlong v = idle_ms;
+    idle_ms = 0;
+    return v;
+}
+
 bool vm_run(int budget_ms) {
+    if (prof_on < 0)
+        prof_on = getenv("J2ME_NX_PROF") != NULL;
+    if (prof_on && vm_time_ms() - prof_last >= 5000) {
+        prof_dump();
+        prof_last = vm_time_ms();
+    }
     jlong deadline = vm_time_ms() + budget_ms;
     for (;;) {
         heap_gc_if_needed();
@@ -239,6 +307,8 @@ bool vm_run(int budget_ms) {
                 continue;
             current = t;
             interp_run(t, TIME_SLICE);
+            if (prof_on)
+                prof_record(t);
             current = NULL;
             ran = true;
         }
@@ -256,6 +326,7 @@ bool vm_run(int budget_ms) {
             if (next > now) {
                 struct timespec ts = { 0, (long)(next - now) * 1000000L };
                 nanosleep(&ts, NULL);
+                idle_ms += vm_time_ms() - now;
             }
         }
     }

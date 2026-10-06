@@ -40,10 +40,20 @@ static void set_error(const char *msg) {
     vm_log("%s", msg);
 }
 
+// Giờ thực lấy 1 lần lúc đầu, sau đó cộng theo đồng hồ đơn điệu: CLOCK_REALTIME
+// trên Switch không đủ chính xác tới mili giây, game đo khung hình sẽ bị giật
 jlong vm_time_ms(void) {
+    static jlong base_real = -1, base_mono;
     struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    return (jlong)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    jlong mono = (jlong)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    if (base_real < 0) {
+        struct timespec rt;
+        clock_gettime(CLOCK_REALTIME, &rt);
+        base_real = (jlong)rt.tv_sec * 1000 + rt.tv_nsec / 1000000;
+        base_mono = mono;
+    }
+    return base_real + (mono - base_mono);
 }
 
 int field_slot(const char *cls, const char *name, const char *desc) {

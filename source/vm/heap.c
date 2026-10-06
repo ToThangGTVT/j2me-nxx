@@ -2,6 +2,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <time.h>
 
 // Ngưỡng cấp phát giữa 2 lần GC
 #define GC_MIN_THRESHOLD    (4u * 1024 * 1024)
@@ -192,8 +194,20 @@ static void scan_object(Object *o) {
     heap_mark(c->mirror);
 }
 
+static double now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
+}
+
 void heap_gc(void) {
     gc_requested = false;
+    // J2ME_NX_PROF=1: in thời gian mỗi lần GC ra stderr
+    static int prof = -1;
+    if (prof < 0)
+        prof = getenv("J2ME_NX_PROF") != NULL;
+    double t0 = prof ? now_ms() : 0;
+    size_t before = obj_count;
 
     for (size_t i = 0; i < root_count; i++)
         heap_mark(*roots[i]);
@@ -224,6 +238,9 @@ void heap_gc(void) {
 
     alloc_since_gc = 0;
     gc_threshold = used_bytes > GC_MIN_THRESHOLD ? used_bytes : GC_MIN_THRESHOLD;
+    if (prof)
+        fprintf(stderr, "[prof] gc %.1f ms  objs %zu -> %zu  live %zuK\n",
+                now_ms() - t0, before, obj_count, used_bytes / 1024);
 }
 
 void heap_gc_if_needed(void) {

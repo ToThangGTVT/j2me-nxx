@@ -269,6 +269,8 @@ const VMHost *vm_host(void);
 
 // Chạy các thread tối đa budget_ms. Trả về false khi không còn thread nào sống.
 bool vm_run(int budget_ms);
+// Tổng thời gian vm_run ngủ chờ (không có thread nào chạy) kể từ lần gọi trước
+jlong vm_take_idle_ms(void);
 // Thời điểm sớm nhất (ms) có thread thức dậy, hoặc -1 nếu không có thread hẹn giờ
 jlong vm_next_wakeup(void);
 bool vm_has_runnable(void);

@@ -37,6 +37,9 @@ static SDL_Texture *screen_tex;
 // Sharp-bilinear: phóng nguyên lần (giữ điểm ảnh) vào texture trung gian rồi thu mịn xuống màn hình
 static SDL_Texture *sharp_tex;
 static bool sharp_dirty;
+// Đo hiệu năng (Cài đặt -> Hiện FPS; J2ME_NX_PROF=1 in thêm ra stderr)
+static double stat_vm_max, stat_vm_sum;
+static int stat_prof;
 static int scr_w, scr_h;
 static int fps_limit;
 static const KeyMap *keymap;
@@ -236,6 +239,8 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         sharp_dirty = true;
     }
     running = true;
+    stat_prof = SDL_getenv("J2ME_NX_PROF") != NULL;
+    stat_vm_max = 0;
     return true;
 }
 
@@ -507,7 +512,16 @@ bool emu_update(void) {
     }
     update_repeat();
     midp_audio_poll();
-    if (!vm_run(VM_BUDGET_MS)) {
+    int prof = stat_prof;
+    Uint64 t0 = SDL_GetPerformanceCounter();
+    bool alive = vm_run(VM_BUDGET_MS);
+    double ms = (SDL_GetPerformanceCounter() - t0) * 1000.0 / SDL_GetPerformanceFrequency();
+    if (ms > stat_vm_max)
+        stat_vm_max = ms;
+    stat_vm_sum += ms;
+    if (prof && ms > 30)
+        fprintf(stderr, "[prof] vm_run %.1f ms\n", ms);
+    if (!alive) {
         snprintf(exit_msg, sizeof(exit_msg), "%s", tr(S_GAME_ENDED));
         return false;
     }
@@ -556,6 +570,40 @@ static void draw_help(void) {
     }
 }
 
+// Thống kê: số khung hình game vẽ ra trong 1 giây, % thời gian VM thực sự chạy code Java
+static void draw_stats(bool dirty) {
+    static Uint32 window_start;
+    static int frames, shown_fps, shown_busy;
+    static double shown_vm;
+    if (dirty)
+        frames++;
+    Uint32 now = SDL_GetTicks();
+    if (!window_start)
+        window_start = now;
+    Uint32 elapsed = now - window_start;
+    if (elapsed >= 1000) {
+        shown_fps = (int)(frames * 1000u / elapsed);
+        shown_vm = stat_vm_max;
+        shown_busy = (int)((stat_vm_sum - (double)vm_take_idle_ms()) * 100.0 / elapsed);
+        if (shown_busy < 0)
+            shown_busy = 0;
+        if (stat_prof)
+            fprintf(stderr, "[prof] fps %d  vm max %.1f ms  cpu %d%%  heap %zuK\n", shown_fps, shown_vm,
+                    shown_busy, heap_used() / 1024);
+        frames = 0;
+        stat_vm_max = 0;
+        stat_vm_sum = 0;
+        window_start = now;
+    }
+    if (!settings()->show_fps)
+        return;
+    char buf[96];
+    snprintf(buf, sizeof(buf), "FPS %d   CPU %d%%   %zuK", shown_fps, shown_busy, heap_used() / 1024);
+    int tw = gfx_text_width(FONT_SMALL, buf) + 16, th = gfx_font_height(FONT_SMALL) + 8;
+    gfx_fill_rect(8, 8, tw, th, RGB(0, 0, 0));
+    gfx_text(FONT_SMALL, 16, 12, 0, ALIGN_LEFT, shown_fps < 20 ? COL_WARN : COL_TEXT, buf);
+}
+
 void emu_draw(void) {
     gfx_clear(COL_BG);
     if (!running)
@@ -579,6 +627,7 @@ void emu_draw(void) {
     }
     if (settings()->show_help)
         draw_help();
+    draw_stats(fb && dirty);
 
     if (exit_confirm_until && !SDL_TICKS_PASSED(SDL_GetTicks(), exit_confirm_until)) {
         const char *msg = tr(S_EXIT_CONFIRM);

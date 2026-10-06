@@ -10,6 +10,7 @@ typedef struct {
     int keymap;             // KeyMapId (keymap.h)
     int scale_mode;         // 0 sắc nét (sharp-bilinear), 1 điểm ảnh, 2 điểm ảnh số nguyên
     bool show_help;         // hiện bảng phím bên trái khi chơi
+    bool show_fps;          // hiện FPS và thời gian VM ở góc màn hình
 } Settings;
 
 typedef struct {

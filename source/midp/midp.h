@@ -55,11 +55,19 @@ void midp_register_natives(void);
 bool midp_start(const MidpConfig *cfg, const char *midlet_class);
 void midp_shutdown(void);
 
+// Gửi sự kiện từ luồng VM (native) - đánh thức thread đang chờ ngay
 void midp_post_event(int type, int a, int b);
+// Gửi từ luồng chính (phím, chạm): chỉ xếp hàng, luồng VM gọi midp_poll_events() để đánh thức
+void midp_post_event_async(int type, int a, int b);
 void midp_post_key(int code, bool pressed);
+void midp_poll_events(void);
 
-// Framebuffer ARGB của màn hình J2ME. *dirty = có khung hình mới từ lần gọi trước
-const uint32_t *midp_framebuffer(int *w, int *h, bool *dirty);
+// Framebuffer ARGB của màn hình J2ME. *dirty = có khung hình mới từ lần gọi trước.
+// Giữ khoá tới khi gọi midp_framebuffer_unlock
+const uint32_t *midp_framebuffer_lock(int *w, int *h, bool *dirty);
+void midp_framebuffer_unlock(void);
+// Khoảng cách lớn nhất giữa 2 khung hình game kể từ lần gọi trước (ms)
+int midp_take_frame_gap_max(void);
 bool midp_exit_requested(void);
 
 // m3g.c

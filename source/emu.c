@@ -45,8 +45,9 @@ static Uint64 stat_last_frame;
 
 // ---------------------------------------------------------------------------
 // Luồng VM: chạy code Java song song với luồng chính (nhận phím, vẽ, chờ vsync).
-// Mọi truy cập VM/MIDP (gửi phím, đọc framebuffer, dừng game) đều giữ vm_lock.
-// Luồng chính cần khoá thì tăng main_waiting: VM dừng sau lượt thread hiện tại và nhường.
+// Luồng chính không chờ VM: phím đi qua hàng đợi, màn hình qua framebuffer (khoá riêng
+// trong midp.c). vm_lock chỉ dùng khi dừng game và mở bàn phím ảo: luồng chính tăng
+// main_waiting, VM dừng sau lượt thread hiện tại và nhường.
 static SDL_mutex *vm_lock;
 static SDL_cond *vm_wake;          // báo luồng VM: có sự kiện mới / phải dừng
 static SDL_cond *kb_cond;          // bàn phím ảo: yêu cầu / đã xong
@@ -54,6 +55,9 @@ static PlatformThread *vm_thread;
 static volatile int main_waiting;
 static volatile bool vm_stop_req;
 static volatile bool vm_dead;
+// Thống kê do luồng VM tính mỗi giây
+static volatile int pub_cpu;
+static volatile double pub_vm_max;
 
 static struct {
     bool pending, done;
@@ -81,7 +85,9 @@ static void unlock_vm(void) {
 static int vm_thread_main(void *arg) {
     (void)arg;
     SDL_LockMutex(vm_lock);
+    jlong stat_start = vm_time_ms();
     while (!vm_stop_req) {
+        midp_poll_events();
         midp_audio_poll();
         Uint64 t0 = SDL_GetPerformanceCounter();
         VMRunResult r = vm_run_slice(VM_SLICE_MS);
@@ -95,21 +101,27 @@ static int vm_thread_main(void *arg) {
             vm_dead = true;
             break;
         }
+        jlong now = vm_time_ms();
+        if (now - stat_start >= 1000) {
+            pub_cpu = (int)(stat_vm_sum * 100.0 / (double)(now - stat_start));
+            pub_vm_max = stat_vm_max;
+            stat_vm_sum = 0;
+            stat_vm_max = 0;
+            stat_start = now;
+        }
         if (r == VM_RUN_IDLE) {
-            // Ngủ tới khi thread Java thức dậy hoặc có sự kiện (CondWait nhả khoá cho luồng chính)
-            jlong next = vm_next_wakeup(), now = vm_time_ms();
-            jlong wait = next < 0 ? 20 : next - now;
-            if (wait > 20)
-                wait = 20;
+            // Ngủ tới khi thread Java thức dậy; phím mới thì luồng chính báo vm_wake
+            // (có thể lỡ tín hiệu nên chờ tối đa 4ms)
+            jlong next = vm_next_wakeup();
+            jlong wait = next < 0 ? 4 : next - now;
+            if (wait > 4)
+                wait = 4;
             if (wait > 0 && !main_waiting)
                 SDL_CondWaitTimeout(vm_wake, vm_lock, (Uint32)wait);
         }
-        // Nhường khoá cho luồng chính đến khi nó lấy xong
-        while (main_waiting && !vm_stop_req) {
-            SDL_UnlockMutex(vm_lock);
-            SDL_Delay(0);
-            SDL_LockMutex(vm_lock);
-        }
+        // Nhường khoá cho luồng chính (CondWait nhả khoá, unlock_vm báo lại)
+        while (main_waiting && !vm_stop_req)
+            SDL_CondWaitTimeout(vm_wake, vm_lock, 1);
     }
     SDL_UnlockMutex(vm_lock);
     return 0;
@@ -442,7 +454,7 @@ static void update_repeat(void) {
     Uint32 now = SDL_GetTicks();
     for (int i = 0; i < KEY_SLOTS; i++) {
         if (key_held[i] && SDL_TICKS_PASSED(now, key_repeat_at[i])) {
-            midp_post_event(MIDP_EV_KEY_REPEATED, keymap_translate(keymap, i - 16), 0);
+            midp_post_event_async(MIDP_EV_KEY_REPEATED, keymap_translate(keymap, i - 16), 0);
             key_repeat_at[i] = now + REPEAT_RATE_MS;
         }
     }
@@ -538,7 +550,7 @@ static void pointer(int type, int lx, int ly) {
     }
     if (type == MIDP_EV_POINTER_RELEASED)
         pointer_down = false;
-    midp_post_event(type, x, y);
+    midp_post_event_async(type, x, y);
 }
 
 static void handle_event(const SDL_Event *e);
@@ -546,9 +558,9 @@ static void handle_event(const SDL_Event *e);
 void emu_handle_event(const SDL_Event *e) {
     if (!running)
         return;
-    lock_vm();
     handle_event(e);
-    unlock_vm();
+    if (vm_wake)
+        SDL_CondSignal(vm_wake);
 }
 
 static void handle_event(const SDL_Event *e) {
@@ -634,13 +646,14 @@ static void script_step(void) {
             break;
         if (at > last && at <= t) {
             int w, h;
-            const uint32_t *fb = midp_framebuffer(&w, &h, NULL);
+            const uint32_t *fb = midp_framebuffer_lock(&w, &h, NULL);
             SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormatFrom((void *)fb, w, h, 32, w * 4,
                                                                    SDL_PIXELFORMAT_ARGB8888);
             if (surf) {
                 SDL_SaveBMP(surf, path);
                 SDL_FreeSurface(surf);
             }
+            midp_framebuffer_unlock();
         }
         p += n;
         if (*p == ',')
@@ -657,14 +670,16 @@ static void script_step(void) {
 bool emu_update(void) {
     if (!running)
         return false;
-    lock_vm();
 #ifndef __SWITCH__
     script_step();
 #endif
-    serve_keyboard();
+    if (kb.pending && !kb.done) {
+        lock_vm();
+        serve_keyboard();
+        unlock_vm();
+    }
     update_repeat();
     bool dead = vm_dead, quit = exit_now || midp_exit_requested();
-    unlock_vm();
     if (exit_now) {
         exit_msg[0] = '\0';
         return false;
@@ -721,6 +736,7 @@ static void draw_stats(bool dirty) {
     static Uint32 window_start;
     static int frames, shown_fps, shown_busy;
     static double shown_vm, frame_max;
+    static int slow_frames, host_frames;
 
     if (dirty)
         frames++;
@@ -730,6 +746,9 @@ static void draw_stats(bool dirty) {
         double gap = (pc - stat_last_frame) * 1000.0 / SDL_GetPerformanceFrequency();
         if (gap > frame_max)
             frame_max = gap;
+        if (gap > 20)
+            slow_frames++;
+        host_frames++;
         if (gap > 50)
             vm_prof_log("frame gap %.1f ms", gap);
     }
@@ -740,15 +759,16 @@ static void draw_stats(bool dirty) {
     Uint32 elapsed = now - window_start;
     if (elapsed >= 1000) {
         shown_fps = (int)(frames * 1000u / elapsed);
-        shown_vm = stat_vm_max;
-        shown_busy = (int)(stat_vm_sum * 100.0 / elapsed);
-        vm_prof_log("fps %d  cpu %d%%  vm max %.1f ms  frame max %.1f ms  heap %zuK", shown_fps, shown_busy,
-                    shown_vm, frame_max, heap_used() / 1024);
+        shown_vm = pub_vm_max;
+        shown_busy = pub_cpu;
+        vm_prof_log("fps %d  cpu %d%%  vm max %.1f ms  game gap max %d ms  frame max %.1f ms  slow %d/%d  heap %zuK",
+                    shown_fps, shown_busy, shown_vm, midp_take_frame_gap_max(), frame_max, slow_frames, host_frames,
+                    heap_used() / 1024);
         vm_prof_flush();
         frame_max = 0;
+        slow_frames = 0;
+        host_frames = 0;
         frames = 0;
-        stat_vm_max = 0;
-        stat_vm_sum = 0;
         window_start = now;
     }
     if (!settings()->show_fps)
@@ -760,23 +780,28 @@ static void draw_stats(bool dirty) {
     gfx_text(FONT_SMALL, 16, 12, 0, ALIGN_LEFT, shown_fps < 20 ? COL_WARN : COL_TEXT, buf);
 }
 
-static void draw_locked(void);
+static void draw_game(void);
 
 void emu_draw(void) {
     gfx_clear(COL_BG);
     if (!running)
         return;
-    lock_vm();
-    draw_locked();
-    unlock_vm();
+    draw_game();
 }
 
-static void draw_locked(void) {
+static void draw_game(void) {
     int w, h;
     bool dirty;
-    const uint32_t *fb = midp_framebuffer(&w, &h, &dirty);
+    Uint64 tl0 = SDL_GetPerformanceCounter();
+    const uint32_t *fb = midp_framebuffer_lock(&w, &h, &dirty);
+    Uint64 tl1 = SDL_GetPerformanceCounter();
     if (fb && dirty)
         SDL_UpdateTexture(screen_tex, NULL, fb, w * 4);
+    midp_framebuffer_unlock();
+    Uint64 tl2 = SDL_GetPerformanceCounter();
+    double f = 1000.0 / SDL_GetPerformanceFrequency();
+    if ((tl2 - tl0) * f > 5)
+        vm_prof_log("fb chờ khoá %.1f ms, upload %.1f ms", (tl1 - tl0) * f, (tl2 - tl1) * f);
     if (sharp_tex) {
         SDL_Renderer *r = gfx_renderer();
         if (dirty || sharp_dirty) {

@@ -8,6 +8,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include <SDL.h>
+
 #include "../vm/vm.h"
 
 #define QUEUE_SIZE 256
@@ -21,6 +23,11 @@ static Event queue[QUEUE_SIZE];
 static int q_head, q_tail;
 static bool paint_pending, serial_pending;
 static VMThread *event_waiter;
+// Luồng chính gửi phím / đọc màn hình mà không phải chờ luồng VM: hàng đợi và framebuffer
+// có khoá riêng, chỉ giữ trong tích tắc
+static SDL_mutex *q_lock, *fb_lock;
+static jlong last_flush_ms;
+static int flush_gap_max;           // khoảng cách lớn nhất giữa 2 khung hình game (ms)
 
 static uint32_t *framebuffer;
 static int fb_w, fb_h;
@@ -36,26 +43,45 @@ static void wake_waiter(void) {
         event_waiter->state = TS_RUNNABLE;
 }
 
-void midp_post_event(int type, int a, int b) {
+static void push_event(int type, int a, int b) {
+    SDL_LockMutex(q_lock);
     if (type == MIDP_EV_PAINT) {
         paint_pending = true;
     } else if (type == MIDP_EV_SERIAL) {
         serial_pending = true;
     } else {
         int next = (q_tail + 1) % QUEUE_SIZE;
-        if (next == q_head)
-            return;     // đầy: bỏ sự kiện
-        queue[q_tail] = (Event){ type, a, b };
-        q_tail = next;
+        if (next != q_head) {
+            queue[q_tail] = (Event){ type, a, b };
+            q_tail = next;
+        }       // đầy: bỏ sự kiện
     }
+    SDL_UnlockMutex(q_lock);
+}
+
+void midp_post_event(int type, int a, int b) {
+    push_event(type, a, b);
     wake_waiter();
 }
 
-void midp_post_key(int code, bool pressed) {
-    midp_post_event(pressed ? MIDP_EV_KEY_PRESSED : MIDP_EV_KEY_RELEASED, code, 0);
+void midp_post_event_async(int type, int a, int b) {
+    push_event(type, a, b);
 }
 
-const uint32_t *midp_framebuffer(int *w, int *h, bool *dirty) {
+void midp_post_key(int code, bool pressed) {
+    push_event(pressed ? MIDP_EV_KEY_PRESSED : MIDP_EV_KEY_RELEASED, code, 0);
+}
+
+void midp_poll_events(void) {
+    SDL_LockMutex(q_lock);
+    bool any = q_head != q_tail || paint_pending || serial_pending;
+    SDL_UnlockMutex(q_lock);
+    if (any)
+        wake_waiter();
+}
+
+const uint32_t *midp_framebuffer_lock(int *w, int *h, bool *dirty) {
+    SDL_LockMutex(fb_lock);
     *w = fb_w;
     *h = fb_h;
     if (dirty) {
@@ -63,6 +89,18 @@ const uint32_t *midp_framebuffer(int *w, int *h, bool *dirty) {
         fb_dirty = false;
     }
     return framebuffer;
+}
+
+void midp_framebuffer_unlock(void) {
+    SDL_UnlockMutex(fb_lock);
+}
+
+int midp_take_frame_gap_max(void) {
+    SDL_LockMutex(fb_lock);
+    int v = flush_gap_max;
+    flush_gap_max = 0;
+    SDL_UnlockMutex(fb_lock);
+    return v;
 }
 
 bool midp_exit_requested(void) {
@@ -90,24 +128,26 @@ static NativeResult Display_waitEvent0(VMThread *t, Value *args, Value *ret) {
     (void)ret;
     Object *arr = args[0].l;
     jint *ev = ARRAY_DATA(arr, jint);
+    bool got = true;
+    SDL_LockMutex(q_lock);
     if (q_head != q_tail) {
         Event e = queue[q_head];
         q_head = (q_head + 1) % QUEUE_SIZE;
         ev[0] = e.type;
         ev[1] = e.a;
         ev[2] = e.b;
-        return NATIVE_OK;
-    }
-    if (paint_pending) {
+    } else if (paint_pending) {
         paint_pending = false;
         ev[0] = MIDP_EV_PAINT;
-        return NATIVE_OK;
-    }
-    if (serial_pending) {
+    } else if (serial_pending) {
         serial_pending = false;
         ev[0] = MIDP_EV_SERIAL;
-        return NATIVE_OK;
+    } else {
+        got = false;
     }
+    SDL_UnlockMutex(q_lock);
+    if (got)
+        return NATIVE_OK;
     t->state = TS_WAIT_EVENT;
     event_waiter = t;
     return NATIVE_RETRY;
@@ -135,8 +175,14 @@ static NativeResult Display_flush0(VMThread *t, Value *args, Value *ret) {
     int w = args[1].i, h = args[2].i;
     if (!arr || w != fb_w || h != fb_h || ARRAY_LEN(arr) < w * h)
         return NATIVE_OK;
+    SDL_LockMutex(fb_lock);
     memcpy(framebuffer, ARRAY_DATA(arr, uint32_t), (size_t)w * h * 4);
     fb_dirty = true;
+    jlong now_ms = vm_time_ms();
+    if (last_flush_ms && now_ms - last_flush_ms > flush_gap_max)
+        flush_gap_max = (int)(now_ms - last_flush_ms);
+    last_flush_ms = now_ms;
+    SDL_UnlockMutex(fb_lock);
 
     // Giới hạn FPS: cho thread vừa vẽ ngủ tới mốc khung hình kế tiếp
     if (cfg.fps_limit > 0) {
@@ -363,12 +409,18 @@ void midp_register_natives(void) {
 
 bool midp_start(const MidpConfig *c, const char *midlet_class) {
     cfg = *c;
+    if (!q_lock) {
+        q_lock = SDL_CreateMutex();
+        fb_lock = SDL_CreateMutex();
+    }
     q_head = q_tail = 0;
     paint_pending = serial_pending = false;
     event_waiter = NULL;
     exit_requested = false;
     next_frame_ms = 0;
 
+    last_flush_ms = 0;
+    flush_gap_max = 0;
     fb_w = cfg.screen_w;
     fb_h = cfg.screen_h;
     free(framebuffer);
@@ -408,9 +460,13 @@ bool midp_start(const MidpConfig *c, const char *midlet_class) {
 }
 
 void midp_shutdown(void) {
+    if (fb_lock)
+        SDL_LockMutex(fb_lock);
     free(framebuffer);
     framebuffer = NULL;
     fb_w = fb_h = 0;
+    if (fb_lock)
+        SDL_UnlockMutex(fb_lock);
     event_waiter = NULL;
     midp_graphics_shutdown();
     midp_tls_shutdown();

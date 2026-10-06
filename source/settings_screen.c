@@ -35,6 +35,8 @@ typedef enum {
     ITEM_SHOW_FPS,
     ITEM_KEYMAP,
     ITEM_SCALE,
+    ITEM_SMOOTH_TEXT,
+    ITEM_FONT_SCALE,
 } ItemId;
 
 static int cursor;
@@ -94,6 +96,8 @@ static int visible_items(ItemId *out) {
         }
     }
     out[n++] = ITEM_KEYMAP;
+    out[n++] = ITEM_FONT_SCALE;
+    out[n++] = ITEM_SMOOTH_TEXT;
     if (!game_mode) {
         out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;
@@ -112,6 +116,22 @@ static int fps_pos(int fps) {
             return i + base;
     }
     return base;
+}
+
+// Cỡ chữ: [Mặc định (chỉ game)] + các mức %
+static void change_font_scale(int dir) {
+    int base = game_mode ? 1 : 0;
+    int n = SETTINGS_FONT_SCALE_CHOICE_COUNT + base;
+    int *v = game_mode ? &game.font_scale : &settings()->font_scale;
+    int cur = base;     // giá trị lạ trong file ini: về 100%
+    if (game_mode && *v < 0)
+        cur = 0;
+    for (int i = 0; i < SETTINGS_FONT_SCALE_CHOICE_COUNT; i++) {
+        if (SETTINGS_FONT_SCALE_CHOICES[i] == *v)
+            cur = i + base;
+    }
+    int i = (cur + dir + n) % n;
+    *v = (game_mode && i == 0) ? -1 : SETTINGS_FONT_SCALE_CHOICES[i - base];
 }
 
 static void change_fps(int dir) {
@@ -189,7 +209,7 @@ bool settings_screen_update(void) {
         return false;
     }
 
-    ItemId items[10];
+    ItemId items[16];
     int n = visible_items(items);
     if (cursor >= n)
         cursor = n - 1;
@@ -241,6 +261,18 @@ bool settings_screen_update(void) {
     case ITEM_SCALE:
         if (dir || a)
             settings()->scale_mode = (settings()->scale_mode + (dir ? dir : 1) + 3) % 3;
+        break;
+    case ITEM_FONT_SCALE:
+        if (dir || a)
+            change_font_scale(dir ? dir : 1);
+        break;
+    case ITEM_SMOOTH_TEXT:
+        if (dir || a) {
+            if (game_mode)      // Mặc định -> Bật -> Tắt
+                game.smooth_text = game.smooth_text < 0 ? 1 : game.smooth_text == 1 ? 0 : -1;
+            else
+                settings()->smooth_text = !settings()->smooth_text;
+        }
         break;
     case ITEM_KEYMAP:
         if (dir || a) {
@@ -323,6 +355,24 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
         snprintf(value, size, "%s", tr(s->scale_mode == 2 ? S_SCALE_INTEGER : s->scale_mode == 1 ? S_SCALE_SHARP
                                                                                                  : S_SCALE_SMOOTH));
         break;
+    case ITEM_FONT_SCALE:
+        *label = tr(S_FONT_SCALE);
+        *hint = tr(S_FONT_SCALE_HINT);
+        if (game_mode && game.font_scale < 0) {
+            snprintf(tmp, sizeof(tmp), "%d%%", s->font_scale);
+            snprintf(value, size, tr(S_DEFAULT_FMT), tmp);
+        } else {
+            snprintf(value, size, "%d%%", game_mode ? game.font_scale : s->font_scale);
+        }
+        break;
+    case ITEM_SMOOTH_TEXT:
+        *label = tr(S_SMOOTH_TEXT);
+        *hint = tr(S_SMOOTH_TEXT_HINT);
+        if (game_mode && game.smooth_text < 0)
+            snprintf(value, size, tr(S_DEFAULT_FMT), tr(s->smooth_text ? S_ON : S_OFF));
+        else
+            snprintf(value, size, "%s", tr((game_mode ? game.smooth_text == 1 : s->smooth_text) ? S_ON : S_OFF));
+        break;
     case ITEM_SHOW_HELP:
         *label = tr(S_SHOW_HELP);
         *hint = tr(S_SHOW_HELP_HINT);
@@ -367,21 +417,25 @@ void settings_screen_draw(void) {
 
     // Cột trái: các mục; cột phải: xem trước tỉ lệ màn hình
     int list_w = SCREEN_W - 2 * LIST_X - 300;
-    ItemId items[10];
+    ItemId items[16];
     int n = visible_items(items);
     if (cursor >= n)
         cursor = n - 1;
-    int font_y = (ROW_H - gfx_font_height(FONT_NORMAL)) / 2;
+    // Nhiều mục (cài đặt chung + kích thước tuỳ chỉnh) thì co dòng lại, chừa chỗ cho chú thích
+    int row_h = (SCREEN_H - FOOTER_H - LIST_TOP - 70) / n;
+    if (row_h > ROW_H)
+        row_h = ROW_H;
+    int font_y = (row_h - gfx_font_height(FONT_NORMAL)) / 2;
     const char *sel_hint = "";
     for (int i = 0; i < n; i++) {
-        int y = LIST_TOP + i * ROW_H;
+        int y = LIST_TOP + i * row_h;
         bool sel = i == cursor;
         const char *label = "", *hint = "";
         char value[96] = "";
         item_text(items[i], &label, &hint, value, sizeof(value));
         if (sel) {
-            gfx_fill_rect(LIST_X, y, list_w, ROW_H, COL_ROW_SEL);
-            gfx_fill_rect(LIST_X, y, 6, ROW_H, COL_ACCENT);
+            gfx_fill_rect(LIST_X, y, list_w, row_h, COL_ROW_SEL);
+            gfx_fill_rect(LIST_X, y, 6, row_h, COL_ACCENT);
             sel_hint = hint;
         }
         gfx_text(FONT_NORMAL, LIST_X + 28, y + font_y, 0, ALIGN_LEFT, COL_TEXT, label);
@@ -389,7 +443,7 @@ void settings_screen_draw(void) {
         snprintf(shown, sizeof(shown), sel ? "<  %s  >" : "%s", value);
         gfx_text(FONT_NORMAL, LIST_X + list_w - 24, y + font_y, 0, ALIGN_RIGHT, sel ? COL_ACCENT : COL_DIM, shown);
     }
-    gfx_text_wrapped(FONT_SMALL, LIST_X + 28, LIST_TOP + n * ROW_H + 20, list_w - 56, COL_DIM, sel_hint);
+    gfx_text_wrapped(FONT_SMALL, LIST_X + 28, LIST_TOP + n * row_h + 16, list_w - 56, COL_DIM, sel_hint);
 
     draw_preview(SCREEN_W - LIST_X - 260, LIST_TOP, 260, 400);
 

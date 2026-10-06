@@ -5,6 +5,12 @@
 #include <string.h>
 #include <SDL.h>
 
+#if defined(__APPLE__) && !defined(__SWITCH__)
+#include <mach/mach.h>
+#elif defined(__linux__) && !defined(__SWITCH__)
+#include <unistd.h>
+#endif
+
 #ifdef __SWITCH__
 #include <switch.h>
 
@@ -22,6 +28,14 @@ bool platform_init(void) {
 void platform_exit(void) {
     plExit();
     socketExit();
+}
+
+void platform_mem_usage(size_t *used, size_t *total) {
+    u64 u = 0, t = 0;
+    svcGetInfo(&u, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
+    svcGetInfo(&t, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
+    *used = (size_t)u;
+    *total = (size_t)t;
 }
 
 struct PlatformThread {
@@ -103,6 +117,24 @@ bool platform_init(void) {
 }
 
 void platform_exit(void) {
+}
+
+void platform_mem_usage(size_t *used, size_t *total) {
+    *used = 0;
+    *total = 0;
+#if defined(__APPLE__)
+    struct mach_task_basic_info info;
+    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &count) == KERN_SUCCESS)
+        *used = (size_t)info.resident_size;
+#elif defined(__linux__)
+    FILE *f = fopen("/proc/self/statm", "r");
+    unsigned long pages, rss;
+    if (f && fscanf(f, "%lu %lu", &pages, &rss) == 2)
+        *used = (size_t)rss * (size_t)sysconf(_SC_PAGESIZE);
+    if (f)
+        fclose(f);
+#endif
 }
 
 PlatformThread *platform_thread_start(int (*fn)(void *), void *arg) {

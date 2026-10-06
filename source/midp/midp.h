@@ -42,6 +42,8 @@ typedef struct {
     char *(*keyboard)(const char *title, const char *text, int max_len, int type);
     void (*vibrate)(int ms);
     int fps_limit;                                          // 0 = không giới hạn
+    bool smooth_text;                                       // chữ khử răng cưa (mặc định: chữ điểm ảnh)
+    int font_scale;                                         // cỡ chữ, % so với cỡ gốc
     const char *lang;                                       // "vi" / "en": ngôn ngữ giao diện MIDP
     const char *platform;                                   // microedition.platform
     // Mã phím của hãng: lên, xuống, trái, phải, fire, mềm trái, mềm phải, xoá
@@ -90,4 +92,5 @@ void midp_tls_shutdown(void);
 
 // graphics.c
 void midp_graphics_register(void);
+void midp_graphics_set_text_style(bool smooth, int scale_pct);
 void midp_graphics_shutdown(void);

@@ -90,8 +90,18 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_SHOW_HELP]      = { "Hiện chú thích phím khi chơi", "Show key help while playing" },
     [S_SHOW_HELP_HINT] = { "Bảng phím ở bên trái màn hình game.", "Key map shown left of the game screen." },
     [S_SHOW_FPS]       = { "Hiện FPS", "Show FPS" },
-    [S_SHOW_FPS_HINT]  = { "Góc trên trái: số khung hình game vẽ mỗi giây, % CPU dùng để chạy game và bộ nhớ Java.",
-                           "Top left: frames the game draws per second, CPU % spent running the game and Java memory." },
+    [S_SHOW_FPS_HINT]  = { "Góc trên trái: số khung hình game vẽ mỗi giây, % CPU dùng để chạy game, bộ nhớ Java và RAM của cả app.",
+                           "Top left: frames the game draws per second, CPU % spent running the game, Java memory and the app's total RAM." },
+    [S_FONT_SCALE]     = { "Cỡ chữ", "Font size" },
+    [S_FONT_SCALE_HINT] = { "Phóng to / thu nhỏ chữ trong game so với cỡ gốc. Hợp với Opera Mini, nhất là khi tăng "
+                            "kích thước màn hình (vd 480x800 + 200%). Game tự tính bố cục theo cỡ chữ mới.",
+                            "Scale in-game text relative to the original size. Useful for Opera Mini, especially with a "
+                            "larger screen size (e.g. 480x800 + 200%). Apps lay out text using the new size." },
+    [S_SMOOTH_TEXT]    = { "Chữ mịn", "Smooth text" },
+    [S_SMOOTH_TEXT_HINT] = { "Khử răng cưa chữ trong game. Nên bật cho ứng dụng nhiều chữ như Opera Mini; "
+                             "tắt thì chữ vẽ điểm ảnh như điện thoại thật.",
+                             "Anti-aliased in-game text. Recommended for text-heavy apps like Opera Mini; "
+                             "when off, text is drawn as pixels like on real phones." },
     [S_ON]             = { "Bật", "On" },
     [S_OFF]            = { "Tắt", "Off" },
     [S_SETTINGS_HINTS] = { "(<>) Đổi giá trị   (A) Chọn / nhập số   (B) Lưu và quay lại",

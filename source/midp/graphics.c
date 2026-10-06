@@ -586,12 +586,21 @@ static NativeResult Image_decode0(VMThread *t, Value *args, Value *ret) {
 // Cỡ font (pt) cho SMALL / MEDIUM / LARGE
 static const int font_pt[3] = { 11, 13, 16 };
 static TTF_Font *fonts[12];
+// Chữ mịn (khử răng cưa) cho ứng dụng nhiều chữ như Opera Mini; tắt thì vẽ chữ điểm ảnh như điện thoại thật
+static bool smooth_text;
+static int font_scale = 100;        // % so với cỡ gốc
+
+void midp_graphics_set_text_style(bool smooth, int scale_pct) {
+    smooth_text = smooth;
+    font_scale = scale_pct > 0 ? scale_pct : 100;
+}
 
 static TTF_Font *get_font(int key) {
     if (key < 0 || key >= 12)
         key = 4;
     if (!fonts[key]) {
-        fonts[key] = platform_open_font(font_pt[key / 4]);
+        int pt = (font_pt[key / 4] * font_scale + 50) / 100;
+        fonts[key] = platform_open_font(pt < 6 ? 6 : pt);
         if (fonts[key]) {
             int style = TTF_STYLE_NORMAL;
             if (key & 1)
@@ -599,8 +608,8 @@ static TTF_Font *get_font(int key) {
             if (key & 2)
                 style |= TTF_STYLE_ITALIC;
             TTF_SetFontStyle(fonts[key], style);
-            // Chữ điểm ảnh như điện thoại thật: căn lưới đơn sắc, không khử răng cưa
-            TTF_SetFontHinting(fonts[key], TTF_HINTING_MONO);
+            // Chữ điểm ảnh: căn lưới đơn sắc, không khử răng cưa
+            TTF_SetFontHinting(fonts[key], smooth_text ? TTF_HINTING_LIGHT : TTF_HINTING_MONO);
         }
     }
     return fonts[key];
@@ -636,7 +645,7 @@ static TextMask *get_mask(int key, const char *utf8) {
     if (!f)
         return NULL;
     SDL_Color white = { 255, 255, 255, 255 };
-    SDL_Surface *s = TTF_RenderUTF8_Solid(f, utf8, white);
+    SDL_Surface *s = smooth_text ? TTF_RenderUTF8_Blended(f, utf8, white) : TTF_RenderUTF8_Solid(f, utf8, white);
     if (!s)
         return NULL;
     SDL_Surface *conv = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ARGB8888, 0);

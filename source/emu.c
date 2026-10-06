@@ -350,6 +350,8 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         .keyboard = vm_keyboard,
         .vibrate = NULL,
         .fps_limit = fps_limit,
+        .smooth_text = gs.smooth_text >= 0 ? gs.smooth_text != 0 : settings()->smooth_text,
+        .font_scale = gs.font_scale > 0 ? gs.font_scale : settings()->font_scale,
         .lang = lang_code(lang_get()),
         .platform = keymap->platform,
         .keycodes = { keymap->up, keymap->down, keymap->left, keymap->right, keymap->fire, keymap->soft_left,
@@ -761,9 +763,12 @@ static void draw_stats(bool dirty) {
         shown_fps = (int)(frames * 1000u / elapsed);
         shown_vm = pub_vm_max;
         shown_busy = pub_cpu;
-        vm_prof_log("fps %d  cpu %d%%  vm max %.1f ms  game gap max %d ms  frame max %.1f ms  slow %d/%d  heap %zuK",
+        size_t ram_used, ram_total;
+        platform_mem_usage(&ram_used, &ram_total);
+        vm_prof_log("fps %d  cpu %d%%  vm max %.1f ms  game gap max %d ms  frame max %.1f ms  slow %d/%d  heap %zuK  "
+                    "ram %zu/%zuM",
                     shown_fps, shown_busy, shown_vm, midp_take_frame_gap_max(), frame_max, slow_frames, host_frames,
-                    heap_used() / 1024);
+                    heap_used() / 1024, ram_used >> 20, ram_total >> 20);
         vm_prof_flush();
         frame_max = 0;
         slow_frames = 0;
@@ -773,8 +778,16 @@ static void draw_stats(bool dirty) {
     }
     if (!settings()->show_fps)
         return;
-    char buf[96];
-    snprintf(buf, sizeof(buf), "FPS %d   CPU %d%%   %zuK", shown_fps, shown_busy, heap_used() / 1024);
+    // Java: heap của VM; RAM: bộ nhớ cả app đang dùng / tối đa được cấp (Album ít hơn nhiều so với full RAM)
+    size_t ram_used, ram_total;
+    platform_mem_usage(&ram_used, &ram_total);
+    char ram[48];
+    if (ram_total)
+        snprintf(ram, sizeof(ram), "%zu/%zuM", ram_used >> 20, ram_total >> 20);
+    else
+        snprintf(ram, sizeof(ram), "%zuM", ram_used >> 20);
+    char buf[128];
+    snprintf(buf, sizeof(buf), "FPS %d   CPU %d%%   Java %zuK   RAM %s", shown_fps, shown_busy, heap_used() / 1024, ram);
     int tw = gfx_text_width(FONT_SMALL, buf) + 16, th = gfx_font_height(FONT_SMALL) + 8;
     gfx_fill_rect(8, 8, tw, th, RGB(0, 0, 0));
     gfx_text(FONT_SMALL, 16, 12, 0, ALIGN_LEFT, shown_fps < 20 ? COL_WARN : COL_TEXT, buf);

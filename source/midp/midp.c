@@ -409,6 +409,7 @@ void midp_register_natives(void) {
 
 bool midp_start(const MidpConfig *c, const char *midlet_class) {
     cfg = *c;
+    midp_graphics_set_text_style(cfg.smooth_text, cfg.font_scale);
     if (!q_lock) {
         q_lock = SDL_CreateMutex();
         fb_lock = SDL_CreateMutex();

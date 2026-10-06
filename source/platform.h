@@ -2,6 +2,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <SDL_ttf.h>
 
 bool platform_init(void);
@@ -20,6 +21,9 @@ char *platform_keyboard(const char *title, const char *text, int max_len, int ty
 typedef struct PlatformThread PlatformThread;
 PlatformThread *platform_thread_start(int (*fn)(void *), void *arg);
 void platform_thread_join(PlatformThread *t);
+
+// RAM của cả app (byte). total = 0 nếu không biết (desktop)
+void platform_mem_usage(size_t *used, size_t *total);
 
 // Font hệ thống: shared font của Switch, hoặc font có sẵn trên desktop
 TTF_Font *platform_open_font(int ptsize);

@@ -11,12 +11,16 @@ typedef struct {
     int scale_mode;         // 0 sắc nét (sharp-bilinear), 1 điểm ảnh, 2 điểm ảnh số nguyên
     bool show_help;         // hiện bảng phím bên trái khi chơi
     bool show_fps;          // hiện FPS và thời gian VM ở góc màn hình
+    bool smooth_text;       // chữ trong game khử răng cưa (tắt: chữ điểm ảnh như điện thoại thật)
+    int font_scale;         // cỡ chữ trong game, % so với cỡ gốc
 } Settings;
 
 typedef struct {
     int fps_limit;          // -1 = theo cài đặt chung
     int screen_w, screen_h; // 0 = tự động (MANIFEST, rồi tới cài đặt chung)
     int keymap;             // -1 = theo cài đặt chung
+    int smooth_text;        // -1 = theo cài đặt chung, 0 tắt, 1 bật
+    int font_scale;         // -1 = theo cài đặt chung
 } GameSettings;
 
 typedef struct {
@@ -33,6 +37,8 @@ bool game_settings_save(const char *game, const GameSettings *gs);
 // Các lựa chọn
 extern const int SETTINGS_FPS_CHOICES[];
 extern const int SETTINGS_FPS_CHOICE_COUNT;
+extern const int SETTINGS_FONT_SCALE_CHOICES[];
+extern const int SETTINGS_FONT_SCALE_CHOICE_COUNT;
 // Cỡ màn hình có sẵn, ghi theo hướng dọc (w <= h); hướng ngang = đảo w/h
 extern const ScreenSize SETTINGS_SCREEN_CHOICES[];
 extern const int SETTINGS_SCREEN_CHOICE_COUNT;

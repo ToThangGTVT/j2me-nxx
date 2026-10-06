@@ -75,8 +75,8 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 Danh sách game hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng game (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
 Trong danh sách game:
-- **X**: Cài đặt chung: giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chơi, ngôn ngữ (Tiếng Việt / English).
-- **−**: Tuỳ chọn riêng cho game đang chọn (FPS, kích thước màn hình), lưu ở `sdmc:/switch/j2me-nx/games/<tên>.ini`.
+- **X**: Cài đặt chung: giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chơi, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English).
+- **−**: Tuỳ chọn riêng cho game đang chọn (FPS, kích thước màn hình, kiểu phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nx/games/<tên>.ini`.
 
 Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng của game > `Nokia-MIDlet-Original-Display-Size` trong MANIFEST/JAD > cài đặt chung (mặc định 240x320).
 
@@ -179,8 +179,8 @@ The touch screen is mapped to pointer events.
 The game list shows the name, vendor, version and icon read from each game's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
 
 In the game list:
-- **X**: Global settings: FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while playing, language (Tiếng Việt / English).
-- **−**: Options for the selected game (FPS, screen size), saved to `sdmc:/switch/j2me-nx/games/<name>.ini`.
+- **X**: Global settings: FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while playing, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English).
+- **−**: Options for the selected game (FPS, screen size, key layout, font size, smooth text), saved to `sdmc:/switch/j2me-nx/games/<name>.ini`.
 
 Screen size is chosen in this order: the game's own options > `Nokia-MIDlet-Original-Display-Size` in MANIFEST/JAD > global settings (default 240x320).
 

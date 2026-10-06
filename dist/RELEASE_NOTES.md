@@ -1,19 +1,21 @@
-## J2ME-NX v0.3.1
+## J2ME-NX v0.3.2
 
-Bug-fix release.
+Better text for text-heavy apps like **Opera Mini**, and memory info in the FPS overlay.
 
-### 🐛 Fixed
-- **Opera Mini froze on the loading screen** (and any app that calls `repaint()` while holding its own lock). The event thread held the paint lock while calling the app's `paint()`, which waited for the app's lock, while the app's thread held that lock and waited for the paint lock in `repaint()`. `repaint()` now never blocks, like on real phones.
+### ✨ New
+- **Font size** (Settings → Font size, or per game with **−**): scale in-game text from 75% to 300%, like J2ME Loader. Apps lay out text using the new size, so nothing overflows. For Opera Mini, try a larger screen size together with a larger font, e.g. **480x800 + 200%**, for big and crisp text.
+- **Smooth text** (Settings → Smooth text, or per game): anti-aliased text instead of pixel text. Off by default so games keep the authentic phone look; turn it on for Opera Mini and other text-heavy apps.
+- **Show FPS** now also shows memory: `Java` (Java heap) and `RAM` (the whole app's memory, in use / available). The RAM limit tells you whether hbmenu is running in full RAM mode or Album mode. `log.txt` records RAM every second too.
 
-### 🔍 Diagnostics
-- With **Show FPS** enabled, `log.txt` now also records the state of every Java thread every 5 seconds (running, sleeping, waiting on which lock, and in which method). If a game freezes, please attach this log to your bug report.
+### 🔧 Changed
+- The Settings screen fits more rows on screen.
 
 ### 📌 Notes
 - Run hbmenu in **full RAM mode** (hold **R** while launching any game) instead of from the Album. Album (applet) mode has limited RAM and CPU, which can make games stutter.
 - When reporting a bug or stutter, enable **Show FPS** and attach `log.txt`.
 
 ### Installation
-- **Zip** (recommended): extract `j2me-nx-v0.3.1.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nx/games/` (subfolders are supported).
+- **Zip** (recommended): extract `j2me-nx-v0.3.2.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nx/games/` (subfolders are supported).
 - **NRO only**: copy `j2me-nx.nro` to `sdmc:/switch/`; the `games` folder is created on first launch.
 
 Launch **J2ME-NX** from hbmenu.

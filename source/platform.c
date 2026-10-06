@@ -24,6 +24,43 @@ void platform_exit(void) {
     socketExit();
 }
 
+struct PlatformThread {
+    Thread th;
+    int (*fn)(void *);
+    void *arg;
+};
+
+static void thread_entry(void *p) {
+    PlatformThread *t = p;
+    t->fn(t->arg);
+}
+
+PlatformThread *platform_thread_start(int (*fn)(void *), void *arg) {
+    PlatformThread *t = calloc(1, sizeof(PlatformThread));
+    if (!t)
+        return NULL;
+    t->fn = fn;
+    t->arg = arg;
+    // Ưu tiên như luồng chính (0x2C), nhân 1, stack 1MB (giải mã ảnh / M3G dùng stack C)
+    Result rc = threadCreate(&t->th, thread_entry, t, NULL, 1024 * 1024, 0x2C, 1);
+    if (R_FAILED(rc))
+        rc = threadCreate(&t->th, thread_entry, t, NULL, 1024 * 1024, 0x2C, -2);
+    if (R_FAILED(rc) || R_FAILED(threadStart(&t->th))) {
+        printf("threadCreate failed: 0x%x\n", rc);
+        free(t);
+        return NULL;
+    }
+    return t;
+}
+
+void platform_thread_join(PlatformThread *t) {
+    if (!t)
+        return;
+    threadWaitForExit(&t->th);
+    threadClose(&t->th);
+    free(t);
+}
+
 const char *platform_games_dir(void) {
     return "sdmc:/switch/j2me-nx/games";
 }
@@ -66,6 +103,15 @@ bool platform_init(void) {
 }
 
 void platform_exit(void) {
+}
+
+PlatformThread *platform_thread_start(int (*fn)(void *), void *arg) {
+    return (PlatformThread *)SDL_CreateThreadWithStackSize(fn, "vm", 4 * 1024 * 1024, arg);
+}
+
+void platform_thread_join(PlatformThread *t) {
+    if (t)
+        SDL_WaitThread((SDL_Thread *)t, NULL);
 }
 
 const char *platform_games_dir(void) {

@@ -269,6 +269,11 @@ const VMHost *vm_host(void);
 
 // Chạy các thread tối đa budget_ms. Trả về false khi không còn thread nào sống.
 bool vm_run(int budget_ms);
+// Chạy tối đa budget_ms, không ngủ: trả về ngay khi không còn thread nào chạy được
+// (người gọi tự chờ tới vm_next_wakeup()) hoặc khi *flag (vm_set_preempt_flag) khác 0
+typedef enum { VM_RUN_BUSY, VM_RUN_IDLE, VM_RUN_DEAD } VMRunResult;
+VMRunResult vm_run_slice(int budget_ms);
+void vm_set_preempt_flag(volatile int *flag);
 // Tổng thời gian vm_run ngủ chờ (không có thread nào chạy) kể từ lần gọi trước
 jlong vm_take_idle_ms(void);
 

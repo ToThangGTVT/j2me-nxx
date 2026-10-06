@@ -332,6 +332,45 @@ bool vm_run(int budget_ms) {
     }
 }
 
+static volatile int *preempt_flag;
+
+void vm_set_preempt_flag(volatile int *flag) {
+    preempt_flag = flag;
+}
+
+VMRunResult vm_run_slice(int budget_ms) {
+    if (vm_prof_on() && vm_time_ms() - prof_last >= 5000) {
+        prof_dump();
+        prof_last = vm_time_ms();
+    }
+    jlong deadline = vm_time_ms() + budget_ms;
+    for (;;) {
+        heap_gc_if_needed();
+        jlong now = vm_time_ms();
+        bool ran = false;
+        for (VMThread *t = threads; t; t = t->next) {
+            update_state(t, now);
+            if (t->state != TS_RUNNABLE)
+                continue;
+            current = t;
+            interp_run(t, TIME_SLICE);
+            if (vm_prof_on())
+                prof_record(t);
+            current = NULL;
+            ran = true;
+            if (preempt_flag && *preempt_flag)
+                break;
+        }
+        reap_terminated();
+        if (!threads)
+            return VM_RUN_DEAD;
+        if (!ran)
+            return VM_RUN_IDLE;
+        if ((preempt_flag && *preempt_flag) || vm_time_ms() >= deadline)
+            return VM_RUN_BUSY;
+    }
+}
+
 void thread_mark_roots(MarkFn mark) {
     for (VMThread *t = threads; t; t = t->next) {
         mark(t->jthread);

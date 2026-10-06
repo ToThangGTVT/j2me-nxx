@@ -19,7 +19,8 @@
 extern const unsigned char classlib_jar[];
 extern const size_t classlib_jar_size;
 
-#define VM_BUDGET_MS     12
+// Mỗi lượt VM chạy tối đa bấy nhiêu ms rồi mới kiểm tra cờ dừng / ngủ
+#define VM_SLICE_MS      8
 #define REPEAT_DELAY_MS  400
 #define REPEAT_RATE_MS   100
 #define EXIT_CONFIRM_MS  2000
@@ -41,6 +42,116 @@ static bool sharp_dirty;
 // (desktop: J2ME_NX_PROF=1 ghi ra stderr)
 static double stat_vm_max, stat_vm_sum;
 static Uint64 stat_last_frame;
+
+// ---------------------------------------------------------------------------
+// Luồng VM: chạy code Java song song với luồng chính (nhận phím, vẽ, chờ vsync).
+// Mọi truy cập VM/MIDP (gửi phím, đọc framebuffer, dừng game) đều giữ vm_lock.
+// Luồng chính cần khoá thì tăng main_waiting: VM dừng sau lượt thread hiện tại và nhường.
+static SDL_mutex *vm_lock;
+static SDL_cond *vm_wake;          // báo luồng VM: có sự kiện mới / phải dừng
+static SDL_cond *kb_cond;          // bàn phím ảo: yêu cầu / đã xong
+static PlatformThread *vm_thread;
+static volatile int main_waiting;
+static volatile bool vm_stop_req;
+static volatile bool vm_dead;
+
+static struct {
+    bool pending, done;
+    const char *title, *text;
+    int max_len, type;
+    char *result;
+} kb;
+
+static void lock_vm(void) {
+    if (!vm_thread) {
+        return;
+    }
+    __atomic_add_fetch(&main_waiting, 1, __ATOMIC_SEQ_CST);
+    SDL_LockMutex(vm_lock);
+    __atomic_sub_fetch(&main_waiting, 1, __ATOMIC_SEQ_CST);
+}
+
+static void unlock_vm(void) {
+    if (!vm_thread)
+        return;
+    SDL_CondSignal(vm_wake);
+    SDL_UnlockMutex(vm_lock);
+}
+
+static int vm_thread_main(void *arg) {
+    (void)arg;
+    SDL_LockMutex(vm_lock);
+    while (!vm_stop_req) {
+        midp_audio_poll();
+        Uint64 t0 = SDL_GetPerformanceCounter();
+        VMRunResult r = vm_run_slice(VM_SLICE_MS);
+        double ms = (SDL_GetPerformanceCounter() - t0) * 1000.0 / SDL_GetPerformanceFrequency();
+        stat_vm_sum += ms;
+        if (ms > stat_vm_max)
+            stat_vm_max = ms;
+        if (ms > 30)
+            vm_prof_log("vm slice %.1f ms", ms);
+        if (r == VM_RUN_DEAD) {
+            vm_dead = true;
+            break;
+        }
+        if (r == VM_RUN_IDLE) {
+            // Ngủ tới khi thread Java thức dậy hoặc có sự kiện (CondWait nhả khoá cho luồng chính)
+            jlong next = vm_next_wakeup(), now = vm_time_ms();
+            jlong wait = next < 0 ? 20 : next - now;
+            if (wait > 20)
+                wait = 20;
+            if (wait > 0 && !main_waiting)
+                SDL_CondWaitTimeout(vm_wake, vm_lock, (Uint32)wait);
+        }
+        // Nhường khoá cho luồng chính đến khi nó lấy xong
+        while (main_waiting && !vm_stop_req) {
+            SDL_UnlockMutex(vm_lock);
+            SDL_Delay(0);
+            SDL_LockMutex(vm_lock);
+        }
+    }
+    SDL_UnlockMutex(vm_lock);
+    return 0;
+}
+
+// Bàn phím ảo phải mở trên luồng chính: luồng VM gửi yêu cầu rồi chờ (CondWait nhả vm_lock)
+static char *vm_keyboard(const char *title, const char *text, int max_len, int type) {
+    if (!vm_thread)
+        return platform_keyboard(title, text, max_len, type);
+    kb.title = title;
+    kb.text = text;
+    kb.max_len = max_len;
+    kb.type = type;
+    kb.result = NULL;
+    kb.done = false;
+    kb.pending = true;
+    while (!kb.done && !vm_stop_req)
+        SDL_CondWait(kb_cond, vm_lock);
+    kb.pending = false;
+    return kb.result;
+}
+
+// Luồng chính, đang giữ vm_lock
+static void serve_keyboard(void) {
+    if (!kb.pending || kb.done)
+        return;
+    kb.result = platform_keyboard(kb.title, kb.text, kb.max_len, kb.type);
+    kb.done = true;
+    SDL_CondSignal(kb_cond);
+}
+
+static void vm_thread_stop(void) {
+    if (!vm_thread)
+        return;
+    lock_vm();
+    vm_stop_req = true;
+    SDL_CondSignal(kb_cond);
+    unlock_vm();
+    platform_thread_join(vm_thread);
+    vm_thread = NULL;
+    vm_set_preempt_flag(NULL);
+}
 
 // Gọi sau khi đã mở log_file
 static void prof_start(void) {
@@ -224,7 +335,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         .rms_dir = rms_dir,
         .files_dir = files_dir,
         .app_property = host_app_property,
-        .keyboard = platform_keyboard,
+        .keyboard = vm_keyboard,
         .vibrate = NULL,
         .fps_limit = fps_limit,
         .lang = lang_code(lang_get()),
@@ -251,14 +362,34 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
             SDL_SetTextureScaleMode(sharp_tex, SDL_ScaleModeLinear);
         sharp_dirty = true;
     }
-    running = true;
     stat_vm_max = 0;
+    stat_vm_sum = 0;
     stat_last_frame = 0;
     vm_prof_log("screen %dx%d  scale %d  fps_limit %d", scr_w, scr_h, settings()->scale_mode, fps_limit);
+
+    if (!vm_lock) {
+        vm_lock = SDL_CreateMutex();
+        vm_wake = SDL_CreateCond();
+        kb_cond = SDL_CreateCond();
+    }
+    vm_stop_req = false;
+    vm_dead = false;
+    main_waiting = 0;
+    memset(&kb, 0, sizeof(kb));
+    vm_set_preempt_flag(&main_waiting);
+    vm_thread = platform_thread_start(vm_thread_main, NULL);
+    if (!vm_thread) {
+        vm_set_preempt_flag(NULL);
+        snprintf(err, err_size, tr(S_ERR_VM), "thread");
+        emu_stop();
+        return false;
+    }
+    running = true;
     return true;
 }
 
 void emu_stop(void) {
+    vm_thread_stop();
     if (running || syslib || game) {
         vm_shutdown();
         midp_shutdown();
@@ -410,9 +541,17 @@ static void pointer(int type, int lx, int ly) {
     midp_post_event(type, x, y);
 }
 
+static void handle_event(const SDL_Event *e);
+
 void emu_handle_event(const SDL_Event *e) {
     if (!running)
         return;
+    lock_vm();
+    handle_event(e);
+    unlock_vm();
+}
+
+static void handle_event(const SDL_Event *e) {
     switch (e->type) {
     case SDL_JOYBUTTONDOWN:
     case SDL_JOYBUTTONUP:
@@ -518,30 +657,23 @@ static void script_step(void) {
 bool emu_update(void) {
     if (!running)
         return false;
+    lock_vm();
 #ifndef __SWITCH__
     script_step();
 #endif
+    serve_keyboard();
+    update_repeat();
+    bool dead = vm_dead, quit = exit_now || midp_exit_requested();
+    unlock_vm();
     if (exit_now) {
         exit_msg[0] = '\0';
         return false;
     }
-    update_repeat();
-    midp_audio_poll();
-    Uint64 t0 = SDL_GetPerformanceCounter();
-    bool alive = vm_run(VM_BUDGET_MS);
-    double ms = (SDL_GetPerformanceCounter() - t0) * 1000.0 / SDL_GetPerformanceFrequency();
-    if (ms > stat_vm_max)
-        stat_vm_max = ms;
-    stat_vm_sum += ms;
-    if (ms > 30)
-        vm_prof_log("vm_run %.1f ms", ms);
-    if (!alive) {
+    if (dead) {
         snprintf(exit_msg, sizeof(exit_msg), "%s", tr(S_GAME_ENDED));
         return false;
     }
-    if (midp_exit_requested() || exit_now)
-        return false;
-    return true;
+    return !quit;
 }
 
 // ---------------------------------------------------------------------------
@@ -584,7 +716,7 @@ static void draw_help(void) {
     }
 }
 
-// Thống kê: số khung hình game vẽ ra trong 1 giây, % thời gian VM thực sự chạy code Java
+// Thống kê: số khung hình game vẽ ra trong 1 giây, % thời gian luồng VM chạy code Java
 static void draw_stats(bool dirty) {
     static Uint32 window_start;
     static int frames, shown_fps, shown_busy;
@@ -609,9 +741,7 @@ static void draw_stats(bool dirty) {
     if (elapsed >= 1000) {
         shown_fps = (int)(frames * 1000u / elapsed);
         shown_vm = stat_vm_max;
-        shown_busy = (int)((stat_vm_sum - (double)vm_take_idle_ms()) * 100.0 / elapsed);
-        if (shown_busy < 0)
-            shown_busy = 0;
+        shown_busy = (int)(stat_vm_sum * 100.0 / elapsed);
         vm_prof_log("fps %d  cpu %d%%  vm max %.1f ms  frame max %.1f ms  heap %zuK", shown_fps, shown_busy,
                     shown_vm, frame_max, heap_used() / 1024);
         vm_prof_flush();
@@ -630,10 +760,18 @@ static void draw_stats(bool dirty) {
     gfx_text(FONT_SMALL, 16, 12, 0, ALIGN_LEFT, shown_fps < 20 ? COL_WARN : COL_TEXT, buf);
 }
 
+static void draw_locked(void);
+
 void emu_draw(void) {
     gfx_clear(COL_BG);
     if (!running)
         return;
+    lock_vm();
+    draw_locked();
+    unlock_vm();
+}
+
+static void draw_locked(void) {
     int w, h;
     bool dirty;
     const uint32_t *fb = midp_framebuffer(&w, &h, &dirty);

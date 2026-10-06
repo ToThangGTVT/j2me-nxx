@@ -282,6 +282,23 @@ static void prof_dump(void) {
     prof_total = 0;
 }
 
+// Trạng thái từng thread + 3 frame trên cùng: tìm game treo (VM rảnh mà không vẽ)
+static void prof_dump_threads(void) {
+    static const char *names[] = { "new", "run", "sleep", "blocked", "wait", "reacquire", "event", "init", "dead" };
+    for (VMThread *t = threads; t; t = t->next) {
+        char line[512];
+        int n = snprintf(line, sizeof(line), "T%d %s", t->id, names[t->state]);
+        if (t->wait_obj && n < (int)sizeof(line))
+            n += snprintf(line + n, sizeof(line) - n, " on %s", t->wait_obj->cls->name);
+        for (int k = 0; k < 3 && k < t->frame_count && n < (int)sizeof(line); k++) {
+            Frame *f = &t->frames[t->frame_count - 1 - k];
+            n += snprintf(line + n, sizeof(line) - n, " %s %s.%s:%d", k ? "<" : "|", f->m->owner->name, f->m->name,
+                          method_line(f->m, f->pc));
+        }
+        vm_prof_log("%s", line);
+    }
+}
+
 static jlong idle_ms;
 
 jlong vm_take_idle_ms(void) {
@@ -341,6 +358,7 @@ void vm_set_preempt_flag(volatile int *flag) {
 VMRunResult vm_run_slice(int budget_ms) {
     if (vm_prof_on() && vm_time_ms() - prof_last >= 5000) {
         prof_dump();
+        prof_dump_threads();
         prof_last = vm_time_ms();
     }
     jlong deadline = vm_time_ms() + budget_ms;

@@ -37,7 +37,7 @@ public class Display {
     static Graphics screenGraphics;
 
     private Displayable current;
-    private boolean repaintPending;
+    private volatile boolean repaintPending;
     private final Vector serialQueue = new Vector();
 
     // Trạng thái phím cho GameCanvas.getKeyStates()
@@ -176,10 +176,10 @@ public class Display {
     // ------------------------------------------------------------------
     // Vẽ
 
+    // Không lấy paintLock: thread game hay gọi repaint() khi đang giữ khoá riêng, mà
+    // thread sự kiện giữ paintLock trong lúc paint() chờ đúng khoá đó -> treo (Opera Mini)
     void requestRepaint() {
-        synchronized (paintLock) {
-            repaintPending = true;
-        }
+        repaintPending = true;
         postRepaint0();
     }
 

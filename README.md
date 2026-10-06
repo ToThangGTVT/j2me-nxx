@@ -1,5 +1,7 @@
 # j2me-nxx
 
+*[English below](#english)*
+
 Trình giả lập J2ME (Java ME / MIDP 2.0) cho Nintendo Switch, viết bằng C trên devkitPro + SDL2.
 Chạy file `.jar` của game điện thoại Java cũ trực tiếp trên Switch (homebrew `.nro`).
 
@@ -8,7 +10,7 @@ Chạy file `.jar` của game điện thoại Java cũ trực tiếp trên Switc
 | Thư mục | Nội dung |
 |---|---|
 | `source/vm/` | Máy ảo Java tự viết: đọc class file, trình thông dịch bytecode (đủ ~200 opcode, kể cả `jsr/ret`), green thread + monitor, GC mark-sweep, đọc JAR (zip + zlib) |
-| `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media` (chưa có tiếng), API Nokia (`FullCanvas`, `DirectGraphics`) |
+| `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, API Nokia (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; font Google Sans (OFL) có đủ chữ tiếng Việt |
 | `source/` | App: danh sách game, cài đặt, phiên chạy game (`emu.c`), lớp nền tảng Switch/desktop |
@@ -99,3 +101,107 @@ J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000
 ```
 
 `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách game) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 22050Hz) ra file, `J2ME_NX_SCREEN=settings` mở thẳng màn hình cài đặt.
+
+---
+
+## English
+
+A J2ME (Java ME / MIDP 2.0) emulator for Nintendo Switch, written in C with devkitPro + SDL2.
+It runs `.jar` files of old Java phone games directly on the Switch (homebrew `.nro`).
+
+### Architecture
+
+| Folder | Contents |
+|---|---|
+| `source/vm/` | Custom Java VM: class file loader, bytecode interpreter (all ~200 opcodes, including `jsr/ret`), green threads + monitors, mark-sweep GC, JAR reader (zip + zlib) |
+| `javalib/src/` | CLDC 1.1 / MIDP 2.0 library written in Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, Nokia API (`FullCanvas`, `DirectGraphics`) |
+| `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
+| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; Google Sans font (OFL) with full Vietnamese coverage |
+| `source/` | App: game list, settings, game session (`emu.c`), Switch/desktop platform layer |
+| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
+
+The Java library is compiled with `javac` at build time and embedded in the binary as `classlib.jar`.
+
+### Build
+
+Requirements: [devkitPro](https://devkitpro.org/wiki/Getting_Started) (`switch-dev` package), a JDK (`javac`, `jar`), CMake.
+
+```bash
+sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls
+export DEVKITPRO=/opt/devkitpro
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
+cmake --build build
+```
+
+Output: `build/j2me-nx.nro`. It still builds without mbedTLS, just without `https://` / `ssl://`.
+
+#### Desktop build (quick testing on Mac/Linux)
+
+```bash
+brew install sdl2 sdl2_ttf libpng mbedtls pkgconf
+cmake -B build-desktop -DJ2ME_NX_DESKTOP=ON
+cmake --build build-desktop
+./build-desktop/j2me-nx path/to/game.jar
+```
+
+Environment variables: `J2ME_NX_GAMES` (games folder, default `./games`), `J2ME_NX_DATA` (logs, saves, settings; default `./data`).
+
+#### CLion
+
+- Switch profile: CMake options `-DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake`, environment `DEVKITPRO=/opt/devkitpro`. Build the `j2me-nx_nro` target (or Build Project).
+- Desktop profile: CMake options `-DJ2ME_NX_DESKTOP=ON`, runnable with the Run button.
+
+### Download
+
+Prebuilt releases are on the [Releases](https://github.com/ToThangGTVT/j2me-nxx/releases) page: extract the zip to the root of your SD card.
+GitHub Actions builds on every push; pushing a `v*` tag (e.g. `git tag v0.1.0 && git push origin v0.1.0`) creates a new release.
+
+### Using it on the Switch
+
+1. Copy `j2me-nx.nro` to `sdmc:/switch/`.
+2. Copy your `.jar` games (and the matching `.jad` if you have one) to `sdmc:/switch/j2me-nx/games/`. Subfolders are supported (up to 3 levels); the `games` folder is created on first launch.
+3. Launch from hbmenu. Saves go to `sdmc:/switch/j2me-nx/rms/`, the log to `sdmc:/switch/j2me-nx/log.txt`.
+
+| Button | J2ME key |
+|---|---|
+| D-pad / left stick | Up / down / left / right |
+| A | Fire (5) |
+| B, R | Right soft key |
+| L, + | Left soft key |
+| Y / X | `*` / `#` |
+| ZL / ZR | 1 / 3 |
+| Right stick | 2 4 6 8 |
+| Left / right stick click | 5 / 0 |
+| − (twice) | Exit game |
+
+The touch screen is mapped to pointer events.
+
+The game list shows the name, vendor, version and icon read from each game's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
+
+In the game list:
+- **X**: Global settings: FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while playing, language (Tiếng Việt / English).
+- **−**: Options for the selected game (FPS, screen size), saved to `sdmc:/switch/j2me-nx/games/<name>.ini`.
+
+Screen size is chosen in this order: the game's own options > `Nokia-MIDlet-Original-Display-Size` in MANIFEST/JAD > global settings (default 240x320).
+
+### Status
+
+- Working: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (Switch software keyboard), RecordStore, Timer, threads / wait / notify.
+- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (synthesized with basic waveforms + drums, no soundfont needed), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR does not play yet (the game still runs, just silently).
+- Networking: `socket://`, `http://`, `https://`, `ssl://` (TLS via mbedTLS, certificates are not verified), `datagram://` (UDP).
+- Files: JSR-75 FileConnection with `C:/` and `E:/` drives in a per-game sandbox (`sdmc:/switch/j2me-nx/files/<game>/`).
+- Vendor APIs: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
+- Stubbed so games don't fail on missing classes: Bluetooth (JSR-82), SMS (JSR-120, sending always reports an error), `PushRegistry`.
+- Per-vendor key layouts (Nokia, Sony Ericsson, Samsung, Motorola, Siemens, LG) in Settings / Game options; JARs with several MIDlets show a MIDlet picker.
+- 3D: JSR-184 M3G (`javax.microedition.m3g`) with a software renderer (`source/midp/m3g.c`): Z-buffer, perspective-correct textures, per-vertex lighting (ambient/directional/omni/spot), fog, blending, Sprite3D, Skinned/MorphingMesh, keyframe animation, a `Loader` for `.m3g` files (including zlib-compressed sections), `Group.pick`.
+- Not yet: MascotCapsule 3D (Sony Ericsson games), JSR-226 SVG, AMR, sensors.
+
+#### Automated testing on desktop
+
+The desktop build reads a few environment variables to run a script (times in ms since the game started):
+
+```bash
+J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nx game.jar
+```
+
+`J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (game list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 22050 Hz) to a file, `J2ME_NX_SCREEN=settings` opens the settings screen directly.

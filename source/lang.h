@@ -81,6 +81,14 @@ typedef enum {
     S_ON,
     S_OFF,
     S_SETTINGS_HINTS,
+    S_VIDEO_TAG,
+    S_VIDEO_HINTS,
+    S_VIDEO_PAUSED,
+    S_VIDEO_ENDED,
+    S_VOLUME_FMT,           // %d
+    S_ERR_VIDEO,
+    S_ERR_NO_VIDEO_BUILD,
+    S_VIDEO_NO_OPTIONS,
     S_COUNT,
 } StrId;
 

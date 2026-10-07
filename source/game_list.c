@@ -40,12 +40,25 @@ static bool has_jar_ext(const char *name) {
     return n > 4 && strcasecmp(name + n - 4, ".jar") == 0;
 }
 
+static bool has_video_ext(const char *name) {
+    static const char *exts[] = { ".3gp", ".3g2", ".mp4", ".m4v", ".mov", ".avi", ".mkv", ".webm",
+                                  ".flv", ".mpg", ".mpeg", ".ts", ".wmv", ".asf" };
+    const char *dot = strrchr(name, '.');
+    if (!dot)
+        return false;
+    for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++) {
+        if (strcasecmp(dot, exts[i]) == 0)
+            return true;
+    }
+    return false;
+}
+
 static void base_title(GameEntry *g) {
     const char *s = strrchr(g->name, '/');
     snprintf(g->title, sizeof(g->title), "%.127s", s ? s + 1 : g->name);
-    size_t n = strlen(g->title);
-    if (n > 4 && strcasecmp(g->title + n - 4, ".jar") == 0)
-        g->title[n - 4] = '\0';
+    char *dot = strrchr(g->title, '.');
+    if (dot && (strcasecmp(dot, ".jar") == 0 || g->video))
+        *dot = '\0';
 }
 
 static void scan_dir(GameList *list, const char *root, const char *rel, int depth) {
@@ -77,10 +90,12 @@ static void scan_dir(GameList *list, const char *root, const char *rel, int dept
                 scan_dir(list, root, child_rel, depth + 1);
             continue;
         }
-        if (!has_jar_ext(ent->d_name))
+        bool video = has_video_ext(ent->d_name);
+        if (!has_jar_ext(ent->d_name) && !video)
             continue;
         GameEntry *g = &list->items[list->count++];
         memset(g, 0, sizeof(*g));
+        g->video = video;
         snprintf(g->name, sizeof(g->name), "%s", child_rel);
         if (strlen(full) >= sizeof(g->path)) {
             list->count--;
@@ -146,6 +161,10 @@ void game_list_load_info(GameEntry *g) {
     if (g->info_loaded)
         return;
     g->info_loaded = true;
+    if (g->video) {
+        g->valid = true;
+        return;
+    }
     ZipFile *z = zip_open_file_lazy(g->path);
     if (!z)
         return;

@@ -6,6 +6,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 #include <SDL.h>
 
 #include "emu.h"
@@ -17,12 +19,14 @@
 #include "platform.h"
 #include "settings.h"
 #include "settings_screen.h"
+#include "video_screen.h"
 
-// Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây; trả về true khi đã chụp
+// Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây (J2ME_NX_APPSHOT_MS để đổi); trả về true khi đã chụp
 static bool debug_appshot(void) {
 #ifndef __SWITCH__
     const char *appshot = SDL_getenv("J2ME_NX_APPSHOT");
-    if (appshot && SDL_GetTicks() > 1500) {
+    const char *at = SDL_getenv("J2ME_NX_APPSHOT_MS");
+    if (appshot && SDL_GetTicks() > (Uint32)(at ? atoi(at) : 1500)) {
         SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, SCREEN_W, SCREEN_H, 32, SDL_PIXELFORMAT_ARGB8888);
         SDL_Rect vp = { 0, 0, SCREEN_W, SCREEN_H };
         SDL_RenderReadPixels(gfx_renderer(), &vp, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
@@ -94,6 +98,7 @@ int main(int argc, char *argv[]) {
     settings_load();
     game_list_scan(&list, games_dir);
     bool in_settings = false;
+    bool in_video = false;
 #ifndef __SWITCH__
     // Desktop: J2ME_NX_SCREEN=settings mở thẳng màn hình cài đặt (để test giao diện)
     const char *start_screen = SDL_getenv("J2ME_NX_SCREEN");
@@ -102,8 +107,18 @@ int main(int argc, char *argv[]) {
         in_settings = true;
     }
 #endif
-    if (argc > 1)
-        launch(&menu, argv[1], NULL, argc > 2 ? atoi(argv[2]) : 1);
+    if (argc > 1) {
+        // Desktop: tham số là .jar thì chạy game, file khác thì mở bằng trình xem video
+        const char *dot = strrchr(argv[1], '.');
+        if (dot && strcasecmp(dot, ".jar") != 0) {
+            char err[160];
+            in_video = video_screen_open(argv[1], argv[1], err, sizeof(err));
+            if (!in_video)
+                snprintf(menu.status, sizeof(menu.status), "%s", err);
+        } else {
+            launch(&menu, argv[1], NULL, argc > 2 ? atoi(argv[2]) : 1);
+        }
+    }
 
     bool running = true;
     while (running) {
@@ -137,6 +152,18 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        if (in_video) {
+            in_video = video_screen_update();
+            if (in_video) {
+                video_screen_draw();
+                if (debug_appshot())
+                    running = false;
+                gfx_present();
+                continue;
+            }
+            video_screen_close();
+        }
+
         if (in_settings) {
             in_settings = settings_screen_update();
             if (in_settings) {
@@ -164,7 +191,9 @@ int main(int argc, char *argv[]) {
             in_settings = true;
             break;
         case MENU_GAME_OPTIONS:
-            if (list.demo) {
+            if (!list.demo && list.items[menu.cursor].video) {
+                snprintf(menu.status, sizeof(menu.status), "%s", tr(S_VIDEO_NO_OPTIONS));
+            } else if (list.demo) {
                 snprintf(menu.status, sizeof(menu.status), "%s", tr(S_DEMO_LIST));
             } else {
                 char id[256];
@@ -177,7 +206,13 @@ int main(int argc, char *argv[]) {
         case MENU_LAUNCH:
             if (list.demo)
                 snprintf(menu.status, sizeof(menu.status), tr(S_DEMO_LIST_COPY), games_dir);
-            else {
+            else if (list.items[menu.cursor].video) {
+                char err[160];
+                in_video = video_screen_open(list.items[menu.cursor].path, list.items[menu.cursor].title, err,
+                                             sizeof(err));
+                if (!in_video)
+                    snprintf(menu.status, sizeof(menu.status), "%s", err);
+            } else {
                 char id[256];
                 game_list_id(&list.items[menu.cursor], id, sizeof(id));
                 launch(&menu, list.items[menu.cursor].path, id, menu.midlet);
@@ -193,6 +228,7 @@ int main(int argc, char *argv[]) {
         gfx_present();
     }
 
+    video_screen_close();
     emu_stop();
     menu_free_textures(&list);
     game_list_free(&list);

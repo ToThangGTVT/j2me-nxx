@@ -10,8 +10,9 @@ import javax.microedition.media.TimeBase;
 import javax.microedition.media.control.ToneControl;
 import javax.microedition.media.control.VolumeControl;
 
-// Player phát WAV / MIDI / tone qua bộ trộn native (source/midp/audio.c).
-// Định dạng chưa hỗ trợ (MP3, AMR...) thì giả lập trạng thái, không có tiếng.
+// Player phát WAV / MIDI / MP3 / tone qua bộ trộn native (source/midp/audio.c); AMR, AAC...
+// giải mã bằng FFmpeg. Định dạng không đọc được thì giả lập trạng thái, không có tiếng.
+// VideoPlayer dùng lại các native này để phát tiếng của video.
 public class AudioPlayer implements Player, VolumeControl, ToneControl {
     private static final Hashtable active = new Hashtable();
 
@@ -247,15 +248,15 @@ public class AudioPlayer implements Player, VolumeControl, ToneControl {
         playTone0(note, duration, volume);
     }
 
-    private static native int create0(byte[] data);
+    static native int create0(byte[] data);
     private static native int createTone0(byte[] seq);
-    private static native void start0(int h);
-    private static native void stop0(int h);
-    private static native void setLoop0(int h, int count);
-    private static native void setVolume0(int h, int level);
-    private static native long getTime0(int h);
-    private static native long setTime0(int h, long us);
-    private static native long duration0(int h);
-    private static native void close0(int h);
+    static native void start0(int h);
+    static native void stop0(int h);
+    static native void setLoop0(int h, int count);
+    static native void setVolume0(int h, int level);
+    static native long getTime0(int h);
+    static native long setTime0(int h, long us);
+    static native long duration0(int h);
+    static native void close0(int h);
     private static native void playTone0(int note, int duration, int volume);
 }

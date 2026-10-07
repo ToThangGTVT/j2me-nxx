@@ -98,7 +98,7 @@ MenuAction menu_update(Menu *m, GameList *list) {
         GameEntry *g = &list->items[m->cursor];
         game_list_load_info(g);
         m->midlet = 1;
-        if (!list->demo && g->midlet_count > 1) {
+        if (!list->demo && !g->video && g->midlet_count > 1) {
             m->picking = true;
             m->pick = 0;
             return MENU_NONE;
@@ -136,7 +136,21 @@ static void draw_header(const GameList *list, const char *games_dir) {
     gfx_text(FONT_SMALL, LIST_X, HEADER_H + 18, LIST_W, ALIGN_LEFT, list->demo ? COL_WARN : COL_DIM, line);
 }
 
+// Video: ô tối có hình tam giác "phát"
+static void draw_video_icon(int x, int y) {
+    gfx_fill_rect(x, y, ICON_SIZE, ICON_SIZE, RGB(0x30, 0x34, 0x3c));
+    int h = ICON_SIZE / 2, x0 = x + ICON_SIZE / 2 - h / 3, y0 = y + (ICON_SIZE - h) / 2;
+    for (int i = 0; i < h; i++) {
+        int w = (i < h / 2 ? i : h - 1 - i) * 2 * 2 / 3 + 1;
+        gfx_fill_rect(x0, y0 + i, w, 1, COL_ACCENT);
+    }
+}
+
 static void draw_icon(GameEntry *g, int x, int y) {
+    if (g->video) {
+        draw_video_icon(x, y);
+        return;
+    }
     if (g->icon && !g->icon_tex)
         g->icon_tex = gfx_texture_argb(g->icon, g->icon_w, g->icon_h);
     if (g->icon_tex) {
@@ -201,6 +215,12 @@ static void draw_list(const Menu *m, GameList *list) {
         char sub[256] = "";
         if (!g->info_loaded) {
             snprintf(sub, sizeof(sub), "...");
+        } else if (g->video) {
+            const char *slash = strrchr(g->name, '/');
+            if (slash)
+                snprintf(sub, sizeof(sub), "%s  -  %.*s/", tr(S_VIDEO_TAG), (int)(slash - g->name), g->name);
+            else
+                snprintf(sub, sizeof(sub), "%s", tr(S_VIDEO_TAG));
         } else if (!g->valid) {
             snprintf(sub, sizeof(sub), "%s", tr(S_NO_MIDLET));
         } else {

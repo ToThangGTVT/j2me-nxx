@@ -1,4 +1,4 @@
-// Danh sách game .jar trong thư mục games (quét cả thư mục con)
+// Danh sách game .jar (và file video) trong thư mục games (quét cả thư mục con)
 #pragma once
 
 #include <stdbool.h>
@@ -9,6 +9,7 @@ typedef struct {
     char name[256];         // đường dẫn tương đối trong thư mục games, vd "RPG/abc.jar"
     char path[512];         // đường dẫn đầy đủ
     long size;              // byte, -1 nếu là item demo
+    bool video;             // file video (.3gp, .mp4...): mở bằng trình xem video
 
     // Đọc lười từ MANIFEST.MF / JAD (game_list_load_info)
     bool info_loaded;

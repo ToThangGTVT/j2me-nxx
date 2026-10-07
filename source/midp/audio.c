@@ -8,6 +8,7 @@
 #include <SDL.h>
 
 #include "../third_party/dr_mp3.h"
+#include "../video_dec.h"
 #include "../vm/vm.h"
 
 #define RATE        22050
@@ -652,6 +653,17 @@ static bool load_mp3(Player *p, const uint8_t *d, size_t size) {
     return true;
 }
 
+// AMR, AAC, M4A, tiếng trong 3GP/MP4... qua FFmpeg
+static bool load_ffmpeg(Player *p, const uint8_t *d, size_t size) {
+    int16_t *pcm = NULL;
+    size_t frames = 0;
+    if (!vdec_decode_audio(d, size, RATE, 1, &pcm, &frames))
+        return false;
+    set_pcm(p, pcm, (uint32_t)frames, RATE);
+    free(pcm);
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // Đọc MIDI (SMF 0/1)
 
@@ -876,16 +888,20 @@ static NativeResult A_create0(VMThread *t, Value *args, Value *ret) {
         return NATIVE_OK;
     lock();
     int h = player_alloc();
+    unlock();
     if (h) {
+        // Giải mã ngoài khoá (FFmpeg có thể mất vài trăm ms): player chưa có kind nên bộ trộn bỏ qua,
+        // set_pcm / load_midi gán kind sau cùng
         Player *p = &players[h];
         const uint8_t *d = ARRAY_DATA(data, uint8_t);
         size_t n = (size_t)ARRAY_LEN(data);
-        if (!load_wav(p, d, n) && !load_midi(p, d, n) && !load_mp3(p, d, n)) {
+        if (!load_wav(p, d, n) && !load_midi(p, d, n) && !load_mp3(p, d, n) && !load_ffmpeg(p, d, n)) {
+            lock();
             player_free(p);
+            unlock();
             h = 0;
         }
     }
-    unlock();
     ret->i = h;
     return NATIVE_OK;
 }

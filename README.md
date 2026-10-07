@@ -13,8 +13,8 @@ Chạy file `.jar` của game điện thoại Java cũ trực tiếp trên Switc
 | `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, API Nokia (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; font Google Sans (OFL) có đủ chữ tiếng Việt |
-| `source/` | App: danh sách game, cài đặt, phiên chạy game (`emu.c`), lớp nền tảng Switch/desktop |
-| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
+| `source/` | App: danh sách game, cài đặt, phiên chạy game (`emu.c`), giải mã video qua FFmpeg (`video_dec.c`), trình xem video (`video_screen.c`), lớp nền tảng Switch/desktop |
+| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video trên Canvas và trong Form) |
 
 Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng vào binary dưới dạng `classlib.jar`.
 
@@ -23,21 +23,21 @@ Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng v�
 Cần: [devkitPro](https://devkitpro.org/wiki/Getting_Started) (gói `switch-dev`), JDK (`javac`, `jar`), CMake.
 
 ```bash
-sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls
+sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg
 export DEVKITPRO=/opt/devkitpro
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
 ```
 
-Kết quả: `build/j2me-nx.nro`. Thiếu mbedTLS thì vẫn build được, chỉ không có `https://` / `ssl://`.
+Kết quả: `build/j2me-nx.nro`. Thiếu mbedTLS thì vẫn build được, chỉ không có `https://` / `ssl://`; thiếu FFmpeg thì không có video và AMR/AAC.
 
 ### Bản desktop (test nhanh trên Mac/Linux)
 
 ```bash
-brew install sdl2 sdl2_ttf libpng mbedtls pkgconf
+brew install sdl2 sdl2_ttf libpng mbedtls ffmpeg pkgconf
 cmake -B build-desktop -DJ2ME_NX_DESKTOP=ON
 cmake --build build-desktop
-./build-desktop/j2me-nx path/to/game.jar
+./build-desktop/j2me-nx path/to/game.jar     # hoặc file video .mp4 / .3gp
 ```
 
 Biến môi trường: `J2ME_NX_GAMES` (thư mục game, mặc định `./games`), `J2ME_NX_DATA` (log, save, cài đặt; mặc định `./data`).
@@ -72,6 +72,8 @@ GitHub Actions tự build mỗi lần push; push tag `v*` (vd `git tag v0.1.0 &&
 
 Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
+**Xem video**: chép file `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... vào cùng thư mục `games`, chúng hiện trong danh sách với biểu tượng ▶. Khi xem: **A** phát / dừng, **trái / phải** tua 10 giây, **L / R** tua 1 phút, **lên / xuống** âm lượng, **B** thoát.
+
 Danh sách game hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng game (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
 Trong danh sách game:
@@ -83,14 +85,15 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 ## Trạng thái
 
 - Đã chạy: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (bàn phím ảo của Switch), RecordStore, Timer, thread / wait / notify.
-- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (tổng hợp bằng sóng cơ bản + trống, không cần soundfont), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR chưa phát được (game vẫn chạy, chỉ im lặng).
+- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (tổng hợp bằng sóng cơ bản + trống, không cần soundfont), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A và tiếng trong 3GP/MP4 giải mã bằng FFmpeg.
+- Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) từ JAR, `file://` hoặc `http://`; vẽ đè lên Canvas (`USE_DIRECT_VIDEO`, cả toàn màn hình) hoặc trong Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), lặp, tua. Chưa có camera (`capture://`).
 - Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ), `datagram://` (UDP).
 - File: JSR-75 FileConnection với ổ `C:/`, `E:/` trong sandbox riêng của từng game (`sdmc:/switch/j2me-nx/files/<game>/`).
 - API của hãng: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
 - Giả lập để game không lỗi thiếu lớp: Bluetooth (JSR-82), SMS (JSR-120, gửi luôn báo lỗi), `PushRegistry`.
 - Kiểu phím theo hãng (Nokia, Sony Ericsson, Samsung, Motorola, Siemens, LG) trong Cài đặt / Tuỳ chọn game; JAR nhiều MIDlet có hộp chọn MIDlet.
 - 3D: JSR-184 M3G (`javax.microedition.m3g`) với bộ dựng hình phần mềm (`source/midp/m3g.c`): Z-buffer, texture có hiệu chỉnh phối cảnh, chiếu sáng theo đỉnh (ambient/directional/omni/spot), fog, blend, Sprite3D, Skinned/MorphingMesh, animation keyframe, `Loader` đọc file `.m3g` (kể cả section nén zlib), `Group.pick`.
-- Chưa có: MascotCapsule 3D (game Sony Ericsson), JSR-226 SVG, AMR, cảm biến.
+- Chưa có: MascotCapsule 3D (game Sony Ericsson), JSR-226 SVG, camera, cảm biến.
 
 ### Test tự động trên desktop
 
@@ -117,8 +120,8 @@ It runs `.jar` files of old Java phone games directly on the Switch (homebrew `.
 | `javalib/src/` | CLDC 1.1 / MIDP 2.0 library written in Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, Nokia API (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; Google Sans font (OFL) with full Vietnamese coverage |
-| `source/` | App: game list, settings, game session (`emu.c`), Switch/desktop platform layer |
-| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
+| `source/` | App: game list, settings, game session (`emu.c`), FFmpeg video decoding (`video_dec.c`), video player (`video_screen.c`), Switch/desktop platform layer |
+| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video on a Canvas and in a Form) |
 
 The Java library is compiled with `javac` at build time and embedded in the binary as `classlib.jar`.
 
@@ -127,21 +130,21 @@ The Java library is compiled with `javac` at build time and embedded in the bina
 Requirements: [devkitPro](https://devkitpro.org/wiki/Getting_Started) (`switch-dev` package), a JDK (`javac`, `jar`), CMake.
 
 ```bash
-sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls
+sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg
 export DEVKITPRO=/opt/devkitpro
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
 ```
 
-Output: `build/j2me-nx.nro`. It still builds without mbedTLS, just without `https://` / `ssl://`.
+Output: `build/j2me-nx.nro`. It still builds without mbedTLS, just without `https://` / `ssl://`; without FFmpeg there is no video and no AMR/AAC.
 
 #### Desktop build (quick testing on Mac/Linux)
 
 ```bash
-brew install sdl2 sdl2_ttf libpng mbedtls pkgconf
+brew install sdl2 sdl2_ttf libpng mbedtls ffmpeg pkgconf
 cmake -B build-desktop -DJ2ME_NX_DESKTOP=ON
 cmake --build build-desktop
-./build-desktop/j2me-nx path/to/game.jar
+./build-desktop/j2me-nx path/to/game.jar     # or a .mp4 / .3gp video file
 ```
 
 Environment variables: `J2ME_NX_GAMES` (games folder, default `./games`), `J2ME_NX_DATA` (logs, saves, settings; default `./data`).
@@ -176,6 +179,8 @@ GitHub Actions builds on every push; pushing a `v*` tag (e.g. `git tag v0.1.0 &&
 
 The touch screen is mapped to pointer events.
 
+**Watching videos**: copy `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... files into the same `games` folder; they show up in the list with a ▶ icon. While watching: **A** play / pause, **left / right** seek 10 s, **L / R** seek 1 min, **up / down** volume, **B** exit.
+
 The game list shows the name, vendor, version and icon read from each game's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
 
 In the game list:
@@ -187,14 +192,15 @@ Screen size is chosen in this order: the game's own options > `Nokia-MIDlet-Orig
 ### Status
 
 - Working: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (Switch software keyboard), RecordStore, Timer, threads / wait / notify.
-- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (synthesized with basic waveforms + drums, no soundfont needed), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR does not play yet (the game still runs, just silently).
+- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (synthesized with basic waveforms + drums, no soundfont needed), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A and the audio track of 3GP/MP4 are decoded with FFmpeg.
+- Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) from the JAR, `file://` or `http://`; drawn over a Canvas (`USE_DIRECT_VIDEO`, including full screen) or inside a Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), looping, seeking. No camera (`capture://`) yet.
 - Networking: `socket://`, `http://`, `https://`, `ssl://` (TLS via mbedTLS, certificates are not verified), `datagram://` (UDP).
 - Files: JSR-75 FileConnection with `C:/` and `E:/` drives in a per-game sandbox (`sdmc:/switch/j2me-nx/files/<game>/`).
 - Vendor APIs: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
 - Stubbed so games don't fail on missing classes: Bluetooth (JSR-82), SMS (JSR-120, sending always reports an error), `PushRegistry`.
 - Per-vendor key layouts (Nokia, Sony Ericsson, Samsung, Motorola, Siemens, LG) in Settings / Game options; JARs with several MIDlets show a MIDlet picker.
 - 3D: JSR-184 M3G (`javax.microedition.m3g`) with a software renderer (`source/midp/m3g.c`): Z-buffer, perspective-correct textures, per-vertex lighting (ambient/directional/omni/spot), fog, blending, Sprite3D, Skinned/MorphingMesh, keyframe animation, a `Loader` for `.m3g` files (including zlib-compressed sections), `Group.pick`.
-- Not yet: MascotCapsule 3D (Sony Ericsson games), JSR-226 SVG, AMR, sensors.
+- Not yet: MascotCapsule 3D (Sony Ericsson games), JSR-226 SVG, camera, sensors.
 
 #### Automated testing on desktop
 

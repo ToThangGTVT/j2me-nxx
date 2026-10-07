@@ -106,6 +106,16 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_OFF]            = { "Tắt", "Off" },
     [S_SETTINGS_HINTS] = { "(<>) Đổi giá trị   (A) Chọn / nhập số   (B) Lưu và quay lại",
                            "(<>) Change   (A) Select / enter number   (B) Save and back" },
+    [S_VIDEO_TAG]      = { "Video", "Video" },
+    [S_VIDEO_HINTS]    = { "(A) Phát / dừng   (<>) Tua 10 giây   (L/R) Tua 1 phút   (^v) Âm lượng   (B) Thoát",
+                           "(A) Play / pause   (<>) Seek 10 s   (L/R) Seek 1 min   (^v) Volume   (B) Exit" },
+    [S_VIDEO_PAUSED]   = { "Tạm dừng", "Paused" },
+    [S_VIDEO_ENDED]    = { "Hết", "Ended" },
+    [S_VOLUME_FMT]     = { "Âm lượng %d%%", "Volume %d%%" },
+    [S_ERR_VIDEO]      = { "Không mở được video", "Cannot open video" },
+    [S_ERR_NO_VIDEO_BUILD] = { "Bản build này không có FFmpeg: không xem được video",
+                               "This build has no FFmpeg: video is not supported" },
+    [S_VIDEO_NO_OPTIONS] = { "Video không có tuỳ chọn riêng", "Videos have no options" },
 };
 
 void lang_set(Lang l) {

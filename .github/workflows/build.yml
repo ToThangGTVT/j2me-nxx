@@ -30,7 +30,7 @@ jobs:
           retry apt-get update
           retry apt-get install -y --no-install-recommends openjdk-17-jdk-headless cmake ninja-build pkg-config zip
           # Thư viện Switch có sẵn trong image devkitPro; không tải từ máy chủ devkitPro (hay chặn CI)
-          dkp-pacman -Q switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls
+          dkp-pacman -Q switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg
 
       - name: Build
         run: |

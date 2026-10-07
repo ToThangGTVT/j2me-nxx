@@ -1,21 +1,22 @@
-## J2ME-NX v0.3.2
+## J2ME-NX v0.4.0
 
-Better text for text-heavy apps like **Opera Mini**, and memory info in the FPS overlay.
+**Video** arrives: a built-in video player, video inside J2ME apps and games, and AMR/AAC audio, all powered by FFmpeg.
 
-### ✨ New
-- **Font size** (Settings → Font size, or per game with **−**): scale in-game text from 75% to 300%, like J2ME Loader. Apps lay out text using the new size, so nothing overflows. For Opera Mini, try a larger screen size together with a larger font, e.g. **480x800 + 200%**, for big and crisp text.
-- **Smooth text** (Settings → Smooth text, or per game): anti-aliased text instead of pixel text. Off by default so games keep the authentic phone look; turn it on for Opera Mini and other text-heavy apps.
-- **Show FPS** now also shows memory: `Java` (Java heap) and `RAM` (the whole app's memory, in use / available). The RAM limit tells you whether hbmenu is running in full RAM mode or Album mode. `log.txt` records RAM every second too.
+### 🎬 New
+- **Video player**: copy `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... files into the `games` folder; they appear in the list with a ▶ icon. Full screen with the correct aspect ratio, progress bar and time. **A** play / pause, **left / right** seek 10 s, **L / R** seek 1 min, **up / down** volume, **B** exit.
+- **Video in J2ME apps (MMAPI `VideoControl`)**: 3GP / MP4 (H.263, MPEG-4, H.264...) from the JAR, `file://` or `http://`. Video drawn over a Canvas (including full screen) or inside a Form, snapshots (`getSnapshot`), looping, seeking and volume. Picture is synced to the audio.
+- **AMR, AAC and M4A audio**: games whose sounds were silent because they used AMR can now play them.
 
 ### 🔧 Changed
-- The Settings screen fits more rows on screen.
+- Decoding large sounds no longer makes the game's audio stutter.
+- The `.nro` is larger (about 23 MB) because it bundles FFmpeg.
 
 ### 📌 Notes
 - Run hbmenu in **full RAM mode** (hold **R** while launching any game) instead of from the Album. Album (applet) mode has limited RAM and CPU, which can make games stutter.
 - When reporting a bug or stutter, enable **Show FPS** and attach `log.txt`.
 
 ### Installation
-- **Zip** (recommended): extract `j2me-nx-v0.3.2.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nx/games/` (subfolders are supported).
+- **Zip** (recommended): extract `j2me-nx-v0.4.0.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nx/games/` (subfolders are supported).
 - **NRO only**: copy `j2me-nx.nro` to `sdmc:/switch/`; the `games` folder is created on first launch.
 
 Launch **J2ME-NX** from hbmenu.

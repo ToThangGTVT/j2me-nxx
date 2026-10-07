@@ -72,6 +72,16 @@ void midp_framebuffer_unlock(void);
 int midp_take_frame_gap_max(void);
 bool midp_exit_requested(void);
 
+// Lớp phủ video lên màn hình game (midp.c, gọi từ luồng VM)
+int midp_overlay_add(void);
+void midp_overlay_set(int id, bool visible, int x, int y, int w, int h);
+void midp_overlay_frame(int id, const uint32_t *frame, int fw, int fh);
+void midp_overlay_remove(int id);
+
+// video.c
+void midp_video_register(void);
+void midp_video_shutdown(void);
+
 // m3g.c
 void midp_m3g_register(void);
 void midp_m3g_shutdown(void);

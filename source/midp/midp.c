@@ -33,6 +33,19 @@ static uint32_t *framebuffer;
 static int fb_w, fb_h;
 static bool fb_dirty;
 static double next_frame_ms;        // mốc được phép đẩy khung hình tiếp theo (giới hạn FPS)
+
+// Video (VideoControl USE_DIRECT_VIDEO) vẽ đè lên màn hình game. Khi có lớp phủ đang hiện,
+// fb_base giữ hình game gốc, framebuffer = fb_base + các lớp phủ.
+#define MAX_OVERLAYS 4
+typedef struct {
+    bool used, visible;
+    int x, y, w, h;
+    const uint32_t *frame;          // do video.c giữ, sống tới khi gỡ lớp phủ
+    int fw, fh;
+} Overlay;
+static Overlay overlays[MAX_OVERLAYS];
+static uint32_t *fb_base;
+static bool fb_has_overlay;         // framebuffer đang có lớp phủ (fb_base hợp lệ)
 static bool exit_requested;
 
 // ---------------------------------------------------------------------------
@@ -169,6 +182,106 @@ static NativeResult Display_postSerial0(VMThread *t, Value *args, Value *ret) {
     return NATIVE_OK;
 }
 
+// ---------------------------------------------------------------------------
+// Lớp phủ video (gọi khi đang giữ fb_lock)
+
+static bool any_overlay_visible(void) {
+    for (int i = 0; i < MAX_OVERLAYS; i++) {
+        if (overlays[i].used && overlays[i].visible && overlays[i].frame)
+            return true;
+    }
+    return false;
+}
+
+static void draw_overlay(const Overlay *o) {
+    int x0 = o->x < 0 ? 0 : o->x, y0 = o->y < 0 ? 0 : o->y;
+    int x1 = o->x + o->w > fb_w ? fb_w : o->x + o->w, y1 = o->y + o->h > fb_h ? fb_h : o->y + o->h;
+    if (x0 >= x1 || y0 >= y1 || o->fw <= 0 || o->fh <= 0)
+        return;
+    for (int y = y0; y < y1; y++) {
+        const uint32_t *src = o->frame + (size_t)((y - o->y) * o->fh / o->h) * o->fw;
+        uint32_t *dst = framebuffer + (size_t)y * fb_w;
+        for (int x = x0; x < x1; x++)
+            dst[x] = src[(x - o->x) * o->fw / o->w] | 0xff000000u;
+    }
+}
+
+// Dựng lại framebuffer từ hình game + lớp phủ
+static void compose_locked(void) {
+    if (!framebuffer)
+        return;
+    bool visible = any_overlay_visible();
+    if (visible && !fb_has_overlay) {
+        // Framebuffer lúc này chỉ có hình game: giữ lại làm nền
+        if (!fb_base)
+            fb_base = malloc((size_t)fb_w * fb_h * 4);
+        if (!fb_base)
+            return;
+        memcpy(fb_base, framebuffer, (size_t)fb_w * fb_h * 4);
+    }
+    if (fb_has_overlay || visible)
+        memcpy(framebuffer, fb_base, (size_t)fb_w * fb_h * 4);
+    fb_has_overlay = visible;
+    if (visible) {
+        for (int i = 0; i < MAX_OVERLAYS; i++) {
+            if (overlays[i].used && overlays[i].visible && overlays[i].frame)
+                draw_overlay(&overlays[i]);
+        }
+    }
+    fb_dirty = true;
+}
+
+int midp_overlay_add(void) {
+    int id = -1;
+    SDL_LockMutex(fb_lock);
+    for (int i = 0; i < MAX_OVERLAYS; i++) {
+        if (!overlays[i].used) {
+            memset(&overlays[i], 0, sizeof(Overlay));
+            overlays[i].used = true;
+            id = i;
+            break;
+        }
+    }
+    SDL_UnlockMutex(fb_lock);
+    return id;
+}
+
+void midp_overlay_set(int id, bool visible, int x, int y, int w, int h) {
+    if (id < 0 || id >= MAX_OVERLAYS)
+        return;
+    SDL_LockMutex(fb_lock);
+    Overlay *o = &overlays[id];
+    o->visible = visible && w > 0 && h > 0;
+    o->x = x;
+    o->y = y;
+    o->w = w;
+    o->h = h;
+    compose_locked();
+    SDL_UnlockMutex(fb_lock);
+}
+
+void midp_overlay_frame(int id, const uint32_t *frame, int fw, int fh) {
+    if (id < 0 || id >= MAX_OVERLAYS)
+        return;
+    SDL_LockMutex(fb_lock);
+    Overlay *o = &overlays[id];
+    o->frame = frame;
+    o->fw = fw;
+    o->fh = fh;
+    if (o->visible)
+        compose_locked();
+    SDL_UnlockMutex(fb_lock);
+}
+
+void midp_overlay_remove(int id) {
+    if (id < 0 || id >= MAX_OVERLAYS)
+        return;
+    SDL_LockMutex(fb_lock);
+    memset(&overlays[id], 0, sizeof(Overlay));
+    compose_locked();
+    SDL_UnlockMutex(fb_lock);
+}
+
 static NativeResult Display_flush0(VMThread *t, Value *args, Value *ret) {
     (void)ret;
     Object *arr = args[0].l;
@@ -176,7 +289,13 @@ static NativeResult Display_flush0(VMThread *t, Value *args, Value *ret) {
     if (!arr || w != fb_w || h != fb_h || ARRAY_LEN(arr) < w * h)
         return NATIVE_OK;
     SDL_LockMutex(fb_lock);
-    memcpy(framebuffer, ARRAY_DATA(arr, uint32_t), (size_t)w * h * 4);
+    if (fb_has_overlay) {
+        // Hình game mới vào fb_base rồi vẽ lại lớp phủ lên trên
+        memcpy(fb_base, ARRAY_DATA(arr, uint32_t), (size_t)w * h * 4);
+        compose_locked();
+    } else {
+        memcpy(framebuffer, ARRAY_DATA(arr, uint32_t), (size_t)w * h * 4);
+    }
     fb_dirty = true;
     jlong now_ms = vm_time_ms();
     if (last_flush_ms && now_ms - last_flush_ms > flush_gap_max)
@@ -405,6 +524,7 @@ void midp_register_natives(void) {
     midp_audio_register();
     midp_fileio_register();
     midp_m3g_register();
+    midp_video_register();
 }
 
 bool midp_start(const MidpConfig *c, const char *midlet_class) {
@@ -426,6 +546,10 @@ bool midp_start(const MidpConfig *c, const char *midlet_class) {
     fb_h = cfg.screen_h;
     free(framebuffer);
     framebuffer = calloc((size_t)fb_w * fb_h, 4);
+    free(fb_base);
+    fb_base = NULL;
+    fb_has_overlay = false;
+    memset(overlays, 0, sizeof(overlays));
     fb_dirty = true;
 
     vm_set_property("microedition.platform", cfg.platform ? cfg.platform : "Nokia6300/07.21");
@@ -465,6 +589,10 @@ void midp_shutdown(void) {
         SDL_LockMutex(fb_lock);
     free(framebuffer);
     framebuffer = NULL;
+    free(fb_base);
+    fb_base = NULL;
+    fb_has_overlay = false;
+    memset(overlays, 0, sizeof(overlays));
     fb_w = fb_h = 0;
     if (fb_lock)
         SDL_UnlockMutex(fb_lock);
@@ -474,4 +602,5 @@ void midp_shutdown(void) {
     midp_net_shutdown();
     midp_audio_shutdown();
     midp_m3g_shutdown();
+    midp_video_shutdown();
 }

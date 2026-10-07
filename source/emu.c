@@ -42,6 +42,10 @@ static SDL_Texture *screen_tex;
 // Sharp-bilinear: phóng nguyên lần (giữ điểm ảnh) vào texture trung gian rồi thu mịn xuống màn hình
 static SDL_Texture *sharp_tex;
 static bool sharp_dirty;
+// Chữ mịn nét cao: khung hình gấp hires_k lần (chỉ khi game có chữ vẽ bằng font hệ thống)
+static SDL_Texture *hires_tex;
+static int hires_k;
+static bool show_hires;
 // Đo hiệu năng. Cài đặt -> Hiện FPS: hiện ở góc màn hình và ghi log ra <data>/log.txt
 // (desktop: J2ME_NX_PROF=1 ghi ra stderr)
 static double stat_vm_max, stat_vm_sum;
@@ -543,6 +547,17 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     midp_audio_set_soundfont(sf == SOUNDFONT_FILE ? sf2 : sf == SOUNDFONT_BUILTIN ? MIDP_SOUNDFONT_BUILTIN : NULL);
     vkb_start(settings()->vkb_bubble, vkb_send);
 
+    // Font hệ thống: tự khử răng cưa và vẽ ở cỡ gần độ phân giải màn hình (hệ số nguyên nhỏ nhất >= tỉ lệ
+    // phóng). Chữ mịn thường chỉ khử răng cưa ở độ phân giải của game.
+    bool system_font = gs.system_font >= 0 ? gs.system_font != 0 : settings()->system_font;
+    bool smooth_text = system_font || (gs.smooth_text >= 0 ? gs.smooth_text != 0 : settings()->smooth_text);
+    hires_k = system_font ? (dst.h + scr_h - 1) / scr_h : 0;
+    if (hires_k > 4)
+        hires_k = 4;
+    if (hires_k < 2)
+        hires_k = 0;
+    show_hires = false;
+
     MidpConfig mc = {
         .screen_w = scr_w,
         .screen_h = scr_h,
@@ -553,7 +568,9 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         .platform_request = host_platform_request,
         .vibrate = NULL,
         .fps_limit = fps_limit,
-        .smooth_text = gs.smooth_text >= 0 ? gs.smooth_text != 0 : settings()->smooth_text,
+        .smooth_text = smooth_text,
+        .text_hires = hires_k,
+        .system_font = system_font,
         .font_scale = gs.font_scale > 0 ? gs.font_scale : settings()->font_scale,
         .lang = lang_code(lang_get()),
         .platform = keymap->platform,
@@ -579,6 +596,12 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         if (sharp_tex)
             SDL_SetTextureScaleMode(sharp_tex, SDL_ScaleModeLinear);
         sharp_dirty = true;
+    }
+    if (hires_k) {
+        hires_tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                      scr_w * hires_k, scr_h * hires_k);
+        if (hires_tex)
+            SDL_SetTextureScaleMode(hires_tex, SDL_ScaleModeLinear);
     }
     stat_vm_max = 0;
     stat_vm_sum = 0;
@@ -626,6 +649,9 @@ void emu_stop(void) {
     if (sharp_tex)
         SDL_DestroyTexture(sharp_tex);
     sharp_tex = NULL;
+    if (hires_tex)
+        SDL_DestroyTexture(hires_tex);
+    hires_tex = NULL;
     zip_close(syslib);
     zip_close(game);
     syslib = game = NULL;
@@ -1055,14 +1081,23 @@ static void draw_game(void) {
     Uint64 tl0 = SDL_GetPerformanceCounter();
     const uint32_t *fb = midp_framebuffer_lock(&w, &h, &dirty);
     Uint64 tl1 = SDL_GetPerformanceCounter();
-    if (fb && dirty)
-        SDL_UpdateTexture(screen_tex, NULL, fb, w * 4);
+    if (fb && dirty) {
+        int k = 0;
+        const uint32_t *hi = hires_tex ? midp_framebuffer_hires(&k) : NULL;
+        show_hires = hi && k == hires_k;
+        if (show_hires)
+            SDL_UpdateTexture(hires_tex, NULL, hi, w * k * 4);
+        else
+            SDL_UpdateTexture(screen_tex, NULL, fb, w * 4);
+    }
     midp_framebuffer_unlock();
     Uint64 tl2 = SDL_GetPerformanceCounter();
     double f = 1000.0 / SDL_GetPerformanceFrequency();
     if ((tl2 - tl0) * f > 5)
         vm_prof_log("fb chờ khoá %.1f ms, upload %.1f ms", (tl1 - tl0) * f, (tl2 - tl1) * f);
-    if (sharp_tex) {
+    if (show_hires) {
+        SDL_RenderCopy(gfx_renderer(), hires_tex, NULL, &dst);
+    } else if (sharp_tex) {
         SDL_Renderer *r = gfx_renderer();
         if (dirty || sharp_dirty) {
             SDL_SetRenderTarget(r, sharp_tex);

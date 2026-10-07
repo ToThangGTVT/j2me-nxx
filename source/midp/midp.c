@@ -46,6 +46,9 @@ typedef struct {
 static Overlay overlays[MAX_OVERLAYS];
 static uint32_t *fb_base;
 static bool fb_has_overlay;         // framebuffer đang có lớp phủ (fb_base hợp lệ)
+// Khung hình nét cao (chữ mịn vẽ ở độ phân giải màn hình), gấp cfg.text_hires lần
+static uint32_t *fb_hi;
+static bool fb_hi_valid;
 static bool exit_requested;
 
 // ---------------------------------------------------------------------------
@@ -102,6 +105,11 @@ const uint32_t *midp_framebuffer_lock(int *w, int *h, bool *dirty) {
         fb_dirty = false;
     }
     return framebuffer;
+}
+
+const uint32_t *midp_framebuffer_hires(int *k) {
+    *k = cfg.text_hires;
+    return fb_hi_valid && !fb_has_overlay ? fb_hi : NULL;
 }
 
 void midp_framebuffer_unlock(void) {
@@ -296,6 +304,11 @@ static NativeResult Display_flush0(VMThread *t, Value *args, Value *ret) {
     } else {
         memcpy(framebuffer, ARRAY_DATA(arr, uint32_t), (size_t)w * h * 4);
     }
+    if (cfg.text_hires >= 2 && !fb_hi) {
+        int k = cfg.text_hires;
+        fb_hi = malloc((size_t)w * k * h * k * 4);
+    }
+    fb_hi_valid = fb_hi && !fb_has_overlay && midp_text_compose(arr, ARRAY_DATA(arr, uint32_t), w, h, fb_hi);
     fb_dirty = true;
     jlong now_ms = vm_time_ms();
     if (last_flush_ms && now_ms - last_flush_ms > flush_gap_max)
@@ -540,7 +553,8 @@ void midp_register_natives(void) {
 
 bool midp_start(const MidpConfig *c, const char *midlet_class) {
     cfg = *c;
-    midp_graphics_set_text_style(cfg.smooth_text, cfg.font_scale);
+    midp_graphics_set_text_style(cfg.smooth_text, cfg.font_scale, cfg.system_font, cfg.text_hires, cfg.screen_w,
+                                 cfg.screen_h);
     if (!q_lock) {
         q_lock = SDL_CreateMutex();
         fb_lock = SDL_CreateMutex();
@@ -560,6 +574,11 @@ bool midp_start(const MidpConfig *c, const char *midlet_class) {
     free(fb_base);
     fb_base = NULL;
     fb_has_overlay = false;
+    free(fb_hi);
+    fb_hi = NULL;
+    fb_hi_valid = false;
+    if (cfg.text_hires < 2)
+        cfg.text_hires = 0;
     memset(overlays, 0, sizeof(overlays));
     fb_dirty = true;
 
@@ -602,6 +621,9 @@ void midp_shutdown(void) {
     framebuffer = NULL;
     free(fb_base);
     fb_base = NULL;
+    free(fb_hi);
+    fb_hi = NULL;
+    fb_hi_valid = false;
     fb_has_overlay = false;
     memset(overlays, 0, sizeof(overlays));
     fb_w = fb_h = 0;

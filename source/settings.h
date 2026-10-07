@@ -13,6 +13,7 @@ typedef struct {
     bool show_help;         // hiện bảng phím bên trái khi chơi
     bool show_fps;          // hiện FPS và thời gian VM ở góc màn hình
     bool smooth_text;       // chữ trong game khử răng cưa (tắt: chữ điểm ảnh như điện thoại thật)
+    bool system_font;       // chữ trong game dùng font hệ thống (tắt: font nhúng, font hệ thống chỉ bù ký tự thiếu)
     int font_scale;         // cỡ chữ trong game, % so với cỡ gốc
     bool check_update;      // mở app thì kiểm tra bản mới trên GitHub
     bool vkb_bubble;        // bong bóng bàn phím ảo QWERTY khi chơi
@@ -24,6 +25,7 @@ typedef struct {
     int screen_w, screen_h; // 0 = tự động (MANIFEST, rồi tới cài đặt chung)
     int keymap;             // -1 = theo cài đặt chung
     int smooth_text;        // -1 = theo cài đặt chung, 0 tắt, 1 bật
+    int system_font;        // -1 = theo cài đặt chung, 0 tắt, 1 bật
     int font_scale;         // -1 = theo cài đặt chung
 } GameSettings;
 

@@ -34,8 +34,14 @@ OpenUrlResult platform_open_url(const char *url);
 // RAM của cả app (byte). total = 0 nếu không biết (desktop)
 void platform_mem_usage(size_t *used, size_t *total);
 
-// Font hệ thống: shared font của Switch, hoặc font có sẵn trên desktop
+// Font giao diện (Google Sans nhúng); lỗi thì dùng font hệ thống
 TTF_Font *platform_open_font(int ptsize);
 
 // Font icon nút (NintendoExt) của Switch; desktop trả về NULL
 TTF_Font *platform_open_icon_font(int ptsize);
+
+// Font hệ thống cho chữ trong game, theo thứ tự ưu tiên: Switch dùng shared font các thứ tiếng
+// (Nhật/Âu-Mỹ, Trung giản thể, Trung phồn thể, Hàn...), desktop dùng font có sẵn trên máy.
+// platform_open_system_font trả NULL nếu font thứ index không có trên máy.
+int platform_system_font_count(void);
+TTF_Font *platform_open_system_font(int index, int ptsize);

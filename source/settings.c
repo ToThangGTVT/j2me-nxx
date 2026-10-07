@@ -34,6 +34,7 @@ static Settings current = {
     .show_help = false,
     .show_fps = false,
     .smooth_text = false,
+    .system_font = false,
     .font_scale = 100,
     .check_update = true,
     .soundfont = "-",       // mặc định tắt: bộ tổng hợp sóng
@@ -73,6 +74,8 @@ void settings_load(void) {
             current.scale_mode = v;
         else if (sscanf(line, "smooth_text=%d", &v) == 1)
             current.smooth_text = v != 0;
+        else if (sscanf(line, "system_font=%d", &v) == 1)
+            current.system_font = v != 0;
         else if (sscanf(line, "font_scale=%d", &v) == 1 && v >= 50 && v <= 400)
             current.font_scale = v;
         else if (sscanf(line, "check_update=%d", &v) == 1)
@@ -103,6 +106,7 @@ bool settings_save(void) {
     fprintf(f, "keymap=%d\n", current.keymap);
     fprintf(f, "scale_mode=%d\n", current.scale_mode);
     fprintf(f, "smooth_text=%d\n", current.smooth_text ? 1 : 0);
+    fprintf(f, "system_font=%d\n", current.system_font ? 1 : 0);
     fprintf(f, "font_scale=%d\n", current.font_scale);
     fprintf(f, "check_update=%d\n", current.check_update ? 1 : 0);
     fprintf(f, "vkb_bubble=%d\n", current.vkb_bubble ? 1 : 0);
@@ -158,6 +162,7 @@ void game_settings_load(const char *game, GameSettings *out) {
     out->screen_w = out->screen_h = 0;
     out->keymap = -1;
     out->smooth_text = -1;
+    out->system_font = -1;
     out->font_scale = -1;
     char path[512];
     game_path(game, path, sizeof(path));
@@ -173,6 +178,8 @@ void game_settings_load(const char *game, GameSettings *out) {
             out->keymap = v;
         else if (sscanf(line, "smooth_text=%d", &v) == 1 && v >= -1 && v <= 1)
             out->smooth_text = v;
+        else if (sscanf(line, "system_font=%d", &v) == 1 && v >= -1 && v <= 1)
+            out->system_font = v;
         else if (sscanf(line, "font_scale=%d", &v) == 1 && (v == -1 || (v >= 50 && v <= 400)))
             out->font_scale = v;
         else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && settings_valid_screen(w, h)) {
@@ -192,7 +199,7 @@ bool game_settings_save(const char *game, const GameSettings *gs) {
     game_path(game, path, sizeof(path));
     // Toàn mặc định thì xoá file cho gọn
     if (gs->fps_limit < 0 && gs->screen_w == 0 && gs->keymap < 0 && gs->smooth_text < 0 &&
-        gs->font_scale < 0) {
+        gs->system_font < 0 && gs->font_scale < 0) {
         remove(path);
         return true;
     }
@@ -204,6 +211,7 @@ bool game_settings_save(const char *game, const GameSettings *gs) {
         fprintf(f, "screen=%dx%d\n", gs->screen_w, gs->screen_h);
     fprintf(f, "keymap=%d\n", gs->keymap);
     fprintf(f, "smooth_text=%d\n", gs->smooth_text);
+    fprintf(f, "system_font=%d\n", gs->system_font);
     fprintf(f, "font_scale=%d\n", gs->font_scale);
     return fclose(f) == 0;
 }

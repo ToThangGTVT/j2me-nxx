@@ -108,6 +108,8 @@ typedef enum {
     S_SOUNDFONT_AUTO,       // %s
     S_SOUNDFONT_NONE,
     S_SOUNDFONT_BUILTIN,
+    S_SYSTEM_FONT,
+    S_SYSTEM_FONT_HINT,
     S_ON,
     S_OFF,
     S_SETTINGS_HINTS,

@@ -149,6 +149,13 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_SOUNDFONT_AUTO] = { "Tự động (%s)", "Auto (%s)" },
     [S_SOUNDFONT_NONE] = { "Tắt - tổng hợp sóng", "Off - wave synth" },
     [S_SOUNDFONT_BUILTIN] = { "TimGM6mb (có sẵn)", "TimGM6mb (built-in)" },
+    [S_SYSTEM_FONT]    = { "Font hệ thống", "System font" },
+    [S_SYSTEM_FONT_HINT] = { "Chữ trong game dùng font của máy (Switch: font hệ thống có chữ Nhật, Trung, Hàn), "
+                             "tự mịn và vẽ nét theo độ phân giải màn hình. Tắt thì dùng font của app; ký tự font "
+                             "đang dùng không có luôn được lấy từ font kia.",
+                             "In-game text uses the device font (Switch: system fonts with Japanese, Chinese, Korean), "
+                             "always smooth and drawn sharp at screen resolution. When off, the app font is used; "
+                             "characters missing from either font are taken from the other." },
     [S_ON]             = { "Bật", "On" },
     [S_OFF]            = { "Tắt", "Off" },
     [S_SETTINGS_HINTS] = { ICON_LEFT ICON_RIGHT " Đổi giá trị   " ICON_A " Chọn / nhập số   " ICON_B " Lưu và quay lại",

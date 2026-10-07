@@ -36,6 +36,7 @@ typedef enum {
     ITEM_KEYMAP,
     ITEM_SCALE,
     ITEM_SMOOTH_TEXT,
+    ITEM_SYSTEM_FONT,
     ITEM_FONT_SCALE,
     ITEM_SOUNDFONT,
     ITEM_VKB_BUBBLE,
@@ -103,7 +104,11 @@ static int visible_items(ItemId *out) {
     }
     out[n++] = ITEM_KEYMAP;
     out[n++] = ITEM_FONT_SCALE;
-    out[n++] = ITEM_SMOOTH_TEXT;
+    out[n++] = ITEM_SYSTEM_FONT;
+    // Font hệ thống luôn mịn: bỏ mục chữ mịn (đặt sau để bật/tắt không làm nhảy con trỏ)
+    bool sys = game_mode && game.system_font >= 0 ? game.system_font == 1 : settings()->system_font;
+    if (!sys)
+        out[n++] = ITEM_SMOOTH_TEXT;
     if (!game_mode) {
         out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;
@@ -313,6 +318,14 @@ bool settings_screen_update(void) {
                 settings()->smooth_text = !settings()->smooth_text;
         }
         break;
+    case ITEM_SYSTEM_FONT:
+        if (dir || a) {
+            if (game_mode)      // Mặc định -> Bật -> Tắt
+                game.system_font = game.system_font < 0 ? 1 : game.system_font == 1 ? 0 : -1;
+            else
+                settings()->system_font = !settings()->system_font;
+        }
+        break;
     case ITEM_KEYMAP:
         if (dir || a) {
             // Chế độ game có thêm "Mặc định" (-1)
@@ -411,6 +424,14 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
             snprintf(value, size, tr(S_DEFAULT_FMT), tr(s->smooth_text ? S_ON : S_OFF));
         else
             snprintf(value, size, "%s", tr((game_mode ? game.smooth_text == 1 : s->smooth_text) ? S_ON : S_OFF));
+        break;
+    case ITEM_SYSTEM_FONT:
+        *label = tr(S_SYSTEM_FONT);
+        *hint = tr(S_SYSTEM_FONT_HINT);
+        if (game_mode && game.system_font < 0)
+            snprintf(value, size, tr(S_DEFAULT_FMT), tr(s->system_font ? S_ON : S_OFF));
+        else
+            snprintf(value, size, "%s", tr((game_mode ? game.system_font == 1 : s->system_font) ? S_ON : S_OFF));
         break;
     case ITEM_SHOW_HELP:
         *label = tr(S_SHOW_HELP);

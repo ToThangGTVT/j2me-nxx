@@ -138,6 +138,13 @@ typedef enum {
     S_UPLOAD_WRITE_FAILED,
     S_UPLOAD_HINTS,
     S_UPLOAD_DONE_STATUS,   // %d
+    // Xoá file
+    S_DELETE_GAME,
+    S_DELETE_VIDEO,
+    S_DELETE_KEEP_SAVE,
+    S_DELETE_HINTS,
+    S_DELETED,              // %s
+    S_DELETE_FAILED,        // %s
     // Trang web trên điện thoại
     S_WEB_TITLE,
     S_WEB_INTRO,

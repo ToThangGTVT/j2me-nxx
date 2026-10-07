@@ -12,8 +12,8 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_FOLDER]         = { "Thư mục: %s", "Folder: %s" },
     [S_NO_MIDLET]      = { "Không có MIDlet-1 trong MANIFEST: có thể không chạy được",
                            "No MIDlet-1 in MANIFEST: may not run" },
-    [S_MENU_HINTS]     = { ICON_A " Chơi   " ICON_MINUS " Tùy chọn game   " ICON_X " Cài đặt   " ICON_Y " Quét lại   " ICON_R " Gửi game   " ICON_PLUS " Thoát",
-                           ICON_A " Play   " ICON_MINUS " Game options   " ICON_X " Settings   " ICON_Y " Rescan   " ICON_R " Send games   " ICON_PLUS " Exit" },
+    [S_MENU_HINTS]     = { ICON_A " Chơi   " ICON_MINUS " Tùy chọn game   " ICON_X " Cài đặt   " ICON_Y " Quét lại   " ICON_R " Gửi game   " ICON_L " Xoá   " ICON_PLUS " Thoát",
+                           ICON_A " Play   " ICON_MINUS " Game options   " ICON_X " Settings   " ICON_Y " Rescan   " ICON_R " Send games   " ICON_L " Delete   " ICON_PLUS " Exit" },
 
     [S_PICK_MIDLET]    = { "Chọn MIDlet:  " ICON_A " Chạy   " ICON_B " Quay lại", "Choose MIDlet:  " ICON_A " Run   " ICON_B " Back" },
 
@@ -192,6 +192,13 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_UPLOAD_WRITE_FAILED] = { "Không ghi được file vào thẻ nhớ", "Cannot write the file to the SD card" },
     [S_UPLOAD_HINTS]   = { ICON_B " Đóng", ICON_B " Close" },
     [S_UPLOAD_DONE_STATUS] = { "Đã nhận %d file từ điện thoại", "Received %d file(s) from your phone" },
+    [S_DELETE_GAME]    = { "Xoá game này?", "Delete this game?" },
+    [S_DELETE_VIDEO]   = { "Xoá video này?", "Delete this video?" },
+    [S_DELETE_KEEP_SAVE] = { "Dữ liệu save và tuỳ chọn riêng của game vẫn được giữ lại.",
+                             "Save data and per-game options are kept." },
+    [S_DELETE_HINTS]   = { ICON_A " Xoá   " ICON_B " Huỷ", ICON_A " Delete   " ICON_B " Cancel" },
+    [S_DELETED]        = { "Đã xoá: %s", "Deleted: %s" },
+    [S_DELETE_FAILED]  = { "Không xoá được: %s", "Could not delete: %s" },
     [S_WEB_TITLE]      = { "Gửi game, video lên Switch", "Send games and videos to the Switch" },
     [S_WEB_INTRO]      = { "Chọn game .jar (và .jad nếu có) hoặc video (.mp4, .3gp, .mkv...). File được lưu vào "
                            "thư mục games và hiện trong danh sách khi đóng màn hình gửi game trên Switch.",

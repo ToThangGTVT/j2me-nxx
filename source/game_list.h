@@ -35,6 +35,11 @@ void game_list_load_info(GameEntry *g);
 void game_list_id(const GameEntry *g, char *out, size_t size);
 void game_list_free(GameList *list);
 
+// File .jad cùng tên cạnh file .jar (đuôi .jad hoặc .JAD); false nếu không có
+bool game_list_find_jad(const GameEntry *g, char *out, size_t size);
+// Xoá file game (kèm .jad cùng tên) hoặc file video. Không đụng tới save RMS / tuỳ chọn riêng
+bool game_list_delete(const GameEntry *g);
+
 // Đuôi file video mở được bằng trình xem video (".3gp", ".mp4"...)
 extern const char *const game_list_video_exts[];
 extern const int game_list_video_ext_count;

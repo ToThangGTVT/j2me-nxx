@@ -88,6 +88,8 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
 **Gửi game, video từ điện thoại**: ở danh sách game bấm **R**, Switch hiện mã QR. Điện thoại (cùng mạng Wi-Fi với Switch) quét mã để mở trang tải lên, chọn một hoặc nhiều file game `.jar` / `.jad` hoặc video, file được lưu thẳng vào thư mục `games` (có thanh tiến trình trên cả điện thoại và Switch). Không quét được mã thì gõ địa chỉ hiện bên cạnh (dạng `http://192.168.x.x:8080/`) vào trình duyệt. Bấm **B** để đóng, danh sách tự quét lại.
 
+**Xoá game, video**: chọn file trong danh sách rồi bấm **L**, hộp xác nhận hiện tên và dung lượng file, bấm **A** để xoá (kèm file `.jad` cùng tên nếu có), **B** để huỷ. Dữ liệu save và tuỳ chọn riêng của game vẫn được giữ lại, chép lại game là chơi tiếp được.
+
 **Xem video**: chép file `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... vào cùng thư mục `games`, chúng hiện trong danh sách với biểu tượng ▶. Khi xem: **A** phát / dừng, **trái / phải** tua 10 giây, **L / R** tua 1 phút, **lên / xuống** âm lượng, **B** thoát.
 
 Danh sách game hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng game (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
@@ -205,6 +207,8 @@ The touch screen is mapped to pointer events.
 **SoundFont**: MIDI music is played with a SoundFont. `TimGM6mb` (~6 MB, GPL v2) is embedded in the `.nro`, so nothing extra needs to be copied. It is **off** by default (wave synth); turn it on in **Settings > MIDI SoundFont**. To use another General MIDI SoundFont, copy a `.sf2` file to `sdmc:/switch/j2me-nxx/soundfonts/` and pick it in the same setting: "Auto" uses the first `.sf2` file by name (or the built-in one if there is none), "TimGM6mb (built-in)" always uses the embedded one, "Off" uses the old wave synth (lighter). The whole `.sf2` is loaded into RAM, so prefer small files (under ~50 MB).
 
 **Sending games and videos from your phone**: press **R** in the game list and the Switch shows a QR code. Scan it with a phone on the same Wi-Fi network to open the upload page, then pick one or more `.jar` / `.jad` games or videos; they are saved straight into the `games` folder (with progress on both the phone and the Switch). If scanning does not work, type the address shown next to the code (like `http://192.168.x.x:8080/`) into the browser. Press **B** to close; the list is rescanned automatically.
+
+**Deleting games and videos**: select a file in the list and press **L**; a confirmation shows its name and size. Press **A** to delete it (along with the matching `.jad`, if any) or **B** to cancel. Save data and per-game options are kept, so copying the game back lets you continue where you left off.
 
 **Watching videos**: copy `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... files into the same `games` folder; they show up in the list with a ▶ icon. While watching: **A** play / pause, **left / right** seek 10 s, **L / R** seek 1 min, **up / down** volume, **B** exit.
 

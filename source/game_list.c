@@ -208,3 +208,30 @@ void game_list_free(GameList *list) {
     list->items = NULL;
     list->count = 0;
 }
+
+bool game_list_find_jad(const GameEntry *g, char *out, size_t size) {
+    if (g->video)
+        return false;
+    static const char *exts[] = { ".jad", ".JAD" };
+    for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++) {
+        snprintf(out, size, "%s", g->path);
+        char *dot = strrchr(out, '.');
+        if (!dot || (size_t)(dot - out) + 5 > size)
+            return false;
+        strcpy(dot, exts[i]);
+        struct stat st;
+        if (stat(out, &st) == 0 && S_ISREG(st.st_mode))
+            return true;
+    }
+    return false;
+}
+
+bool game_list_delete(const GameEntry *g) {
+    char jad[600];
+    bool has_jad = game_list_find_jad(g, jad, sizeof(jad));
+    if (remove(g->path) != 0)
+        return false;
+    if (has_jad)
+        remove(jad);
+    return true;
+}

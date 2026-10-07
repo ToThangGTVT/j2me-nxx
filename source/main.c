@@ -275,6 +275,19 @@ int main(int argc, char *argv[]) {
             update_screen_open();
             in_update = true;
             break;
+        case MENU_DELETE: {
+            GameEntry *g = &list.items[menu.cursor];
+            char title[128];
+            snprintf(title, sizeof(title), "%s", g->title);
+            bool ok = game_list_delete(g);
+            snprintf(menu.status, sizeof(menu.status), tr(ok ? S_DELETED : S_DELETE_FAILED), title);
+            if (ok) {
+                menu_free_textures(&list);
+                game_list_scan(&list, games_dir);
+                menu_clamp_cursor(&menu, &list);
+            }
+            break;
+        }
         case MENU_UPLOAD:
             upload_screen_open(games_dir);
             in_upload = true;

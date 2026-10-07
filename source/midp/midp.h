@@ -46,6 +46,7 @@ typedef struct {
     int fps_limit;                                          // 0 = không giới hạn
     bool smooth_text;                                       // chữ khử răng cưa (mặc định: chữ điểm ảnh)
     int font_scale;                                         // cỡ chữ, % so với cỡ gốc
+    int text_hires;                                         // chữ mịn vẽ nét cao gấp n lần (< 2 = tắt)
     const char *lang;                                       // "vi" / "en": ngôn ngữ giao diện MIDP
     const char *platform;                                   // microedition.platform
     // Mã phím của hãng: lên, xuống, trái, phải, fire, mềm trái, mềm phải, xoá
@@ -70,6 +71,8 @@ void midp_poll_events(void);
 // Giữ khoá tới khi gọi midp_framebuffer_unlock
 const uint32_t *midp_framebuffer_lock(int *w, int *h, bool *dirty);
 void midp_framebuffer_unlock(void);
+// Bản nét cao (gấp *k lần) của khung hình hiện tại khi có chữ nét cao, NULL nếu không. Gọi khi đang giữ khoá
+const uint32_t *midp_framebuffer_hires(int *k);
 // Khoảng cách lớn nhất giữa 2 khung hình game kể từ lần gọi trước (ms)
 int midp_take_frame_gap_max(void);
 bool midp_exit_requested(void);
@@ -106,5 +109,7 @@ void midp_tls_shutdown(void);
 
 // graphics.c
 void midp_graphics_register(void);
-void midp_graphics_set_text_style(bool smooth, int scale_pct);
+void midp_graphics_set_text_style(bool smooth, int scale_pct, int hires, int screen_w, int screen_h);
+// Ghép khung hình nét cao của mảng pixel arr (luồng VM); false nếu ảnh không có chữ nét cao
+bool midp_text_compose(void *arr, const uint32_t *px, int w, int h, uint32_t *out);
 void midp_graphics_shutdown(void);

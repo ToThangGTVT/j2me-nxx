@@ -45,8 +45,109 @@ static void init_slots(void) {
     slots_ready = true;
 }
 
+// ---------------------------------------------------------------------------
+// Lớp chữ nét cao. Khi bật chữ mịn, chữ vẽ lên ảnh cỡ màn hình được vẽ thêm một bản ở độ phân giải
+// k lần (k = hệ số phóng ra màn hình). Ảnh gốc vẫn y như cũ (getRGB, va chạm...); lúc đẩy ra màn hình,
+// pixel nào vẫn còn là chữ đã vẽ thì lấy khối k x k nét cao thay vì phóng to pixel thấp.
+// Pixel p lấy từ hi khi valid[p] và tag[p] == giá trị pixel hiện tại. Lệnh vẽ khác đè lên thì xoá valid;
+// so tag để bắt cả chỗ ghi thẳng vào mảng pixel từ Java (DirectGraphics, M3G...).
+
+#define MAX_LAYERS 3
+
+typedef struct {
+    Object *arr;                // mảng pixel của ảnh (GC không dời object)
+    int w, h;
+    uint32_t *hi;               // (w*k) x (h*k)
+    uint32_t *tag;
+    uint8_t *valid;
+    int bx0, by0, bx1, by1;     // khung bao các pixel valid; rỗng khi bx0 >= bx1
+    unsigned use;
+} TextLayer;
+
+static int hires_k;             // < 2 = tắt
+static int layer_w, layer_h;    // chỉ ảnh đúng cỡ màn hình mới có lớp chữ
+static TextLayer layers[MAX_LAYERS];
+static unsigned layer_clock;
+
+static TextLayer *layer_find(Object *arr) {
+    if (hires_k < 2 || !arr)
+        return NULL;
+    for (int i = 0; i < MAX_LAYERS; i++) {
+        if (layers[i].arr == arr) {
+            layers[i].use = ++layer_clock;
+            return &layers[i];
+        }
+    }
+    return NULL;
+}
+
+static void layer_free(TextLayer *L) {
+    free(L->hi);
+    free(L->tag);
+    free(L->valid);
+    memset(L, 0, sizeof(*L));
+}
+
+// Lấy lớp trống hoặc lớp lâu không dùng nhất
+static TextLayer *layer_create(Object *arr, int w, int h) {
+    if (hires_k < 2 || !arr || w != layer_w || h != layer_h)
+        return NULL;
+    TextLayer *L = &layers[0];
+    for (int i = 1; i < MAX_LAYERS && L->arr; i++) {
+        if (!layers[i].arr || layers[i].use < L->use)
+            L = &layers[i];
+    }
+    if (!L->hi) {
+        int k = hires_k;
+        L->hi = malloc((size_t)w * k * h * k * 4);
+        L->tag = malloc((size_t)w * h * 4);
+        L->valid = malloc((size_t)w * h);
+        if (!L->hi || !L->tag || !L->valid) {
+            layer_free(L);
+            return NULL;
+        }
+    }
+    memset(L->valid, 0, (size_t)w * h);
+    L->arr = arr;
+    L->w = w;
+    L->h = h;
+    L->bx0 = L->by0 = L->bx1 = L->by1 = 0;
+    L->use = ++layer_clock;
+    return L;
+}
+
+static void layer_grow(TextLayer *L, int x0, int y0, int x1, int y1) {
+    if (L->bx0 >= L->bx1) {
+        L->bx0 = x0; L->by0 = y0; L->bx1 = x1; L->by1 = y1;
+        return;
+    }
+    if (x0 < L->bx0) L->bx0 = x0;
+    if (y0 < L->by0) L->by0 = y0;
+    if (x1 > L->bx1) L->bx1 = x1;
+    if (y1 > L->by1) L->by1 = y1;
+}
+
+// Vùng [x0, x1) x [y0, y1) bị vẽ đè: về lại pixel thường
+static void layer_clear(TextLayer *L, int x0, int y0, int x1, int y1) {
+    if (x0 < L->bx0) x0 = L->bx0;
+    if (y0 < L->by0) y0 = L->by0;
+    if (x1 > L->bx1) x1 = L->bx1;
+    if (y1 > L->by1) y1 = L->by1;
+    for (int y = y0; y < y1 && x0 < x1; y++)
+        memset(L->valid + y * L->w + x0, 0, (size_t)(x1 - x0));
+}
+
+static void fill_block(TextLayer *L, int x, int y, uint32_t v) {
+    int k = hires_k, hw = L->w * k;
+    uint32_t *o = L->hi + (size_t)y * k * hw + x * k;
+    for (int dy = 0; dy < k; dy++, o += hw)
+        for (int dx = 0; dx < k; dx++)
+            o[dx] = v;
+}
+
 typedef struct {
     Object *img;
+    TextLayer *layer;           // lớp chữ nét cao của ảnh (nếu có)
     uint32_t *px;
     int w, h;
     int cx0, cy0, cx1, cy1;     // vùng clip [cx0, cx1) x [cy0, cy1)
@@ -65,6 +166,7 @@ static bool ctx_init(Object *g, Ctx *c) {
     Object *img = FIELD_L(g, G_img);
     Object *arr = FIELD_L(img, I_pixels);
     c->img = img;
+    c->layer = layer_find(arr);
     c->px = ARRAY_DATA(arr, uint32_t);
     c->w = FIELD_I(img, I_width);
     c->h = FIELD_I(img, I_height);
@@ -113,6 +215,8 @@ static inline void plot(Ctx *c, int x, int y) {
         return;
     uint32_t *p = &c->px[y * c->w + x];
     *p = blend(*p, c->color);
+    if (c->layer)
+        layer_clear(c->layer, x, y, x + 1, y + 1);
 }
 
 static void hspan(Ctx *c, int x0, int x1, int y) {
@@ -122,6 +226,8 @@ static void hspan(Ctx *c, int x0, int x1, int y) {
     if (x1 > c->cx1) x1 = c->cx1;
     if (x0 >= x1)
         return;
+    if (c->layer)
+        layer_clear(c->layer, x0, y, x1, y + 1);
     uint32_t *p = &c->px[y * c->w + x0];
     if ((c->color >> 24) == 255) {
         for (int x = x0; x < x1; x++)
@@ -371,6 +477,8 @@ static NativeResult G_drawRGB(VMThread *t, Value *args, Value *ret) {
         mark_maybe_transparent(&c);
     int r0 = y < c.cy0 ? c.cy0 - y : 0, r1 = y + h > c.cy1 ? c.cy1 - y : h;
     int k0 = x < c.cx0 ? c.cx0 - x : 0, k1 = x + w > c.cx1 ? c.cx1 - x : w;
+    if (c.layer)
+        layer_clear(c.layer, x + k0, y + r0, x + k1, y + r1);
     for (int r = r0; r < r1; r++) {
         const uint32_t *s = src + off + (int64_t)r * scan;
         uint32_t *d = c.px + (y + r) * c.w + x;
@@ -378,6 +486,39 @@ static NativeResult G_drawRGB(VMThread *t, Value *args, Value *ret) {
             d[k] = alpha ? blend(d[k], s[k]) : (s[k] | 0xff000000u);
     }
     return NATIVE_OK;
+}
+
+// Sau khi chép ảnh có lớp chữ (sl, mảng sp) sang ảnh đích không lật/xoay: chép theo các khối nét cao
+// còn đúng, chỗ khác về pixel thường. (ox, oy) = toạ độ nguồn - toạ độ đích.
+static void layer_copy(TextLayer *dl, const uint32_t *dp, TextLayer *sl, const uint32_t *sp, int ox, int oy,
+                       int x0, int y0, int x1, int y1) {
+    int k = hires_k, dhw = dl->w * k, shw = sl->w * k;
+    int vx0 = x1, vy0 = y1, vx1 = x0, vy1 = y0;
+    for (int y = y0; y < y1; y++) {
+        int sy = y + oy;
+        bool row_in = sy >= sl->by0 && sy < sl->by1;
+        for (int x = x0; x < x1; x++) {
+            int sx = x + ox;
+            int si = sy * sl->w + sx, di = y * dl->w + x;
+            if (row_in && sx >= sl->bx0 && sx < sl->bx1 && sl->valid[si] && sl->tag[si] == sp[si] &&
+                dp[di] == sp[si]) {
+                const uint32_t *s = sl->hi + (size_t)sy * k * shw + sx * k;
+                uint32_t *d = dl->hi + (size_t)y * k * dhw + x * k;
+                for (int dy = 0; dy < k; dy++, s += shw, d += dhw)
+                    memcpy(d, s, (size_t)k * 4);
+                dl->valid[di] = 1;
+                dl->tag[di] = dp[di];
+                if (x < vx0) vx0 = x;
+                if (x >= vx1) vx1 = x + 1;
+                if (y < vy0) vy0 = y;
+                if (y >= vy1) vy1 = y + 1;
+            } else {
+                dl->valid[di] = 0;
+            }
+        }
+    }
+    if (vx0 < vx1)
+        layer_grow(dl, vx0, vy0, vx1, vy1);
 }
 
 static NativeResult G_drawRegionImpl(VMThread *t, Value *args, Value *ret) {
@@ -408,6 +549,14 @@ static NativeResult G_drawRegionImpl(VMThread *t, Value *args, Value *ret) {
     bool src_opaque = FIELD_I(src, I_opaque) != 0;
     if (copy && !src_opaque)
         mark_maybe_transparent(&c);
+    // Ảnh nguồn có chữ nét cao (vd bộ đệm riêng của game vẽ ra màn hình): đích cũng cần lớp chữ
+    TextLayer *sl = tr == 0 ? layer_find(FIELD_L(src, I_pixels)) : NULL;
+    if (sl && (sl->bx0 >= sl->bx1 || sl == c.layer))
+        sl = NULL;
+    if (sl && !c.layer)
+        c.layer = layer_create(FIELD_L(c.img, I_pixels), c.w, c.h);
+    if (c.layer && !sl)
+        layer_clear(c.layer, x0, y0, x1, y1);
     if (tr == 0) {
         for (int y = y0; y < y1; y++) {
             const uint32_t *s = sp + (sy + y - dy) * sw + sx + (x0 - dx);
@@ -427,6 +576,8 @@ static NativeResult G_drawRegionImpl(VMThread *t, Value *args, Value *ret) {
                     d[i] = blend(d[i], p);
             }
         }
+        if (sl && c.layer)
+            layer_copy(c.layer, c.px, sl, sp, sx - dx, sy - dy, x0, y0, x1, y1);
         return NATIVE_OK;
     }
 
@@ -586,33 +737,60 @@ static NativeResult Image_decode0(VMThread *t, Value *args, Value *ret) {
 // Cỡ font (pt) cho SMALL / MEDIUM / LARGE
 static const int font_pt[3] = { 11, 13, 16 };
 static TTF_Font *fonts[12];
+static TTF_Font *fonts_hi[12];      // cỡ x hires_k cho lớp chữ nét cao
 // Chữ mịn (khử răng cưa) cho ứng dụng nhiều chữ như Opera Mini; tắt thì vẽ chữ điểm ảnh như điện thoại thật
 static bool smooth_text;
 static int font_scale = 100;        // % so với cỡ gốc
 
-void midp_graphics_set_text_style(bool smooth, int scale_pct) {
+void midp_graphics_set_text_style(bool smooth, int scale_pct, int hires, int screen_w, int screen_h) {
     smooth_text = smooth;
     font_scale = scale_pct > 0 ? scale_pct : 100;
+    hires_k = smooth && hires >= 2 ? hires : 0;
+    layer_w = screen_w;
+    layer_h = screen_h;
+}
+
+static TTF_Font *open_font(int key, int mul) {
+    int pt = (font_pt[key / 4] * font_scale + 50) / 100;
+    TTF_Font *f = platform_open_font((pt < 6 ? 6 : pt) * mul);
+    if (f) {
+        int style = TTF_STYLE_NORMAL;
+        if (key & 1)
+            style |= TTF_STYLE_BOLD;
+        if (key & 2)
+            style |= TTF_STYLE_ITALIC;
+        TTF_SetFontStyle(f, style);
+        if (!smooth_text) {
+            // Chữ điểm ảnh: căn lưới đơn sắc, không khử răng cưa
+            TTF_SetFontHinting(f, TTF_HINTING_MONO);
+        } else {
+            // Hinting nhẹ: giữ dáng chữ tròn như thiết kế
+#ifdef TTF_HINTING_LIGHT_SUBPIXEL
+            TTF_SetFontHinting(f, mul > 1 ? TTF_HINTING_LIGHT_SUBPIXEL : TTF_HINTING_LIGHT);
+#else
+            TTF_SetFontHinting(f, TTF_HINTING_LIGHT);
+#endif
+        }
+    }
+    return f;
+}
+
+static int font_key(int key) {
+    return key < 0 || key >= 12 ? 4 : key;
 }
 
 static TTF_Font *get_font(int key) {
-    if (key < 0 || key >= 12)
-        key = 4;
-    if (!fonts[key]) {
-        int pt = (font_pt[key / 4] * font_scale + 50) / 100;
-        fonts[key] = platform_open_font(pt < 6 ? 6 : pt);
-        if (fonts[key]) {
-            int style = TTF_STYLE_NORMAL;
-            if (key & 1)
-                style |= TTF_STYLE_BOLD;
-            if (key & 2)
-                style |= TTF_STYLE_ITALIC;
-            TTF_SetFontStyle(fonts[key], style);
-            // Chữ điểm ảnh: căn lưới đơn sắc, không khử răng cưa
-            TTF_SetFontHinting(fonts[key], smooth_text ? TTF_HINTING_LIGHT : TTF_HINTING_MONO);
-        }
-    }
+    key = font_key(key);
+    if (!fonts[key])
+        fonts[key] = open_font(key, 1);
     return fonts[key];
+}
+
+static TTF_Font *get_font_hi(int key) {
+    key = font_key(key);
+    if (!fonts_hi[key])
+        fonts_hi[key] = open_font(key, hires_k);
+    return fonts_hi[key];
 }
 
 // Cache mặt nạ alpha của chuỗi đã render
@@ -627,6 +805,7 @@ typedef struct {
 } TextMask;
 
 static TextMask text_cache[TEXT_CACHE];
+static TextMask text_cache_hi[TEXT_CACHE];
 
 static uint32_t text_hash(const char *s, int key) {
     uint32_t h = 2166136261u ^ (uint32_t)key;
@@ -635,13 +814,13 @@ static uint32_t text_hash(const char *s, int key) {
     return h;
 }
 
-static TextMask *get_mask(int key, const char *utf8) {
+static TextMask *get_mask(int key, const char *utf8, bool hi) {
     uint32_t h = text_hash(utf8, key);
-    TextMask *m = &text_cache[h % TEXT_CACHE];
+    TextMask *m = &(hi ? text_cache_hi : text_cache)[h % TEXT_CACHE];
     if (m->text && m->hash == h && m->key == key && strcmp(m->text, utf8) == 0)
         return m;
 
-    TTF_Font *f = get_font(key);
+    TTF_Font *f = hi ? get_font_hi(key) : get_font(key);
     if (!f)
         return NULL;
     SDL_Color white = { 255, 255, 255, 255 };
@@ -672,6 +851,61 @@ static TextMask *get_mask(int key, const char *utf8) {
     return m;
 }
 
+static int floor_div(int a, int k) {
+    return a >= 0 ? a / k : -((-a + k - 1) / k);
+}
+
+// Vẽ bản nét cao của chuỗi vào lớp chữ (trước khi vẽ bản thường). Trả về vùng pixel thấp bị ảnh hưởng
+// qua r[4] để gắn tag sau khi vẽ bản thường; false nếu không vẽ được.
+static bool layer_text(TextLayer *L, Ctx *c, int key, const char *utf8, int x, int y, const TextMask *m, int r[4]) {
+    TextMask *hm = get_mask(key, utf8, true);
+    TTF_Font *lo = get_font(key), *hf = get_font_hi(key);
+    if (!hm || !lo || !hf)
+        return false;
+    int k = hires_k;
+    // Khớp đường chân chữ của bản thường
+    int hx = x * k, hy = (y + TTF_FontAscent(lo)) * k - TTF_FontAscent(hf);
+    int x0 = floor_div(hx, k), y0 = floor_div(hy, k);
+    int x1 = floor_div(hx + hm->w + k - 1, k), y1 = floor_div(hy + hm->h + k - 1, k);
+    if (x < x0) x0 = x;
+    if (y < y0) y0 = y;
+    if (x + m->w > x1) x1 = x + m->w;
+    if (y + m->h > y1) y1 = y + m->h;
+    if (x0 < c->cx0) x0 = c->cx0;
+    if (y0 < c->cy0) y0 = c->cy0;
+    if (x1 > c->cx1) x1 = c->cx1;
+    if (y1 > c->cy1) y1 = c->cy1;
+    if (x0 >= x1 || y0 >= y1)
+        return false;
+
+    // Pixel chưa có bản nét cao (hoặc đã bị ghi đè): lấy nền từ pixel thấp hiện tại
+    for (int yy = y0; yy < y1; yy++) {
+        for (int xx = x0; xx < x1; xx++) {
+            int i = yy * L->w + xx;
+            if (!L->valid[i] || L->tag[i] != c->px[i]) {
+                fill_block(L, xx, yy, c->px[i]);
+                L->valid[i] = 1;
+            }
+        }
+    }
+
+    uint32_t rgb = c->color & 0xffffff, ca = c->color >> 24;
+    int hw = L->w * k;
+    int ys = y0 * k > hy ? y0 * k : hy, ye = y1 * k < hy + hm->h ? y1 * k : hy + hm->h;
+    int xs = x0 * k > hx ? x0 * k : hx, xe = x1 * k < hx + hm->w ? x1 * k : hx + hm->w;
+    for (int yy = ys; yy < ye; yy++) {
+        const uint8_t *a = hm->alpha + (yy - hy) * hm->w;
+        uint32_t *d = L->hi + (size_t)yy * hw;
+        for (int xx = xs; xx < xe; xx++) {
+            uint32_t al = a[xx - hx] * ca / 255;
+            if (al)
+                d[xx] = blend(d[xx], (al << 24) | rgb);
+        }
+    }
+    r[0] = x0; r[1] = y0; r[2] = x1; r[3] = y1;
+    return true;
+}
+
 static NativeResult G_drawStringImpl(VMThread *t, Value *args, Value *ret) {
     (void)ret;
     Object *g = args[0].l, *str = args[1].l;
@@ -686,12 +920,22 @@ static NativeResult G_drawStringImpl(VMThread *t, Value *args, Value *ret) {
         return NATIVE_OK;
     int key = FIELD_I(FIELD_L(g, G_font), F_key);
     char *utf8 = jstring_to_utf8(str);
-    TextMask *m = get_mask(key, utf8);
-    free(utf8);
-    if (!m)
+    TextMask *m = get_mask(key, utf8, false);
+    if (!m) {
+        free(utf8);
         return NATIVE_OK;
+    }
 
     int x = args[2].i + c.tx, y = args[3].i + c.ty;
+    TextLayer *L = NULL;
+    int r[4];
+    if (hires_k >= 2) {
+        L = c.layer ? c.layer : layer_create(FIELD_L(c.img, I_pixels), c.w, c.h);
+        if (L && !layer_text(L, &c, key, utf8, x, y, m, r))
+            L = NULL;
+    }
+    free(utf8);
+
     uint32_t rgb = c.color & 0xffffff;
     uint32_t ca = c.color >> 24;
     int y0 = y < c.cy0 ? c.cy0 : y, y1 = y + m->h > c.cy1 ? c.cy1 : y + m->h;
@@ -705,7 +949,56 @@ static NativeResult G_drawStringImpl(VMThread *t, Value *args, Value *ret) {
                 d[xx] = blend(d[xx], (al << 24) | rgb);
         }
     }
+
+    if (L) {
+        for (int yy = r[1]; yy < r[3]; yy++)
+            memcpy(L->tag + yy * L->w + r[0], c.px + yy * c.w + r[0], (size_t)(r[2] - r[0]) * 4);
+        layer_grow(L, r[0], r[1], r[2], r[3]);
+    }
     return NATIVE_OK;
+}
+
+// Ghép khung hình nét cao (k lần) của mảng pixel arr vào out; false nếu ảnh không có chữ nét cao
+bool midp_text_compose(void *arr, const uint32_t *px, int w, int h, uint32_t *out) {
+    TextLayer *L = layer_find(arr);
+    if (!L || L->bx0 >= L->bx1 || L->w != w || L->h != h)
+        return false;
+    int k = hires_k, ow = w * k;
+    int vx0 = w, vy0 = h, vx1 = 0, vy1 = 0;
+    for (int y = 0; y < h; y++) {
+        uint32_t *o = out + (size_t)y * k * ow;
+        const uint32_t *s = px + y * w;
+        for (int x = 0; x < w; x++)
+            for (int dx = 0; dx < k; dx++)
+                o[x * k + dx] = s[x];
+        for (int dy = 1; dy < k; dy++)
+            memcpy(o + dy * ow, o, (size_t)ow * 4);
+        if (y < L->by0 || y >= L->by1)
+            continue;
+        for (int x = L->bx0; x < L->bx1; x++) {
+            int i = y * w + x;
+            if (!L->valid[i])
+                continue;
+            if (L->tag[i] != s[x]) {
+                L->valid[i] = 0;
+                continue;
+            }
+            const uint32_t *b = L->hi + (size_t)y * k * ow + x * k;
+            for (int dy = 0; dy < k; dy++)
+                memcpy(o + dy * ow + x * k, b + dy * ow, (size_t)k * 4);
+            if (x < vx0) vx0 = x;
+            if (x >= vx1) vx1 = x + 1;
+            if (y < vy0) vy0 = y;
+            if (y >= vy1) vy1 = y + 1;
+        }
+    }
+    // Thu khung bao về các pixel còn đúng
+    if (vx0 < vx1) {
+        L->bx0 = vx0; L->by0 = vy0; L->bx1 = vx1; L->by1 = vy1;
+    } else {
+        L->bx0 = L->by0 = L->bx1 = L->by1 = 0;
+    }
+    return true;
 }
 
 static NativeResult Font_height0(VMThread *t, Value *args, Value *ret) {
@@ -768,11 +1061,19 @@ void midp_graphics_shutdown(void) {
     for (int i = 0; i < TEXT_CACHE; i++) {
         free(text_cache[i].text);
         free(text_cache[i].alpha);
+        free(text_cache_hi[i].text);
+        free(text_cache_hi[i].alpha);
     }
     memset(text_cache, 0, sizeof(text_cache));
+    memset(text_cache_hi, 0, sizeof(text_cache_hi));
     for (int i = 0; i < 12; i++) {
         if (fonts[i])
             TTF_CloseFont(fonts[i]);
-        fonts[i] = NULL;
+        if (fonts_hi[i])
+            TTF_CloseFont(fonts_hi[i]);
+        fonts[i] = fonts_hi[i] = NULL;
     }
+    for (int i = 0; i < MAX_LAYERS; i++)
+        layer_free(&layers[i]);
+    layer_clock = 0;
 }

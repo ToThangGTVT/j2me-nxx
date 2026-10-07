@@ -2,6 +2,12 @@
 
 # j2me-nxx
 
+<p align="center"><a href="https://discord.gg/skHsYt8GAa"><img src="https://img.shields.io/badge/Discord-J2ME--NXX-5865F2?logo=discord&logoColor=white" alt="Discord"></a></p>
+
+> 💬 **Tham gia [Discord J2ME-NXX](https://discord.gg/skHsYt8GAa)** để thảo luận, hỏi đáp, báo lỗi, gửi file crash và góp ý tính năng mới.
+>
+> 💬 **Join the [J2ME-NXX Discord](https://discord.gg/skHsYt8GAa)** to chat, ask questions, report bugs, share crash files and suggest new features.
+
 *[English below](#english)*
 
 Trình giả lập J2ME (Java ME / MIDP 2.0) cho Nintendo Switch, viết bằng C trên devkitPro + SDL2.

@@ -33,6 +33,8 @@ typedef enum {
     S_ERR_VM,               // %s
     S_ERR_MIDLET,           // %s
     S_GAME_ENDED,
+    S_GAME_CRASHED,         // %s
+    S_APP_CRASHED_BEFORE,   // %s
     // Trong game
     S_EXIT_CONFIRM,
     S_SCREEN_INFO_FPS,      // %d %d %d

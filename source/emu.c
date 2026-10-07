@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "crash.h"
 #include "gfx.h"
 #include "input.h"
 #include "keymap.h"
@@ -377,9 +378,34 @@ static uint8_t *host_read_resource(const char *name, size_t *size) {
 }
 
 static void host_log(const char *msg) {
+    crash_log(msg);
     if (log_file) {
         fprintf(log_file, "%s\n", msg);
         fflush(log_file);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Báo cáo crash (crash.c)
+
+static bool crash_reported;     // lần chơi này đã ghi báo cáo
+
+// Game Java có exception không ai bắt: ghi 1 báo cáo cho lần chơi này
+static bool report_java_crash(char *name, size_t size) {
+    if (crash_reported || !vm_last_uncaught()[0])
+        return false;
+    crash_reported = true;
+    return crash_write_report("Game Java bi loi (exception khong ai bat)", vm_last_uncaught(), name, size);
+}
+
+// Không chạy được game: ghi báo cáo, thêm tên file vào thông báo lỗi
+static void report_start_error(const char *title, char *err, size_t err_size) {
+    char detail[4096 + 300], name[64];
+    snprintf(detail, sizeof(detail), "%s\n\n%s", vm_last_error(), vm_last_uncaught());
+    crash_reported = true;
+    if (crash_write_report(title, detail, name, sizeof(name))) {
+        size_t n = strlen(err);
+        snprintf(err + n, err_size - n, " (crash/%s)", name);
     }
 }
 
@@ -482,6 +508,8 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     log_file = fopen(log_path, "w");
     if (log_file)
         fprintf(log_file, "J2ME-NXX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
+    crash_set_game(jar_path, cls);
+    crash_reported = false;
     prof_start();
 
     GameSettings gs;
@@ -506,6 +534,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     midp_register_natives();
     if (!vm_init(&host)) {
         snprintf(err, err_size, tr(S_ERR_VM), vm_last_error());
+        report_start_error("Khong khoi dong duoc may ao Java", err, err_size);
         emu_stop();
         return false;
     }
@@ -533,6 +562,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     };
     if (!midp_start(&mc, cls)) {
         snprintf(err, err_size, tr(S_ERR_MIDLET), vm_last_error());
+        report_start_error("Khong chay duoc MIDlet", err, err_size);
         emu_stop();
         return false;
     }
@@ -580,6 +610,10 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
 void emu_stop(void) {
     vm_thread_stop();
     link_stop();
+    if (running) {
+        char name[64];
+        report_java_crash(name, sizeof(name));
+    }
     if (running || syslib || game) {
         vm_shutdown();
         midp_shutdown();
@@ -599,6 +633,7 @@ void emu_stop(void) {
     if (log_file)
         fclose(log_file);
     log_file = NULL;
+    crash_set_game(NULL, NULL);
 }
 
 bool emu_running(void) {
@@ -889,15 +924,16 @@ bool emu_update(void) {
         vkb_update();
     }
     bool dead = vm_dead, quit = exit_now || midp_exit_requested();
-    if (exit_now) {
+    if (!exit_now && !dead && !quit)
+        return true;
+    if (exit_now)
         exit_msg[0] = '\0';
-        return false;
-    }
-    if (dead) {
+    else if (dead)
         snprintf(exit_msg, sizeof(exit_msg), "%s", tr(S_GAME_ENDED));
-        return false;
-    }
-    return !quit;
+    char name[64];
+    if (report_java_crash(name, sizeof(name)))
+        snprintf(exit_msg, sizeof(exit_msg), tr(S_GAME_CRASHED), name);
+    return false;
 }
 
 // ---------------------------------------------------------------------------

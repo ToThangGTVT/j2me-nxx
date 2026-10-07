@@ -324,7 +324,15 @@ static void draw_footer(const Menu *m, const GameList *list) {
     gfx_fill_rect(0, y0, SCREEN_W, 1, COL_TRACK);
 
     if (m->status[0]) {
-        gfx_text(FONT_NORMAL, LIST_X, text_y, 440, ALIGN_LEFT, COL_WARN, m->status);
+        // Chỗ trống bên trái dòng hướng dẫn phím; dài quá thì chữ nhỏ, xuống 2 dòng
+        int avail = SCREEN_W - 2 * LIST_X - gfx_text_width(FONT_NORMAL, tr(S_MENU_HINTS)) - 32;
+        if (gfx_text_width(FONT_NORMAL, m->status) <= avail) {
+            gfx_text(FONT_NORMAL, LIST_X, text_y, avail, ALIGN_LEFT, COL_WARN, m->status);
+        } else {
+            int lines = gfx_text_width(FONT_SMALL, m->status) <= avail ? 1 : 2;
+            gfx_text_wrapped(FONT_SMALL, LIST_X, y0 + (FOOTER_H - lines * gfx_font_height(FONT_SMALL)) / 2, avail,
+                             COL_WARN, m->status);
+        }
     } else {
         char pos[32];
         snprintf(pos, sizeof(pos), "%d / %d", list->count ? m->cursor + 1 : 0, list->count);

@@ -35,6 +35,8 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_ERR_VM]         = { "Lỗi khởi động VM: %s", "VM startup error: %s" },
     [S_ERR_MIDLET]     = { "Không chạy được MIDlet: %s", "Cannot start MIDlet: %s" },
     [S_GAME_ENDED]     = { "Game đã kết thúc (không còn thread nào chạy)", "Game ended (no threads left)" },
+    [S_GAME_CRASHED]   = { "Game lỗi, đã ghi crash/%s", "Game crashed, saved crash/%s" },
+    [S_APP_CRASHED_BEFORE] = { "Lần trước app bị sập, đã ghi crash/%s", "The app crashed last time, saved crash/%s" },
 
     [S_EXIT_CONFIRM]   = { "Nhấn - (hoặc Esc) lần nữa để thoát game", "Press - (or Esc) again to exit the game" },
     [S_SCREEN_INFO_FPS] = { "%dx%d  -  giới hạn %d FPS", "%dx%d  -  %d FPS limit" },

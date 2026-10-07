@@ -18,6 +18,7 @@
 #include "menu.h"
 #include "platform.h"
 #include "settings.h"
+#include "crash.h"
 #include "settings_screen.h"
 #include "update.h"
 #include "update_screen.h"
@@ -118,7 +119,13 @@ int main(int argc, char *argv[]) {
         goto out;
     }
     input_init();
+    crash_init();
     settings_load();
+    {
+        char name[64];
+        if (crash_take_previous(name, sizeof(name)))
+            snprintf(menu.status, sizeof(menu.status), tr(S_APP_CRASHED_BEFORE), name);
+    }
     game_list_scan(&list, games_dir);
     update_init(argc > 0 ? argv[0] : NULL);
     if (settings()->check_update)

@@ -48,12 +48,17 @@ jobs:
           cp build/j2me-nxx.nro pkg/switch/
           (cd pkg && zip -r "../j2me-nxx-$VERSION.zip" switch)
           cp build/j2me-nxx.nro j2me-nxx.nro
+          # .elf cùng bản build: đổi địa chỉ trong báo cáo crash (crash/*.txt) ra tên hàm bằng addr2line
+          (cd build && zip -9 "../j2me-nxx-$VERSION-elf.zip" j2me-nxx.elf)
           echo "zip=j2me-nxx-$VERSION.zip" >> "$GITHUB_OUTPUT"
+          echo "elf=j2me-nxx-$VERSION-elf.zip" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.pack.outputs.zip }}
-          path: ${{ steps.pack.outputs.zip }}
+          path: |
+            ${{ steps.pack.outputs.zip }}
+            ${{ steps.pack.outputs.elf }}
 
       - name: Tao ban phat hanh
         if: startsWith(github.ref, 'refs/tags/')
@@ -61,5 +66,6 @@ jobs:
         with:
           files: |
             ${{ steps.pack.outputs.zip }}
+            ${{ steps.pack.outputs.elf }}
             j2me-nxx.nro
           body_path: dist/RELEASE_NOTES.md

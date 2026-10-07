@@ -112,6 +112,7 @@ add_executable(j2me-nxx
     source/video_screen.c
     source/vkb.c
     source/http.c
+    source/crash.c
     source/update.c
     source/update_screen.c
     source/vm/class.c

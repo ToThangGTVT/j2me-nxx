@@ -112,6 +112,7 @@ void field_slots_init(void) {
 bool vm_init(const VMHost *h) {
     host = *h;
     last_error[0] = '\0';
+    vm_uncaught_text[0] = '\0';
     natives_lang_init();
     jstring_init();
 

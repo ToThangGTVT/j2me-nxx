@@ -419,4 +419,9 @@ void thread_free_all(void) {
     }
     current = NULL;
     next_id = 1;
+    // Mẫu đo hiệu năng trỏ vào Method của game vừa thoát (sắp bị giải phóng):
+    // để lại thì lần dump đầu của game sau đọc vùng nhớ đã free và crash
+    memset(prof_tab, 0, sizeof(prof_tab));
+    prof_total = 0;
+    prof_last = 0;
 }

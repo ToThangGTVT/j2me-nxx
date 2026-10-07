@@ -162,7 +162,18 @@ alignas(16) u8 __nx_exception_stack[0x8000];
 u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
 u32 __nx_exception_ignoredebug = 1;
 
-extern char __start__[];    // địa chỉ nạp của .nro; offset = địa chỉ - __start__ dùng với addr2line trên .elf
+// Địa chỉ nạp của .nro: đầu vùng nhớ chứa code (.text bắt đầu ở offset 0 của .elf).
+// offset = địa chỉ - địa chỉ nạp, dùng với addr2line trên .elf.
+// Không dùng __start__: đó là symbol tuyệt đối = 0 nên luôn ra 0x0
+static u64 load_base;
+
+static u64 find_load_base(void) {
+    MemoryInfo mi;
+    u32 pi;
+    if (R_FAILED(svcQueryMemory(&mi, &pi, (u64)(uintptr_t)&find_load_base)))
+        return 0;
+    return mi.addr;
+}
 
 static const char *exception_name(u32 desc) {
     switch (desc) {
@@ -178,8 +189,8 @@ static const char *exception_name(u32 desc) {
 }
 
 static void write_addr(FILE *f, const char *label, u64 a) {
-    u64 base = (u64)(uintptr_t)__start__;
-    if (a >= base && a - base < 0x10000000)
+    u64 base = load_base;
+    if (base && a >= base && a - base < 0x10000000)
         fprintf(f, "%-5s 0x%016llx  (j2me-nxx.elf + 0x%llx)\n", label, (unsigned long long)a,
                 (unsigned long long)(a - base));
     else
@@ -206,7 +217,8 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
     if (!f)
         return;
     write_header(f, title);
-    fprintf(f, "Dia chi nap: 0x%llx\n", (unsigned long long)(uintptr_t)__start__);
+    load_base = find_load_base();
+    fprintf(f, "Dia chi nap: 0x%llx\n", (unsigned long long)load_base);
     write_addr(f, "pc", ctx->pc.x);
     write_addr(f, "lr", ctx->lr.x);
     fprintf(f, "sp    0x%016llx\nfp    0x%016llx\nfar   0x%016llx  (dia chi bi truy cap)\nesr   0x%08x  pstate 0x%08x\n",

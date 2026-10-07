@@ -28,6 +28,8 @@
 #define COL_WARN     RGB(0xff, 0xc1, 0x4d)
 
 static void format_size(long size, char *out, size_t len) {
+    if (size < 0)
+        size = 0;
     if (size >= 1024 * 1024)
         snprintf(out, len, "%.1f MB", size / (1024.0 * 1024.0));
     else

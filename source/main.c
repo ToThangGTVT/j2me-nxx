@@ -63,6 +63,27 @@ static void debug_press(void) {
         if (*p == ',')
             p++;
     }
+    // J2ME_NX_TAPS="1000:640:500,..." chạm chuột trái tại (x, y) theo mốc ms, nhả sau 80ms
+    spec = SDL_getenv("J2ME_NX_TAPS");
+    for (const char *p = spec; p && *p;) {
+        unsigned at;
+        int x, y, n = 0;
+        if (sscanf(p, "%u:%d:%d%n", &at, &x, &y, &n) != 3)
+            break;
+        for (int phase = 0; phase < 2; phase++) {
+            Uint32 t = at + (phase ? 80 : 0);
+            if (t > last && t <= now) {
+                SDL_Event e = { .type = phase ? SDL_MOUSEBUTTONUP : SDL_MOUSEBUTTONDOWN };
+                e.button.button = SDL_BUTTON_LEFT;
+                e.button.x = x;
+                e.button.y = y;
+                SDL_PushEvent(&e);
+            }
+        }
+        p += n;
+        if (*p == ',')
+            p++;
+    }
     last = now;
 #endif
 }

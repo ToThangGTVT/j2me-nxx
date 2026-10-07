@@ -74,6 +74,8 @@ void settings_load(void) {
             current.smooth_text = v != 0;
         else if (sscanf(line, "font_scale=%d", &v) == 1 && v >= 50 && v <= 400)
             current.font_scale = v;
+        else if (sscanf(line, "vkb_bubble=%d", &v) == 1)
+            current.vkb_bubble = v != 0;
         else if (strncmp(line, "soundfont=", 10) == 0) {
             snprintf(current.soundfont, sizeof(current.soundfont), "%.127s", line + 10);
             current.soundfont[strcspn(current.soundfont, "\r\n")] = 0;
@@ -99,6 +101,7 @@ bool settings_save(void) {
     fprintf(f, "scale_mode=%d\n", current.scale_mode);
     fprintf(f, "smooth_text=%d\n", current.smooth_text ? 1 : 0);
     fprintf(f, "font_scale=%d\n", current.font_scale);
+    fprintf(f, "vkb_bubble=%d\n", current.vkb_bubble ? 1 : 0);
     fprintf(f, "soundfont=%s\n", current.soundfont);
     return fclose(f) == 0;
 }

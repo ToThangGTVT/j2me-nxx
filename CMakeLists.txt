@@ -99,6 +99,7 @@ add_executable(j2me-nxx
     source/settings_screen.c
     source/video_dec.c
     source/video_screen.c
+    source/vkb.c
     source/vm/class.c
     source/vm/heap.c
     source/vm/interp.c

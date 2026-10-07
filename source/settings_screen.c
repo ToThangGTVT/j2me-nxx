@@ -38,6 +38,7 @@ typedef enum {
     ITEM_SMOOTH_TEXT,
     ITEM_FONT_SCALE,
     ITEM_SOUNDFONT,
+    ITEM_VKB_BUBBLE,
 } ItemId;
 
 static int cursor;
@@ -106,6 +107,7 @@ static int visible_items(ItemId *out) {
         out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;
         out[n++] = ITEM_SHOW_FPS;
+        out[n++] = ITEM_VKB_BUBBLE;
         out[n++] = ITEM_SOUNDFONT;
         out[n++] = ITEM_LANGUAGE;
     }
@@ -281,6 +283,10 @@ bool settings_screen_update(void) {
         if (dir || a)
             settings()->show_fps = !settings()->show_fps;
         break;
+    case ITEM_VKB_BUBBLE:
+        if (dir || a)
+            settings()->vkb_bubble = !settings()->vkb_bubble;
+        break;
     case ITEM_SOUNDFONT:
         if (dir || a)
             change_soundfont(dir ? dir : 1);
@@ -404,6 +410,11 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
         *label = tr(S_SHOW_HELP);
         *hint = tr(S_SHOW_HELP_HINT);
         snprintf(value, size, "%s", tr(s->show_help ? S_ON : S_OFF));
+        break;
+    case ITEM_VKB_BUBBLE:
+        *label = tr(S_VKB_BUBBLE);
+        *hint = tr(S_VKB_BUBBLE_HINT);
+        snprintf(value, size, "%s", tr(s->vkb_bubble ? S_ON : S_OFF));
         break;
     case ITEM_SOUNDFONT:
         *label = tr(S_SOUNDFONT);

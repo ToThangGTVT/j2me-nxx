@@ -14,6 +14,7 @@
 #include "platform.h"
 #include "settings.h"
 #include "video_screen.h"
+#include "vkb.h"
 #include "vm/vm.h"
 #include "vm/zip.h"
 
@@ -226,6 +227,7 @@ static void link_title(char *out, size_t size) {
 
 static void link_stop(void);
 static void release_all_keys(void);
+static void vkb_send(int type, int code);
 
 static void start_video(VideoDec *d) {
     // Tiếng của game tạm đóng: Switch không mở được 2 thiết bị âm thanh cùng lúc
@@ -510,6 +512,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     char sf2[600];
     SoundFontChoice sf = settings_soundfont(sf2, sizeof(sf2));
     midp_audio_set_soundfont(sf == SOUNDFONT_FILE ? sf2 : sf == SOUNDFONT_BUILTIN ? MIDP_SOUNDFONT_BUILTIN : NULL);
+    vkb_start(settings()->vkb_bubble, vkb_send);
 
     MidpConfig mc = {
         .screen_w = scr_w,
@@ -625,8 +628,18 @@ static void key_change(int code, bool down) {
     }
 }
 
+// Phím từ bàn phím ảo QWERTY (chữ, số, ký hiệu gửi đúng mã ký tự như máy có bàn phím QWERTY)
+static void vkb_send(int type, int code) {
+    code = keymap_translate(keymap, code);
+    if (type == MIDP_EV_KEY_REPEATED)
+        midp_post_event_async(type, code, 0);
+    else
+        midp_post_key(code, type == MIDP_EV_KEY_PRESSED);
+}
+
 // Nhả mọi phím đang giữ (trước khi trình xem video lấy hết phím)
 static void release_all_keys(void) {
+    vkb_release_all();
     for (int i = 0; i < KEY_SLOTS; i++) {
         if (key_held[i]) {
             midp_post_key(keymap_translate(keymap, i - 16), false);
@@ -773,20 +786,27 @@ static void handle_event(const SDL_Event *e) {
     case SDL_FINGERDOWN:
     case SDL_FINGERUP:
     case SDL_FINGERMOTION: {
+        int lx = (int)(e->tfinger.x * SCREEN_W), ly = (int)(e->tfinger.y * SCREEN_H);
+        if (vkb_pointer(e->tfinger.fingerId,
+                        e->type == SDL_FINGERDOWN ? VKB_DOWN : e->type == SDL_FINGERUP ? VKB_UP : VKB_MOVE, lx, ly))
+            break;
         int type = e->type == SDL_FINGERDOWN ? MIDP_EV_POINTER_PRESSED
                  : e->type == SDL_FINGERUP ? MIDP_EV_POINTER_RELEASED : MIDP_EV_POINTER_DRAGGED;
-        pointer(type, (int)(e->tfinger.x * SCREEN_W), (int)(e->tfinger.y * SCREEN_H));
+        pointer(type, lx, ly);
         break;
     }
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:
         if (e->button.which == SDL_TOUCH_MOUSEID || e->button.button != SDL_BUTTON_LEFT)
             break;
+        if (vkb_pointer(-1, e->type == SDL_MOUSEBUTTONDOWN ? VKB_DOWN : VKB_UP, e->button.x, e->button.y))
+            break;
         pointer(e->type == SDL_MOUSEBUTTONDOWN ? MIDP_EV_POINTER_PRESSED : MIDP_EV_POINTER_RELEASED,
                 e->button.x, e->button.y);
         break;
     case SDL_MOUSEMOTION:
-        if (e->motion.which != SDL_TOUCH_MOUSEID && (e->motion.state & SDL_BUTTON_LMASK))
+        if (e->motion.which != SDL_TOUCH_MOUSEID && (e->motion.state & SDL_BUTTON_LMASK) &&
+            !vkb_pointer(-1, VKB_MOVE, e->motion.x, e->motion.y))
             pointer(MIDP_EV_POINTER_DRAGGED, e->motion.x, e->motion.y);
         break;
     default:
@@ -864,8 +884,10 @@ bool emu_update(void) {
         unlock_vm();
     }
     link_update();
-    if (link_state == LINK_NONE)
+    if (link_state == LINK_NONE) {
         update_repeat();
+        vkb_update();
+    }
     bool dead = vm_dead, quit = exit_now || midp_exit_requested();
     if (exit_now) {
         exit_msg[0] = '\0';
@@ -1018,6 +1040,7 @@ static void draw_game(void) {
     }
     if (settings()->show_help)
         draw_help();
+    vkb_draw();
     draw_stats(fb && dirty);
 
     const char *note = link_state == LINK_OPENING ? tr(S_LINK_OPENING)

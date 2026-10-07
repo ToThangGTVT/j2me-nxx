@@ -81,6 +81,8 @@ typedef enum {
     S_FONT_SCALE_HINT,
     S_SMOOTH_TEXT,
     S_SMOOTH_TEXT_HINT,
+    S_VKB_BUBBLE,
+    S_VKB_BUBBLE_HINT,
     S_SOUNDFONT,
     S_SOUNDFONT_HINT,
     S_SOUNDFONT_AUTO,       // %s

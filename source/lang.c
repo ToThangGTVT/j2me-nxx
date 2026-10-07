@@ -106,6 +106,11 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
                              "tắt thì chữ vẽ điểm ảnh như điện thoại thật.",
                              "Anti-aliased in-game text. Recommended for text-heavy apps like Opera Mini; "
                              "when off, text is drawn as pixels like on real phones." },
+    [S_VKB_BUBBLE]     = { "Bong bóng bàn phím ảo", "Virtual keyboard bubble" },
+    [S_VKB_BUBBLE_HINT] = { "Khi chơi có bong bóng nhỏ trên màn hình cảm ứng (kéo để di chuyển). Chạm vào để mở bàn phím "
+                            "QWERTY nổi có hàng số, gõ chữ cho game / ứng dụng; nút × thu bàn phím về bong bóng.",
+                            "Shows a small bubble on the touch screen while playing (drag to move). Tap it to open a "
+                            "floating QWERTY keyboard with a number row for typing in games / apps; × collapses it back." },
     [S_SOUNDFONT]      = { "SoundFont MIDI", "MIDI SoundFont" },
     [S_SOUNDFONT_HINT] = { "Phát nhạc MIDI bằng SoundFont cho giống nhạc cụ thật: có sẵn TimGM6mb, hoặc chép file .sf2 vào "
                            "sdmc:/switch/j2me-nxx/soundfonts/. Tắt: bộ tổng hợp sóng, nhẹ hơn.",

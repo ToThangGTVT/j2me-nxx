@@ -14,7 +14,7 @@
 #include "../video_dec.h"
 #include "../vm/vm.h"
 
-#define RATE        22050
+#define RATE        48000       // tần số gốc của Switch; thấp hơn thì SoundFont bị rè (răng cưa)
 #define MAX_PLAYERS 32
 #define MAX_VOICES  24
 #define BLOCK       64          // số mẫu giữa 2 lần xử lý sự kiện MIDI
@@ -83,7 +83,7 @@ typedef struct {
 static SDL_AudioDeviceID dev;
 static bool suspended, reopen_after_suspend;
 #ifndef __SWITCH__
-static FILE *dump;  // J2ME_NX_AUDIO_DUMP=<file>: ghi PCM 16-bit mono 22050Hz để kiểm tra
+static FILE *dump;  // J2ME_NX_AUDIO_DUMP=<file>: ghi PCM 16-bit mono 48000Hz để kiểm tra
 #endif
 static Player players[MAX_PLAYERS + 1];     // chỉ số 0 không dùng; MAX_PLAYERS dành cho playTone
 static tsf *sf_base;                        // SoundFont đã nạp (giữ qua các lần chơi game)
@@ -285,7 +285,7 @@ static inline float voice_sample(Player *p, Voice *v) {
             // Kick / tom: sine hạ tần số dần
             s = sinf((float)(v->phase * 2 * M_PI));
             v->phase += v->inc;
-            v->inc *= 0.99985;
+            v->inc *= 1.0 - 0.00015 * 22050.0 / RATE;  // hạ tần số như nhau ở mọi tần số mẫu
             s = s * 0.9f + n * 0.1f;
         } else if (v->drum_freq == 0) {
             s = n * 0.8f + sinf((float)(v->phase * 2 * M_PI)) * 0.3f;

@@ -507,6 +507,9 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         emu_stop();
         return false;
     }
+    char sf2[600];
+    SoundFontChoice sf = settings_soundfont(sf2, sizeof(sf2));
+    midp_audio_set_soundfont(sf == SOUNDFONT_FILE ? sf2 : sf == SOUNDFONT_BUILTIN ? MIDP_SOUNDFONT_BUILTIN : NULL);
 
     MidpConfig mc = {
         .screen_w = scr_w,

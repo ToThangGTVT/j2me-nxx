@@ -2,6 +2,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct {
     int fps_limit;          // 0 = không giới hạn
@@ -13,6 +14,7 @@ typedef struct {
     bool show_fps;          // hiện FPS và thời gian VM ở góc màn hình
     bool smooth_text;       // chữ trong game khử răng cưa (tắt: chữ điểm ảnh như điện thoại thật)
     int font_scale;         // cỡ chữ trong game, % so với cỡ gốc
+    char soundfont[128];    // file .sf2 trong <data_dir>/soundfonts; "" = tự động, "builtin" = bản có sẵn, "-" = tắt
 } Settings;
 
 typedef struct {
@@ -46,3 +48,15 @@ extern const int SETTINGS_SCREEN_CHOICE_COUNT;
 #define SCREEN_MIN 64
 #define SCREEN_MAX 1280
 bool settings_valid_screen(int w, int h);
+
+// SoundFont: thư mục <data_dir>/soundfonts, các file .sf2 trong đó (sắp xếp theo tên)
+#define SOUNDFONT_MAX 32
+int settings_list_soundfonts(char names[][128], int max);
+typedef enum {
+    SOUNDFONT_OFF,          // bộ tổng hợp sóng
+    SOUNDFONT_BUILTIN,      // TimGM6mb nhúng trong app
+    SOUNDFONT_FILE,         // file .sf2 trên thẻ SD (đường dẫn ở out)
+} SoundFontChoice;
+// SoundFont sẽ dùng theo cài đặt. Tự động: file .sf2 đầu tiên trên thẻ, không có thì bản có sẵn;
+// file đã chọn mà không còn thì cũng về bản có sẵn.
+SoundFontChoice settings_soundfont(char *out, size_t size);

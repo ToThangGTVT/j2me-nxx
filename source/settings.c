@@ -1,7 +1,10 @@
 #include "settings.h"
 
+#include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 
 #include "lang.h"
@@ -32,6 +35,7 @@ static Settings current = {
     .show_fps = false,
     .smooth_text = false,
     .font_scale = 100,
+    .soundfont = "-",       // mặc định tắt: bộ tổng hợp sóng
 };
 
 Settings *settings(void) {
@@ -70,6 +74,10 @@ void settings_load(void) {
             current.smooth_text = v != 0;
         else if (sscanf(line, "font_scale=%d", &v) == 1 && v >= 50 && v <= 400)
             current.font_scale = v;
+        else if (strncmp(line, "soundfont=", 10) == 0) {
+            snprintf(current.soundfont, sizeof(current.soundfont), "%.127s", line + 10);
+            current.soundfont[strcspn(current.soundfont, "\r\n")] = 0;
+        }
     }
     fclose(f);
     lang_set((Lang)current.lang);
@@ -91,7 +99,47 @@ bool settings_save(void) {
     fprintf(f, "scale_mode=%d\n", current.scale_mode);
     fprintf(f, "smooth_text=%d\n", current.smooth_text ? 1 : 0);
     fprintf(f, "font_scale=%d\n", current.font_scale);
+    fprintf(f, "soundfont=%s\n", current.soundfont);
     return fclose(f) == 0;
+}
+
+static int cmp_name(const void *a, const void *b) {
+    return strcasecmp((const char *)a, (const char *)b);
+}
+
+int settings_list_soundfonts(char names[][128], int max) {
+    char dir[512];
+    snprintf(dir, sizeof(dir), "%s/soundfonts", platform_data_dir());
+    DIR *d = opendir(dir);
+    if (!d)
+        return 0;
+    int n = 0;
+    struct dirent *e;
+    while (n < max && (e = readdir(d))) {
+        size_t len = strlen(e->d_name);
+        if (e->d_name[0] != '.' && len > 4 && len < 128 && strcasecmp(e->d_name + len - 4, ".sf2") == 0)
+            snprintf(names[n++], 128, "%s", e->d_name);
+    }
+    closedir(d);
+    qsort(names, (size_t)n, 128, cmp_name);
+    return n;
+}
+
+SoundFontChoice settings_soundfont(char *out, size_t size) {
+    const char *name = current.soundfont;
+    char names[SOUNDFONT_MAX][128];
+    if (strcmp(name, "-") == 0)
+        return SOUNDFONT_OFF;
+    if (strcmp(name, "builtin") == 0)
+        return SOUNDFONT_BUILTIN;
+    if (!*name) {
+        if (settings_list_soundfonts(names, SOUNDFONT_MAX) == 0)
+            return SOUNDFONT_BUILTIN;
+        name = names[0];
+    }
+    snprintf(out, size, "%s/soundfonts/%s", platform_data_dir(), name);
+    struct stat st;
+    return stat(out, &st) == 0 ? SOUNDFONT_FILE : SOUNDFONT_BUILTIN;
 }
 
 static void game_path(const char *game, char *out, size_t size) {

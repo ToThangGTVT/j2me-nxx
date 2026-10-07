@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 
 #include "manifest.h"
+#include "platform.h"
 #include "third_party/stb_image.h"
 #include "vm/zip.h"
 
@@ -111,6 +112,9 @@ void game_list_scan(GameList *list, const char *dir) {
 
     // Tạo sẵn thư mục để người dùng biết chép game vào đâu
     make_dirs(dir);
+    char sf_dir[512];   // chỗ chép file SoundFont .sf2
+    snprintf(sf_dir, sizeof(sf_dir), "%s/soundfonts", platform_data_dir());
+    mkdir(sf_dir, 0777);
     scan_dir(list, dir, "", 0);
 
     qsort(list->items, list->count, sizeof(GameEntry), cmp_entries);

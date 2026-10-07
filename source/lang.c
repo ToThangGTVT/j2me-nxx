@@ -106,6 +106,14 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
                              "tắt thì chữ vẽ điểm ảnh như điện thoại thật.",
                              "Anti-aliased in-game text. Recommended for text-heavy apps like Opera Mini; "
                              "when off, text is drawn as pixels like on real phones." },
+    [S_SOUNDFONT]      = { "SoundFont MIDI", "MIDI SoundFont" },
+    [S_SOUNDFONT_HINT] = { "Phát nhạc MIDI bằng SoundFont cho giống nhạc cụ thật: có sẵn TimGM6mb, hoặc chép file .sf2 vào "
+                           "sdmc:/switch/j2me-nxx/soundfonts/. Tắt: bộ tổng hợp sóng, nhẹ hơn.",
+                           "Play MIDI music with a SoundFont for real-instrument sound: TimGM6mb is built in, or copy a .sf2 "
+                           "file to sdmc:/switch/j2me-nxx/soundfonts/. Off: wave synth, lighter." },
+    [S_SOUNDFONT_AUTO] = { "Tự động (%s)", "Auto (%s)" },
+    [S_SOUNDFONT_NONE] = { "Tắt - tổng hợp sóng", "Off - wave synth" },
+    [S_SOUNDFONT_BUILTIN] = { "TimGM6mb (có sẵn)", "TimGM6mb (built-in)" },
     [S_ON]             = { "Bật", "On" },
     [S_OFF]            = { "Tắt", "Off" },
     [S_SETTINGS_HINTS] = { "(<>) Đổi giá trị   (A) Chọn / nhập số   (B) Lưu và quay lại",

@@ -37,6 +37,7 @@ typedef enum {
     ITEM_SCALE,
     ITEM_SMOOTH_TEXT,
     ITEM_FONT_SCALE,
+    ITEM_SOUNDFONT,
 } ItemId;
 
 static int cursor;
@@ -45,6 +46,8 @@ static bool custom;             // đang ở chế độ nhập kích thước t
 static char game_id[128];
 static char game_title[128];
 static GameSettings game;
+static char soundfonts[SOUNDFONT_MAX][128];  // file .sf2 tìm thấy lúc mở màn hình
+static int soundfont_count;
 
 // Con trỏ tới kích thước đang chỉnh (cài đặt chung hoặc của game)
 static int *cur_w(void) { return game_mode ? &game.screen_w : &settings()->screen_w; }
@@ -72,6 +75,7 @@ void settings_screen_open(void) {
     cursor = 0;
     game_mode = false;
     sync_custom();
+    soundfont_count = settings_list_soundfonts(soundfonts, SOUNDFONT_MAX);
 }
 
 void settings_screen_open_game(const char *id, const char *title) {
@@ -102,6 +106,7 @@ static int visible_items(ItemId *out) {
         out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;
         out[n++] = ITEM_SHOW_FPS;
+        out[n++] = ITEM_SOUNDFONT;
         out[n++] = ITEM_LANGUAGE;
     }
     return n;
@@ -132,6 +137,24 @@ static void change_font_scale(int dir) {
     }
     int i = (cur + dir + n) % n;
     *v = (game_mode && i == 0) ? -1 : SETTINGS_FONT_SCALE_CHOICES[i - base];
+}
+
+// SoundFont: [Tắt] [Tự động] [Có sẵn] + các file .sf2
+static void change_soundfont(int dir) {
+    static const char *fixed[] = { "-", "", "builtin" };
+    char *v = settings()->soundfont;
+    int n = 3 + soundfont_count;
+    int cur = 0;
+    for (int i = 0; i < 3; i++) {
+        if (strcmp(v, fixed[i]) == 0)
+            cur = i;
+    }
+    for (int i = 0; i < soundfont_count; i++) {
+        if (strcmp(v, soundfonts[i]) == 0)
+            cur = 3 + i;
+    }
+    int i = (cur + dir + n) % n;
+    snprintf(v, sizeof(settings()->soundfont), "%s", i < 3 ? fixed[i] : soundfonts[i - 3]);
 }
 
 static void change_fps(int dir) {
@@ -258,6 +281,10 @@ bool settings_screen_update(void) {
         if (dir || a)
             settings()->show_fps = !settings()->show_fps;
         break;
+    case ITEM_SOUNDFONT:
+        if (dir || a)
+            change_soundfont(dir ? dir : 1);
+        break;
     case ITEM_SCALE:
         if (dir || a)
             settings()->scale_mode = (settings()->scale_mode + (dir ? dir : 1) + 3) % 3;
@@ -377,6 +404,18 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
         *label = tr(S_SHOW_HELP);
         *hint = tr(S_SHOW_HELP_HINT);
         snprintf(value, size, "%s", tr(s->show_help ? S_ON : S_OFF));
+        break;
+    case ITEM_SOUNDFONT:
+        *label = tr(S_SOUNDFONT);
+        *hint = tr(S_SOUNDFONT_HINT);
+        if (strcmp(s->soundfont, "-") == 0)
+            snprintf(value, size, "%s", tr(S_SOUNDFONT_NONE));
+        else if (strcmp(s->soundfont, "builtin") == 0)
+            snprintf(value, size, "%s", tr(S_SOUNDFONT_BUILTIN));
+        else if (!*s->soundfont)
+            snprintf(value, size, tr(S_SOUNDFONT_AUTO), soundfont_count ? soundfonts[0] : "TimGM6mb");
+        else
+            snprintf(value, size, "%.95s", s->soundfont);
         break;
     case ITEM_SHOW_FPS:
         *label = tr(S_SHOW_FPS);

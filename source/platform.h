@@ -36,3 +36,6 @@ void platform_mem_usage(size_t *used, size_t *total);
 
 // Font hệ thống: shared font của Switch, hoặc font có sẵn trên desktop
 TTF_Font *platform_open_font(int ptsize);
+
+// Font icon nút (NintendoExt) của Switch; desktop trả về NULL
+TTF_Font *platform_open_icon_font(int ptsize);

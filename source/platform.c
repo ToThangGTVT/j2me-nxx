@@ -120,9 +120,9 @@ char *platform_keyboard(const char *title, const char *text, int max_len, int ty
     return R_SUCCEEDED(rc) ? strdup(out) : NULL;
 }
 
-static TTF_Font *open_shared_font(int ptsize) {
+static TTF_Font *open_shared_font(int ptsize, PlSharedFontType type) {
     PlFontData font;
-    if (R_FAILED(plGetSharedFontByType(&font, PlSharedFontType_Standard)))
+    if (R_FAILED(plGetSharedFontByType(&font, type)))
         return NULL;
     // Bộ nhớ shared font do pl service giữ, không cần free
     SDL_RWops *rw = SDL_RWFromConstMem(font.address, font.size);
@@ -220,8 +220,17 @@ TTF_Font *platform_open_font(int ptsize) {
     if (f)
         return f;
 #ifdef __SWITCH__
-    return open_shared_font(ptsize);
+    return open_shared_font(ptsize, PlSharedFontType_Standard);
 #else
     return open_system_font(ptsize);
+#endif
+}
+
+TTF_Font *platform_open_icon_font(int ptsize) {
+#ifdef __SWITCH__
+    return open_shared_font(ptsize, PlSharedFontType_NintendoExt);
+#else
+    (void)ptsize;
+    return NULL;
 #endif
 }

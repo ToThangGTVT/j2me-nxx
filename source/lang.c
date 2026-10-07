@@ -1,5 +1,7 @@
 #include "lang.h"
 
+#include "gfx.h"
+
 #include <string.h>
 
 static Lang current = LANG_VI;
@@ -10,10 +12,10 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_FOLDER]         = { "Thư mục: %s", "Folder: %s" },
     [S_NO_MIDLET]      = { "Không có MIDlet-1 trong MANIFEST: có thể không chạy được",
                            "No MIDlet-1 in MANIFEST: may not run" },
-    [S_MENU_HINTS]     = { "(A) Chơi   (-) Tùy chọn game   (X) Cài đặt   (Y) Quét lại   (+) Thoát",
-                           "(A) Play   (-) Game options   (X) Settings   (Y) Rescan   (+) Exit" },
+    [S_MENU_HINTS]     = { ICON_A " Chơi   " ICON_MINUS " Tùy chọn game   " ICON_X " Cài đặt   " ICON_Y " Quét lại   " ICON_PLUS " Thoát",
+                           ICON_A " Play   " ICON_MINUS " Game options   " ICON_X " Settings   " ICON_Y " Rescan   " ICON_PLUS " Exit" },
 
-    [S_PICK_MIDLET]    = { "Chọn MIDlet:  (A) Chạy   (B) Quay lại", "Choose MIDlet:  (A) Run   (B) Back" },
+    [S_PICK_MIDLET]    = { "Chọn MIDlet:  " ICON_A " Chạy   " ICON_B " Quay lại", "Choose MIDlet:  " ICON_A " Run   " ICON_B " Back" },
 
     [S_EMPTY_TITLE]    = { "Chưa có game nào", "No games yet" },
     [S_EMPTY_COPY]     = { "Chép file game .jar (và .jad cùng tên nếu có) vào thư mục:",
@@ -22,7 +24,7 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
                            "Subfolders are supported, e.g. games/RPG/game.jar" },
     [S_EMPTY_VIDEO]    = { "File video (.mp4, .3gp...) để cùng chỗ cũng mở được",
                            "Video files (.mp4, .3gp...) placed there can be played too" },
-    [S_EMPTY_RESCAN]   = { "Chép xong nhấn (Y) để quét lại", "Then press (Y) to rescan" },
+    [S_EMPTY_RESCAN]   = { "Chép xong nhấn " ICON_Y " để quét lại", "Then press " ICON_Y " to rescan" },
 
     [S_ERROR_FMT]      = { "Lỗi: %s", "Error: %s" },
     [S_RESCANNED]      = { "Đã quét lại: %d file", "Rescanned: %d files" },
@@ -113,12 +115,12 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
                               "thay file .nro. Cần kết nối Internet.",
                               "Each time the app starts, ask GitHub whether a newer J2ME-NXX exists; if so, offer to "
                               "download it and replace the .nro file. Needs an Internet connection." },
-    [S_UPDATE_BADGE]   = { "Bản mới v%s  (B) Cập nhật", "New v%s  (B) Update" },
+    [S_UPDATE_BADGE]   = { "Bản mới v%s  " ICON_B " Cập nhật", "New v%s  " ICON_B " Update" },
     [S_UPDATE_TITLE]   = { "Có bản mới: v%s", "New version: v%s" },
     [S_UPDATE_CURRENT] = { "Đang dùng v%s", "You have v%s" },
-    [S_UPDATE_PROMPT_HINTS] = { "(A) Tải về và cập nhật   (B) Để sau", "(A) Download and update   (B) Later" },
+    [S_UPDATE_PROMPT_HINTS] = { ICON_A " Tải về và cập nhật   " ICON_B " Để sau", ICON_A " Download and update   " ICON_B " Later" },
     [S_UPDATE_FAILED]  = { "Cập nhật lỗi: %s", "Update failed: %s" },
-    [S_UPDATE_FAILED_HINTS] = { "(A) Thử lại   (B) Đóng", "(A) Retry   (B) Close" },
+    [S_UPDATE_FAILED_HINTS] = { ICON_A " Thử lại   " ICON_B " Đóng", ICON_A " Retry   " ICON_B " Close" },
     [S_UPDATE_DOWNLOADING] = { "Đang tải v%s...", "Downloading v%s..." },
     [S_UPDATE_CANCELLING] = { "Đang huỷ...", "Cancelling..." },
     [S_UPDATE_ETA]     = { "còn %d:%02d", "%d:%02d left" },
@@ -126,14 +128,14 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
                              "kiểm tra hợp lệ.",
                              "Do not exit the app or turn off the console while downloading. The old .nro is only "
                              "replaced once the download is complete and verified." },
-    [S_UPDATE_CANCEL_HINT] = { "(B) Huỷ", "(B) Cancel" },
+    [S_UPDATE_CANCEL_HINT] = { ICON_B " Huỷ", ICON_B " Cancel" },
     [S_UPDATE_DONE]    = { "Đã cập nhật lên v%s", "Updated to v%s" },
     [S_UPDATE_DONE_INFO] = { "File .nro đã được thay bằng bản mới. Khởi động lại app để dùng bản mới.",
                              "The .nro file has been replaced. Restart the app to use the new version." },
-    [S_UPDATE_DONE_HINTS] = { "(A) Khởi động lại   (B) Để sau", "(A) Restart   (B) Later" },
+    [S_UPDATE_DONE_HINTS] = { ICON_A " Khởi động lại   " ICON_B " Để sau", ICON_A " Restart   " ICON_B " Later" },
     [S_UPDATE_DONE_DESKTOP] = { "Bản desktop chỉ tải file .nro về thư mục dữ liệu để thử, không tự thay app.",
                                 "The desktop build only downloads the .nro to the data folder for testing." },
-    [S_UPDATE_CLOSE_HINT] = { "(A) Đóng", "(A) Close" },
+    [S_UPDATE_CLOSE_HINT] = { ICON_A " Đóng", ICON_A " Close" },
     [S_VKB_BUBBLE]     = { "Bong bóng bàn phím ảo", "Virtual keyboard bubble" },
     [S_VKB_BUBBLE_HINT] = { "Khi chơi có bong bóng nhỏ trên màn hình cảm ứng (kéo để di chuyển). Chạm vào để mở bàn phím "
                             "QWERTY nổi có hàng số, gõ chữ cho game / ứng dụng; nút × thu bàn phím về bong bóng.",
@@ -149,11 +151,11 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_SOUNDFONT_BUILTIN] = { "TimGM6mb (có sẵn)", "TimGM6mb (built-in)" },
     [S_ON]             = { "Bật", "On" },
     [S_OFF]            = { "Tắt", "Off" },
-    [S_SETTINGS_HINTS] = { "(<>) Đổi giá trị   (A) Chọn / nhập số   (B) Lưu và quay lại",
-                           "(<>) Change   (A) Select / enter number   (B) Save and back" },
+    [S_SETTINGS_HINTS] = { ICON_LEFT ICON_RIGHT " Đổi giá trị   " ICON_A " Chọn / nhập số   " ICON_B " Lưu và quay lại",
+                           ICON_LEFT ICON_RIGHT " Change   " ICON_A " Select / enter number   " ICON_B " Save and back" },
     [S_VIDEO_TAG]      = { "Video", "Video" },
-    [S_VIDEO_HINTS]    = { "(A) Phát / dừng   (<>) Tua 10 giây   (L/R) Tua 1 phút   (^v) Âm lượng   (B) Thoát",
-                           "(A) Play / pause   (<>) Seek 10 s   (L/R) Seek 1 min   (^v) Volume   (B) Exit" },
+    [S_VIDEO_HINTS]    = { ICON_A " Phát / dừng   " ICON_LEFT ICON_RIGHT " Tua 10 giây   " ICON_L "/" ICON_R " Tua 1 phút   " ICON_UP ICON_DOWN " Âm lượng   " ICON_B " Thoát",
+                           ICON_A " Play / pause   " ICON_LEFT ICON_RIGHT " Seek 10 s   " ICON_L "/" ICON_R " Seek 1 min   " ICON_UP ICON_DOWN " Volume   " ICON_B " Exit" },
     [S_VIDEO_PAUSED]   = { "Tạm dừng", "Paused" },
     [S_VIDEO_ENDED]    = { "Hết", "Ended" },
     [S_VOLUME_FMT]     = { "Âm lượng %d%%", "Volume %d%%" },
@@ -161,7 +163,7 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_ERR_NO_VIDEO_BUILD] = { "Bản build này không có FFmpeg: không xem được video",
                                "This build has no FFmpeg: video is not supported" },
     [S_VIDEO_NO_OPTIONS] = { "Video không có tuỳ chọn riêng", "Videos have no options" },
-    [S_LINK_OPENING]   = { "Đang mở liên kết...   (B) Huỷ", "Opening link...   (B) Cancel" },
+    [S_LINK_OPENING]   = { "Đang mở liên kết...   " ICON_B " Huỷ", "Opening link...   " ICON_B " Cancel" },
     [S_LINK_FAILED]    = { "Không mở được liên kết", "Cannot open link" },
     [S_BROWSER_NEEDS_APP] = { "Muốn mở trình duyệt, hãy chạy hbmenu ở chế độ full RAM (giữ R khi mở một game)",
                               "To open the browser, run hbmenu in full RAM mode (hold R while launching a game)" },

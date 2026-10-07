@@ -947,14 +947,14 @@ bool emu_update(void) {
 static void draw_help(void) {
     const char *lines[][2] = {
         { "D-pad / L-stick", tr(S_HELP_DPAD) },
-        { "A", "Fire (5)" },
-        { "B / R", tr(S_HELP_SOFT_RIGHT) },
-        { "L / +", tr(S_HELP_SOFT_LEFT) },
-        { "Y / X", "* / #" },
-        { "ZL / ZR", "1 / 3" },
+        { ICON_A, "Fire (5)" },
+        { ICON_B " / " ICON_R, tr(S_HELP_SOFT_RIGHT) },
+        { ICON_L " / " ICON_PLUS, tr(S_HELP_SOFT_LEFT) },
+        { ICON_Y " / " ICON_X, "* / #" },
+        { ICON_ZL " / " ICON_ZR, "1 / 3" },
         { "R-stick", "2 4 6 8" },
         { tr(S_HELP_STICK_CLICK), "5 / 0" },
-        { "-", tr(S_HELP_EXIT) },
+        { ICON_MINUS, tr(S_HELP_EXIT) },
     };
     int panel_w = dst.x;
     if (panel_w < 200)

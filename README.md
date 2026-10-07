@@ -1,5 +1,3 @@
-<p align="center"><img src="assets/logo.png" width="128" alt="J2ME-NXX"></p>
-
 # j2me-nxx
 
 <p align="center"><a href="https://discord.gg/skHsYt8GAa"><img src="https://img.shields.io/badge/Discord-J2ME--NXX-5865F2?logo=discord&logoColor=white" alt="Discord"></a></p>

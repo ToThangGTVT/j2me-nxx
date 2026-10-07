@@ -75,6 +75,17 @@ add_custom_command(
     COMMENT "Nhung font giao dien"
     VERBATIM)
 
+# Logo hiện ở đầu danh sách game (assets/logo.png); icon của file .nro là assets/icon.jpg
+set(APP_LOGO   "${CMAKE_SOURCE_DIR}/assets/logo.png")
+set(APP_LOGO_C "${CMAKE_BINARY_DIR}/app_logo_data.c")
+add_custom_command(
+    OUTPUT "${APP_LOGO_C}"
+    COMMAND "${CMAKE_COMMAND}" -DIN=${APP_LOGO} -DOUT=${APP_LOGO_C} -DNAME=app_logo_png
+            -P "${CMAKE_SOURCE_DIR}/cmake/bin2c.cmake"
+    DEPENDS "${APP_LOGO}" "${CMAKE_SOURCE_DIR}/cmake/bin2c.cmake"
+    COMMENT "Nhung logo"
+    VERBATIM)
+
 # SoundFont General MIDI có sẵn (TimGM6mb, GPL v2) nhúng vào binary bằng .incbin
 set(SOUNDFONT_SF2 "${CMAKE_SOURCE_DIR}/source/third_party/soundfont/TimGM6mb.sf2")
 set(SOUNDFONT_C   "${CMAKE_SOURCE_DIR}/source/third_party/soundfont/soundfont_data.c")
@@ -125,6 +136,7 @@ add_executable(j2me-nxx
     "${SOUNDFONT_C}"
     "${CLASSLIB_C}"
     "${UI_FONT_C}"
+    "${APP_LOGO_C}"
 )
 
 target_compile_options(j2me-nxx PRIVATE -Wall)
@@ -198,6 +210,7 @@ if(NINTENDO_SWITCH)
 
     nx_create_nro(j2me-nxx
         NACP j2me-nxx.nacp
+        ICON "${CMAKE_SOURCE_DIR}/assets/icon.jpg"
     )
 else()
     target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LINK_LIBRARIES} m)

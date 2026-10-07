@@ -1,11 +1,13 @@
 #include "menu.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "gfx.h"
 #include "input.h"
 #include "lang.h"
+#include "third_party/stb_image.h"
 #include "update.h"
 
 #define HEADER_H    80
@@ -117,13 +119,49 @@ static const char *line_subtitle(void) {
     return buf;
 }
 
+// Logo của app (assets/logo.png nhúng lúc build), nạp 1 lần
+extern const unsigned char app_logo_png[];
+extern const size_t app_logo_png_size;
+
+static SDL_Texture *logo_texture(void) {
+    static SDL_Texture *tex;
+    static bool tried;
+    if (tried)
+        return tex;
+    tried = true;
+    int w, h, n;
+    unsigned char *rgba = stbi_load_from_memory(app_logo_png, (int)app_logo_png_size, &w, &h, &n, 4);
+    if (!rgba)
+        return NULL;
+    uint32_t *argb = malloc((size_t)w * h * 4);
+    if (argb) {
+        for (int i = 0; i < w * h; i++) {
+            const unsigned char *p = rgba + i * 4;
+            argb[i] = ((uint32_t)p[3] << 24) | ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | p[2];
+        }
+        tex = gfx_texture_argb(argb, w, h);
+        if (tex)
+            SDL_SetTextureScaleMode(tex, SDL_ScaleModeLinear);
+        free(argb);
+    }
+    stbi_image_free(rgba);
+    return tex;
+}
+
 static void draw_header(const GameList *list, const char *games_dir) {
     gfx_fill_rect(0, 0, SCREEN_W, HEADER_H, COL_BAR);
     gfx_fill_rect(0, HEADER_H, SCREEN_W, 2, COL_ACCENT);
 
+    int title_x = LIST_X;
+    SDL_Texture *logo = logo_texture();
+    if (logo) {
+        int size = HEADER_H - 24;
+        gfx_draw_texture(logo, LIST_X, (HEADER_H - size) / 2, size, size);
+        title_x += size + 16;
+    }
     int title_y = (HEADER_H - gfx_font_height(FONT_LARGE)) / 2;
-    int w = gfx_text(FONT_LARGE, LIST_X, title_y, 0, ALIGN_LEFT, COL_TEXT, "J2ME-NXX");
-    gfx_text(FONT_SMALL, LIST_X + w + 14, title_y + gfx_font_height(FONT_LARGE) - gfx_font_height(FONT_SMALL) - 4,
+    int w = gfx_text(FONT_LARGE, title_x, title_y, 0, ALIGN_LEFT, COL_TEXT, "J2ME-NXX");
+    gfx_text(FONT_SMALL, title_x + w + 14, title_y + gfx_font_height(FONT_LARGE) - gfx_font_height(FONT_SMALL) - 4,
              0, ALIGN_LEFT, COL_DIM, line_subtitle());
 
     char count[32];

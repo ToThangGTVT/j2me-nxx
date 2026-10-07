@@ -30,6 +30,25 @@ void platform_exit(void) {
     socketExit();
 }
 
+OpenUrlResult platform_open_url(const char *url) {
+    AppletType at = appletGetAppletType();
+    if (at != AppletType_Application && at != AppletType_SystemApplication)
+        return OPEN_URL_NEED_APP;
+    WebCommonConfig cfg;
+    WebCommonReply reply;
+    Result rc = webPageCreate(&cfg, url);
+    // Danh sách URL được phép lấy từ game đang bị chiếm chỗ: cho phép mọi trang http/https
+    if (R_SUCCEEDED(rc))
+        rc = webConfigSetWhitelist(&cfg, "^http*");
+    if (R_SUCCEEDED(rc))
+        rc = webConfigShow(&cfg, &reply);
+    if (R_FAILED(rc)) {
+        printf("web applet: 0x%x\n", rc);
+        return OPEN_URL_FAILED;
+    }
+    return OPEN_URL_OK;
+}
+
 void platform_mem_usage(size_t *used, size_t *total) {
     u64 u = 0, t = 0;
     svcGetInfo(&u, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
@@ -117,6 +136,15 @@ bool platform_init(void) {
 }
 
 void platform_exit(void) {
+}
+
+OpenUrlResult platform_open_url(const char *url) {
+    // Test tự động: J2ME_NX_NO_BROWSER=1 chỉ in ra, không mở trình duyệt thật
+    if (SDL_getenv("J2ME_NX_NO_BROWSER")) {
+        printf("open url: %s\n", url);
+        return OPEN_URL_OK;
+    }
+    return SDL_OpenURL(url) == 0 ? OPEN_URL_OK : OPEN_URL_FAILED;
 }
 
 void platform_mem_usage(size_t *used, size_t *total) {

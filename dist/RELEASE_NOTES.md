@@ -1,22 +1,24 @@
-## J2ME-NX v0.4.0
+## J2ME-NX v0.4.1
 
-**Video** arrives: a built-in video player, video inside J2ME apps and games, and AMR/AAC audio, all powered by FFmpeg.
+Apps can now open links: videos play in the built-in video player, web pages open in the Switch browser.
 
-### 🎬 New
-- **Video player**: copy `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... files into the `games` folder; they appear in the list with a ▶ icon. Full screen with the correct aspect ratio, progress bar and time. **A** play / pause, **left / right** seek 10 s, **L / R** seek 1 min, **up / down** volume, **B** exit.
-- **Video in J2ME apps (MMAPI `VideoControl`)**: 3GP / MP4 (H.263, MPEG-4, H.264...) from the JAR, `file://` or `http://`. Video drawn over a Canvas (including full screen) or inside a Form, snapshots (`getSnapshot`), looping, seeking and volume. Picture is synced to the audio.
-- **AMR, AAC and M4A audio**: games whose sounds were silent because they used AMR can now play them.
+### ✨ New
+- **`MIDlet.platformRequest`** (previously ignored):
+  - **Video links** (`http://`, `rtsp://`, files on the app's memory card) play in the video player on top of the app. Press **B** to go back to the app. While the video is shown, keys do not reach the app and the game's sound is paused.
+  - **Web pages** open in the Switch's built-in browser. This needs hbmenu in **full RAM mode** (hold **R** while launching a game); otherwise J2ME-NX shows a hint. On desktop builds the default browser is used.
+  - `tel:`, `sms:` and `mailto:` links report "not supported" to the app, as on phones without those features.
+- **JTube** (YouTube client): browsing works; for playback set *Settings → Playback method → Via browser*. Videos play when the selected Invidious server is up. With *Via 2yxa.mobi*, the 2yxa page opens in the Switch browser.
 
-### 🔧 Changed
-- Decoding large sounds no longer makes the game's audio stutter.
-- The `.nro` is larger (about 23 MB) because it bundles FFmpeg.
+### 📌 Known limitations
+- The Switch FFmpeg build has no `https://`: HTTPS video links open in the Switch browser instead of the video player.
+- Network streams are read on the render thread, so a slow connection can make the picture stall; a stream that sends nothing for 15 seconds is stopped.
 
 ### 📌 Notes
 - Run hbmenu in **full RAM mode** (hold **R** while launching any game) instead of from the Album. Album (applet) mode has limited RAM and CPU, which can make games stutter.
 - When reporting a bug or stutter, enable **Show FPS** and attach `log.txt`.
 
 ### Installation
-- **Zip** (recommended): extract `j2me-nx-v0.4.0.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nx/games/` (subfolders are supported).
+- **Zip** (recommended): extract `j2me-nx-v0.4.1.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nx/games/` (subfolders are supported).
 - **NRO only**: copy `j2me-nx.nro` to `sdmc:/switch/`; the `games` folder is created on first launch.
 
 Launch **J2ME-NX** from hbmenu.

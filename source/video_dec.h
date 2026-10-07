@@ -20,6 +20,7 @@ typedef struct {
     int audio_rate;         // tần số mẫu ra (mặc định 22050)
     int audio_channels;     // 1 hoặc 2 (mặc định 1)
     int threads;            // số luồng giải mã video (mặc định 1)
+    volatile int *abort;    // mở URL: khác 0 thì huỷ đọc mạng (NULL = không dùng)
 } VDecOptions;
 
 typedef struct {
@@ -32,6 +33,8 @@ bool vdec_available(void);
 // Mở từ bộ nhớ (chép dữ liệu) hoặc từ file
 VideoDec *vdec_open_mem(const uint8_t *data, size_t size, const VDecOptions *opt);
 VideoDec *vdec_open_file(const char *path, const VDecOptions *opt);
+// Mở luồng mạng (http://...; https:// nếu FFmpeg có TLS). Chặn tới khi đọc xong phần đầu.
+VideoDec *vdec_open_url(const char *url, const VDecOptions *opt);
 void vdec_close(VideoDec *d);
 
 bool vdec_has_video(const VideoDec *d);

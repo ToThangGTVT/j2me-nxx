@@ -14,7 +14,7 @@ Chạy file `.jar` của game điện thoại Java cũ trực tiếp trên Switc
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; font Google Sans (OFL) có đủ chữ tiếng Việt |
 | `source/` | App: danh sách game, cài đặt, phiên chạy game (`emu.c`), giải mã video qua FFmpeg (`video_dec.c`), trình xem video (`video_screen.c`), lớp nền tảng Switch/desktop |
-| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video trên Canvas và trong Form) |
+| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video trên Canvas, trong Form, `platformRequest`) |
 
 Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng vào binary dưới dạng `classlib.jar`.
 
@@ -87,6 +87,7 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 - Đã chạy: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (bàn phím ảo của Switch), RecordStore, Timer, thread / wait / notify.
 - Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (tổng hợp bằng sóng cơ bản + trống, không cần soundfont), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A và tiếng trong 3GP/MP4 giải mã bằng FFmpeg.
 - Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) từ JAR, `file://` hoặc `http://`; vẽ đè lên Canvas (`USE_DIRECT_VIDEO`, cả toàn màn hình) hoặc trong Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), lặp, tua. Chưa có camera (`capture://`).
+- `MIDlet.platformRequest`: link video (`http://`, `file:///`...) phát bằng trình xem video đè lên app (B để quay lại), trang web mở bằng trình duyệt có sẵn của Switch (cần chạy hbmenu ở chế độ full RAM). Dùng cho app như JTube (chọn Playback method: Via browser).
 - Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ), `datagram://` (UDP).
 - File: JSR-75 FileConnection với ổ `C:/`, `E:/` trong sandbox riêng của từng game (`sdmc:/switch/j2me-nx/files/<game>/`).
 - API của hãng: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
@@ -121,7 +122,7 @@ It runs `.jar` files of old Java phone games directly on the Switch (homebrew `.
 | `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; Google Sans font (OFL) with full Vietnamese coverage |
 | `source/` | App: game list, settings, game session (`emu.c`), FFmpeg video decoding (`video_dec.c`), video player (`video_screen.c`), Switch/desktop platform layer |
-| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video on a Canvas and in a Form) |
+| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video on a Canvas, in a Form, `platformRequest`) |
 
 The Java library is compiled with `javac` at build time and embedded in the binary as `classlib.jar`.
 
@@ -194,6 +195,7 @@ Screen size is chosen in this order: the game's own options > `Nokia-MIDlet-Orig
 - Working: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (Switch software keyboard), RecordStore, Timer, threads / wait / notify.
 - Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (synthesized with basic waveforms + drums, no soundfont needed), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A and the audio track of 3GP/MP4 are decoded with FFmpeg.
 - Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) from the JAR, `file://` or `http://`; drawn over a Canvas (`USE_DIRECT_VIDEO`, including full screen) or inside a Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), looping, seeking. No camera (`capture://`) yet.
+- `MIDlet.platformRequest`: video links (`http://`, `file:///`...) play in the video player on top of the app (B to go back), web pages open in the Switch's built-in browser (requires hbmenu in full RAM mode). Useful for apps like JTube (set Playback method to Via browser).
 - Networking: `socket://`, `http://`, `https://`, `ssl://` (TLS via mbedTLS, certificates are not verified), `datagram://` (UDP).
 - Files: JSR-75 FileConnection with `C:/` and `E:/` drives in a per-game sandbox (`sdmc:/switch/j2me-nx/files/<game>/`).
 - Vendor APIs: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).

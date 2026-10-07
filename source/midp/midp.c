@@ -337,6 +337,16 @@ static NativeResult MIDlet_getAppProperty0(VMThread *t, Value *args, Value *ret)
     return NATIVE_OK;
 }
 
+static NativeResult MIDlet_platformRequest0(VMThread *t, Value *args, Value *ret) {
+    (void)t;
+    (void)ret;
+    char *url = jstring_to_utf8(args[0].l);
+    if (url && cfg.platform_request)
+        cfg.platform_request(url);
+    free(url);
+    return NATIVE_OK;
+}
+
 static NativeResult MIDlet_notifyDestroyed0(VMThread *t, Value *args, Value *ret) {
     (void)t;
     (void)args;
@@ -508,6 +518,7 @@ void midp_register_natives(void) {
     const char *M = "javax/microedition/midlet/MIDlet";
     native_register(M, "getAppProperty0", "(Ljava/lang/String;)Ljava/lang/String;", MIDlet_getAppProperty0);
     native_register(M, "notifyDestroyed0", "()V", MIDlet_notifyDestroyed0);
+    native_register(M, "platformRequest0", "(Ljava/lang/String;)V", MIDlet_platformRequest0);
 
     native_register("j2menx/Keyboard", "show0", "(Ljava/lang/String;Ljava/lang/String;II)Ljava/lang/String;",
                     Keyboard_show0);

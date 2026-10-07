@@ -75,6 +75,7 @@ typedef struct {
 } Player;
 
 static SDL_AudioDeviceID dev;
+static bool suspended, reopen_after_suspend;
 #ifndef __SWITCH__
 static FILE *dump;  // J2ME_NX_AUDIO_DUMP=<file>: ghi PCM 16-bit mono 22050Hz để kiểm tra
 #endif
@@ -443,6 +444,11 @@ static void audio_callback(void *userdata, Uint8 *stream, int bytes) {
 static bool audio_open(void) {
     if (dev)
         return true;
+    if (suspended) {
+        // Player vẫn tạo được, mở thiết bị khi hết tạm dừng
+        reopen_after_suspend = true;
+        return true;
+    }
     if (!SDL_WasInit(SDL_INIT_AUDIO) && SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
         vm_log("SDL audio: %s", SDL_GetError());
         return false;
@@ -1109,7 +1115,26 @@ void midp_audio_register(void) {
     native_register(A, "playTone0", "(III)V", A_playTone0);
 }
 
+void midp_audio_suspend(bool s) {
+    if (s == suspended)
+        return;
+    if (s) {
+        suspended = true;
+        reopen_after_suspend = dev != 0;
+        if (dev) {
+            SDL_CloseAudioDevice(dev);
+            dev = 0;
+        }
+    } else {
+        suspended = false;
+        if (reopen_after_suspend)
+            audio_open();
+        reopen_after_suspend = false;
+    }
+}
+
 void midp_audio_shutdown(void) {
+    suspended = reopen_after_suspend = false;
     if (dev) {
         SDL_CloseAudioDevice(dev);
         dev = 0;

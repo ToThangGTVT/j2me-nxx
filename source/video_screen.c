@@ -141,19 +141,28 @@ static void seek_to(int64_t ms) {
         pause_ms = ms;
 }
 
+void video_screen_options(VDecOptions *opt) {
+    memset(opt, 0, sizeof(*opt));
+    opt->streams = VDEC_VIDEO | VDEC_AUDIO;
+    opt->audio_rate = RATE;
+    opt->audio_channels = CHANNELS;
+    opt->threads = 3;
+}
+
 bool video_screen_open(const char *path, const char *name, char *err, size_t err_size) {
-    video_screen_close();
-    VDecOptions opt = {
-        .streams = VDEC_VIDEO | VDEC_AUDIO,
-        .audio_rate = RATE,
-        .audio_channels = CHANNELS,
-        .threads = 3,
-    };
-    dec = vdec_open_file(path, &opt);
-    if (!dec) {
+    VDecOptions opt;
+    video_screen_options(&opt);
+    VideoDec *d = vdec_open_file(path, &opt);
+    if (!d) {
         snprintf(err, err_size, "%s", tr(vdec_available() ? S_ERR_VIDEO : S_ERR_NO_VIDEO_BUILD));
         return false;
     }
+    return video_screen_open_dec(d, name, err, err_size);
+}
+
+bool video_screen_open_dec(VideoDec *d, const char *name, char *err, size_t err_size) {
+    video_screen_close();
+    dec = d;
     snprintf(title, sizeof(title), "%s", name);
     has_video = vdec_has_video(dec);
     has_audio = vdec_has_audio(dec);

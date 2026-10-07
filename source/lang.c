@@ -116,6 +116,10 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_ERR_NO_VIDEO_BUILD] = { "Bản build này không có FFmpeg: không xem được video",
                                "This build has no FFmpeg: video is not supported" },
     [S_VIDEO_NO_OPTIONS] = { "Video không có tuỳ chọn riêng", "Videos have no options" },
+    [S_LINK_OPENING]   = { "Đang mở liên kết...   (B) Huỷ", "Opening link...   (B) Cancel" },
+    [S_LINK_FAILED]    = { "Không mở được liên kết", "Cannot open link" },
+    [S_BROWSER_NEEDS_APP] = { "Muốn mở trình duyệt, hãy chạy hbmenu ở chế độ full RAM (giữ R khi mở một game)",
+                              "To open the browser, run hbmenu in full RAM mode (hold R while launching a game)" },
 };
 
 void lang_set(Lang l) {

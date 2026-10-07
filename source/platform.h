@@ -22,6 +22,15 @@ typedef struct PlatformThread PlatformThread;
 PlatformThread *platform_thread_start(int (*fn)(void *), void *arg);
 void platform_thread_join(PlatformThread *t);
 
+// Mở trang web bằng trình duyệt: Switch dùng trình duyệt có sẵn (chặn tới khi người dùng đóng),
+// desktop dùng trình duyệt mặc định
+typedef enum {
+    OPEN_URL_OK,
+    OPEN_URL_NEED_APP,      // Switch: chỉ mở được khi chạy dạng Application (hbmenu full RAM)
+    OPEN_URL_FAILED,
+} OpenUrlResult;
+OpenUrlResult platform_open_url(const char *url);
+
 // RAM của cả app (byte). total = 0 nếu không biết (desktop)
 void platform_mem_usage(size_t *used, size_t *total);
 

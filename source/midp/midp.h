@@ -41,6 +41,8 @@ typedef struct {
     // Bàn phím ảo: trả về chuỗi UTF-8 malloc, NULL nếu huỷ
     char *(*keyboard)(const char *title, const char *text, int max_len, int type);
     void (*vibrate)(int ms);
+    // MIDlet.platformRequest (luồng VM): URL http/https/rtsp hoặc đường dẫn file thật; "" = huỷ
+    void (*platform_request)(const char *url);
     int fps_limit;                                          // 0 = không giới hạn
     bool smooth_text;                                       // chữ khử răng cưa (mặc định: chữ điểm ảnh)
     int font_scale;                                         // cỡ chữ, % so với cỡ gốc
@@ -93,6 +95,8 @@ void midp_fileio_register(void);
 void midp_audio_register(void);
 void midp_audio_poll(void);         // gọi mỗi frame: báo END_OF_MEDIA
 void midp_audio_shutdown(void);
+// Tạm đóng thiết bị âm thanh (khi trình xem video đè lên game). Gọi khi luồng VM đang dừng.
+void midp_audio_suspend(bool suspend);
 
 // net.c, tls.c
 void midp_net_register(void);

@@ -89,6 +89,9 @@ typedef enum {
     S_ERR_VIDEO,
     S_ERR_NO_VIDEO_BUILD,
     S_VIDEO_NO_OPTIONS,
+    S_LINK_OPENING,
+    S_LINK_FAILED,
+    S_BROWSER_NEEDS_APP,
     S_COUNT,
 } StrId;
 

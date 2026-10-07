@@ -1,5 +1,6 @@
 #!/bin/sh
-# MIDlet test video (MMAPI VideoControl): MIDlet-1 vẽ đè lên Canvas, MIDlet-2 trong Form
+# MIDlet test video (MMAPI VideoControl): MIDlet-1 vẽ đè lên Canvas, MIDlet-2 trong Form,
+# MIDlet-3 MIDlet.platformRequest (mở file / URL bằng trình xem video hoặc trình duyệt)
 # res/clip.3gp: hình test + tiếng 440Hz, tạo bằng
 #   ffmpeg -f lavfi -i testsrc=size=176x144:rate=12 -f lavfi -i sine=frequency=440:sample_rate=8000 \
 #          -t 5 -c:v h263 -q:v 14 -c:a aac -ac 1 -ar 8000 -b:a 12k res/clip.3gp

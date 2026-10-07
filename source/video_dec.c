@@ -5,6 +5,7 @@
 bool vdec_available(void) { return false; }
 VideoDec *vdec_open_mem(const uint8_t *data, size_t size, const VDecOptions *opt) { (void)data; (void)size; (void)opt; return NULL; }
 VideoDec *vdec_open_file(const char *path, const VDecOptions *opt) { (void)path; (void)opt; return NULL; }
+VideoDec *vdec_open_url(const char *url, const VDecOptions *opt) { (void)url; (void)opt; return NULL; }
 void vdec_close(VideoDec *d) { (void)d; }
 bool vdec_has_video(const VideoDec *d) { (void)d; return false; }
 bool vdec_has_audio(const VideoDec *d) { (void)d; return false; }
@@ -50,6 +51,8 @@ struct VideoDec {
     int64_t mem_size, mem_pos;
     FILE *file;
     int64_t file_size;
+    const char *url;                // mở bằng giao thức của FFmpeg (http)
+    volatile int *abort;
 
     AVIOContext *avio;
     AVFormatContext *fmt;
@@ -198,10 +201,16 @@ static AVCodecContext *open_codec(AVStream *st, int threads) {
     return c;
 }
 
+static int interrupt_cb(void *opaque) {
+    VideoDec *d = opaque;
+    return d->abort && *d->abort;
+}
+
 static VideoDec *open_common(VideoDec *d, const VDecOptions *opt) {
     static bool log_set;
     if (!log_set) {
         av_log_set_level(AV_LOG_QUIET);
+        avformat_network_init();
         log_set = true;
     }
     int streams = opt ? opt->streams : (VDEC_VIDEO | VDEC_AUDIO);
@@ -210,23 +219,38 @@ static VideoDec *open_common(VideoDec *d, const VDecOptions *opt) {
     d->vs = d->as = -1;
     d->skip_video = d->skip_audio = -1;
 
-    uint8_t *buf = av_malloc(IO_BUF);
-    d->avio = buf ? avio_alloc_context(buf, IO_BUF, 0, d, d->file ? file_read : mem_read, NULL,
-                                       d->file ? file_seek : mem_seek)
-                  : NULL;
-    if (!d->avio) {
-        av_free(buf);
-        vdec_close(d);
-        return NULL;
-    }
+    d->abort = opt ? opt->abort : NULL;
     d->fmt = avformat_alloc_context();
     if (!d->fmt) {
         vdec_close(d);
         return NULL;
     }
-    d->fmt->pb = d->avio;
-    d->fmt->flags |= AVFMT_FLAG_CUSTOM_IO;
-    if (avformat_open_input(&d->fmt, NULL, NULL, NULL) < 0) {
+    d->fmt->interrupt_callback.callback = interrupt_cb;
+    d->fmt->interrupt_callback.opaque = d;
+    int r;
+    if (d->url) {
+        // Mạng: hết 15 giây không nhận được gì thì bỏ; tự nối lại khi rớt giữa chừng
+        AVDictionary *o = NULL;
+        av_dict_set(&o, "rw_timeout", "15000000", 0);
+        av_dict_set(&o, "reconnect", "1", 0);
+        av_dict_set(&o, "user_agent", "Mozilla/5.0 (Nintendo Switch) J2ME-NX", 0);
+        r = avformat_open_input(&d->fmt, d->url, NULL, &o);
+        av_dict_free(&o);
+    } else {
+        uint8_t *buf = av_malloc(IO_BUF);
+        d->avio = buf ? avio_alloc_context(buf, IO_BUF, 0, d, d->file ? file_read : mem_read, NULL,
+                                           d->file ? file_seek : mem_seek)
+                      : NULL;
+        if (!d->avio) {
+            av_free(buf);
+            vdec_close(d);
+            return NULL;
+        }
+        d->fmt->pb = d->avio;
+        d->fmt->flags |= AVFMT_FLAG_CUSTOM_IO;
+        r = avformat_open_input(&d->fmt, NULL, NULL, NULL);
+    }
+    if (r < 0) {
         d->fmt = NULL;      // avformat_open_input đã giải phóng khi lỗi
         vdec_close(d);
         return NULL;
@@ -300,6 +324,19 @@ VideoDec *vdec_open_file(const char *path, const VDecOptions *opt) {
     struct stat st;
     d->file_size = fstat(fileno(f), &st) == 0 ? (int64_t)st.st_size : -1;
     return open_common(d, opt);
+}
+
+VideoDec *vdec_open_url(const char *url, const VDecOptions *opt) {
+    if (!url || !*url)
+        return NULL;
+    VideoDec *d = calloc(1, sizeof(VideoDec));
+    if (!d)
+        return NULL;
+    d->url = url;   // chỉ dùng trong lúc mở
+    VideoDec *r = open_common(d, opt);
+    if (r)
+        r->url = NULL;
+    return r;
 }
 
 void vdec_close(VideoDec *d) {

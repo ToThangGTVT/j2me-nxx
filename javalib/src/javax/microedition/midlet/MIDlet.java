@@ -1,5 +1,7 @@
 package javax.microedition.midlet;
 
+import javax.microedition.io.ConnectionNotFoundException;
+
 public abstract class MIDlet {
     private static MIDlet instance;
 
@@ -34,10 +36,29 @@ public abstract class MIDlet {
         return getAppProperty0(key);
     }
 
-    public final boolean platformRequest(String url) {
+    // Link video: giả lập phát bằng trình xem video, đè lên app; trang web: mở trình duyệt.
+    // Chuỗi rỗng = huỷ yêu cầu đang chờ. Luôn trả về false (không cần thoát MIDlet).
+    public final boolean platformRequest(String url) throws ConnectionNotFoundException {
+        if (url == null) {
+            throw new NullPointerException();
+        }
         System.out.println("platformRequest: " + url);
+        String u = url.trim();
+        String lower = u.toLowerCase();
+        if (lower.startsWith("file:///")) {
+            u = j2menx.FileIO.hostPath(u.substring(8));
+            if (u == null) {
+                throw new ConnectionNotFoundException(url);
+            }
+        } else if (u.length() > 0 && !lower.startsWith("http://") && !lower.startsWith("https://")
+                && !lower.startsWith("rtsp://")) {
+            throw new ConnectionNotFoundException("Khong ho tro " + url);   // tel:, sms:, mailto:...
+        }
+        platformRequest0(u);
         return false;
     }
+
+    private static native void platformRequest0(String url);
 
     public final int checkPermission(String permission) {
         return 1;

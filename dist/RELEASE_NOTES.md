@@ -1,20 +1,21 @@
-## J2ME-NXX v0.5.0
+## J2ME-NXX v0.6.0
 
-The app is now called **J2ME-NXX**, and everything lives in its own folder `sdmc:/switch/j2me-nxx/`.
+Better MIDI music, a touch QWERTY keyboard, and in-app updates.
 
-### ⚠️ Breaking changes
-- **New folder.** Games are read from `sdmc:/switch/j2me-nxx/games/`. The old `sdmc:/switch/j2me-nx/games/` folder is no longer scanned: move your `.jar` files over.
-- **Saves and settings start fresh.** Saves (`rms/`), game files (`files/`), `settings.ini` and `log.txt` are now under `sdmc:/switch/j2me-nxx/`. Data from `sdmc:/switch/j2me-nx/` is not migrated.
-- Per-game options moved from `games/<name>.ini` to `options/<name>.ini`, so the `games` folder only holds your games.
-- The file is now `j2me-nxx.nro`. Delete the old `sdmc:/switch/j2me-nx.nro` (and the `sdmc:/switch/j2me-nx/` folder once your games are moved) so hbmenu does not show two apps.
+### ✨ New
+- **In-app updates.** On launch, J2ME-NXX checks GitHub for a newer release and shows its notes. Press **A** to download the new `j2me-nxx.nro` with a progress bar (size, %, speed, time left; **B** cancels). The old file is only replaced once the download is complete and verified, then **A** restarts into the new version. Pick "Later" and a **New version** badge stays in the game list; press **B** there to update. Can be turned off in **Settings > Check for updates**.
+- **SoundFont MIDI.** MIDI music, tone sequences and `playTone` can be played with a real General MIDI SoundFont instead of the simple wave synth. `TimGM6mb` (~6 MB, GPL v2) is built into the `.nro`, nothing to copy. You can also drop your own `.sf2` files into `sdmc:/switch/j2me-nxx/soundfonts/`. Turn it on in **Settings > MIDI SoundFont** (off by default): *Auto* uses the first `.sf2` on the SD card or the built-in one, *TimGM6mb (built-in)*, *Off*, or a specific file.
+- **QWERTY virtual keyboard bubble.** Enable **Settings > Virtual keyboard bubble** to get a small draggable bubble while playing. Tap it to open a floating keyboard with a number row, letters, `* # , .`, space, Shift (double-tap for caps lock; Shift + numbers gives `! @ # $ ...`), Del and Enter. Keys are sent as character codes like on QWERTY phones, handy for typing names, chat and Opera Mini. **×** collapses it back to the bubble.
 
-### ✨ Changed
-- The fake demo game list is gone. With no games yet, the list shows how to add them: the folder to copy `.jar` files into, subfolders, video files, and **Y** to rescan.
-- The `games` folder is created on first launch; the zip no longer ships a placeholder text file.
+### 🔧 Changed
+- Audio is now mixed at 48 kHz (the Switch's native rate) instead of 22050 Hz. SoundFont instruments no longer sound harsh/buzzy on the speakers.
+- Loud passages are softly compressed instead of hard-clipped.
 
 ### Installation
-- **Zip** (recommended): extract `j2me-nxx-v0.5.0.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
-- **NRO only**: copy `j2me-nxx.nro` to `sdmc:/switch/`; the `games` folder is created on first launch.
+- **Zip** (recommended): extract `j2me-nxx-v0.6.0.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
+- **NRO only**: copy `j2me-nxx.nro` to `sdmc:/switch/`, replacing the old one.
+
+Coming from v0.5.0 or older: install this version by hand once; later versions can be installed from inside the app.
 
 Launch **J2ME-NXX** from hbmenu.
 
@@ -31,4 +32,4 @@ Launch **J2ME-NXX** from hbmenu.
 | Right stick | 2 4 6 8 |
 | − (twice) | Exit game |
 
-In the game list: **X** settings, **−** per-game options (FPS, screen size, key layout), **Y** rescan.
+In the game list: **X** settings, **−** per-game options (FPS, screen size, key layout), **Y** rescan, **B** update (when a new version is available).

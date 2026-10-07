@@ -1,27 +1,22 @@
-## J2ME-NX v0.4.1
+## J2ME-NXX v0.5.0
 
-Apps can now open links: videos play in the built-in video player, web pages open in the Switch browser.
+The app is now called **J2ME-NXX**, and everything lives in its own folder `sdmc:/switch/j2me-nxx/`.
 
-### ✨ New
-- **`MIDlet.platformRequest`** (previously ignored):
-  - **Video links** (`http://`, `rtsp://`, files on the app's memory card) play in the video player on top of the app. Press **B** to go back to the app. While the video is shown, keys do not reach the app and the game's sound is paused.
-  - **Web pages** open in the Switch's built-in browser. This needs hbmenu in **full RAM mode** (hold **R** while launching a game); otherwise J2ME-NX shows a hint. On desktop builds the default browser is used.
-  - `tel:`, `sms:` and `mailto:` links report "not supported" to the app, as on phones without those features.
-- **JTube** (YouTube client): browsing works; for playback set *Settings → Playback method → Via browser*. Videos play when the selected Invidious server is up. With *Via 2yxa.mobi*, the 2yxa page opens in the Switch browser.
+### ⚠️ Breaking changes
+- **New folder.** Games are read from `sdmc:/switch/j2me-nxx/games/`. The old `sdmc:/switch/j2me-nx/games/` folder is no longer scanned: move your `.jar` files over.
+- **Saves and settings start fresh.** Saves (`rms/`), game files (`files/`), `settings.ini` and `log.txt` are now under `sdmc:/switch/j2me-nxx/`. Data from `sdmc:/switch/j2me-nx/` is not migrated.
+- Per-game options moved from `games/<name>.ini` to `options/<name>.ini`, so the `games` folder only holds your games.
+- The file is now `j2me-nxx.nro`. Delete the old `sdmc:/switch/j2me-nx.nro` (and the `sdmc:/switch/j2me-nx/` folder once your games are moved) so hbmenu does not show two apps.
 
-### 📌 Known limitations
-- The Switch FFmpeg build has no `https://`: HTTPS video links open in the Switch browser instead of the video player.
-- Network streams are read on the render thread, so a slow connection can make the picture stall; a stream that sends nothing for 15 seconds is stopped.
-
-### 📌 Notes
-- Run hbmenu in **full RAM mode** (hold **R** while launching any game) instead of from the Album. Album (applet) mode has limited RAM and CPU, which can make games stutter.
-- When reporting a bug or stutter, enable **Show FPS** and attach `log.txt`.
+### ✨ Changed
+- The fake demo game list is gone. With no games yet, the list shows how to add them: the folder to copy `.jar` files into, subfolders, video files, and **Y** to rescan.
+- The `games` folder is created on first launch; the zip no longer ships a placeholder text file.
 
 ### Installation
-- **Zip** (recommended): extract `j2me-nx-v0.4.1.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nx/games/` (subfolders are supported).
-- **NRO only**: copy `j2me-nx.nro` to `sdmc:/switch/`; the `games` folder is created on first launch.
+- **Zip** (recommended): extract `j2me-nxx-v0.5.0.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
+- **NRO only**: copy `j2me-nxx.nro` to `sdmc:/switch/`; the `games` folder is created on first launch.
 
-Launch **J2ME-NX** from hbmenu.
+Launch **J2ME-NXX** from hbmenu.
 
 ### Controls
 

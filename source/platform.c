@@ -95,11 +95,11 @@ void platform_thread_join(PlatformThread *t) {
 }
 
 const char *platform_games_dir(void) {
-    return "sdmc:/switch/j2me-nx/games";
+    return "sdmc:/switch/j2me-nxx/games";
 }
 
 const char *platform_data_dir(void) {
-    return "sdmc:/switch/j2me-nx";
+    return "sdmc:/switch/j2me-nxx";
 }
 
 char *platform_keyboard(const char *title, const char *text, int max_len, int type) {

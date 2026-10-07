@@ -28,7 +28,7 @@ public class LocalDevice {
     }
 
     public String getFriendlyName() {
-        return "J2ME-NX";
+        return "J2ME-NXX";
     }
 
     public DeviceClass getDeviceClass() {

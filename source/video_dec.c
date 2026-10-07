@@ -233,7 +233,7 @@ static VideoDec *open_common(VideoDec *d, const VDecOptions *opt) {
         AVDictionary *o = NULL;
         av_dict_set(&o, "rw_timeout", "15000000", 0);
         av_dict_set(&o, "reconnect", "1", 0);
-        av_dict_set(&o, "user_agent", "Mozilla/5.0 (Nintendo Switch) J2ME-NX", 0);
+        av_dict_set(&o, "user_agent", "Mozilla/5.0 (Nintendo Switch) J2ME-NXX", 0);
         r = avformat_open_input(&d->fmt, d->url, NULL, &o);
         av_dict_free(&o);
     } else {

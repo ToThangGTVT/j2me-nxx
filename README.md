@@ -29,7 +29,7 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
 ```
 
-Kết quả: `build/j2me-nx.nro`. Thiếu mbedTLS thì vẫn build được, chỉ không có `https://` / `ssl://`; thiếu FFmpeg thì không có video và AMR/AAC.
+Kết quả: `build/j2me-nxx.nro`. Thiếu mbedTLS thì vẫn build được, chỉ không có `https://` / `ssl://`; thiếu FFmpeg thì không có video và AMR/AAC.
 
 ### Bản desktop (test nhanh trên Mac/Linux)
 
@@ -37,14 +37,14 @@ Kết quả: `build/j2me-nx.nro`. Thiếu mbedTLS thì vẫn build được, ch�
 brew install sdl2 sdl2_ttf libpng mbedtls ffmpeg pkgconf
 cmake -B build-desktop -DJ2ME_NX_DESKTOP=ON
 cmake --build build-desktop
-./build-desktop/j2me-nx path/to/game.jar     # hoặc file video .mp4 / .3gp
+./build-desktop/j2me-nxx path/to/game.jar     # hoặc file video .mp4 / .3gp
 ```
 
 Biến môi trường: `J2ME_NX_GAMES` (thư mục game, mặc định `./games`), `J2ME_NX_DATA` (log, save, cài đặt; mặc định `./data`).
 
 ### CLion
 
-- Profile Switch: CMake options `-DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake`, Environment `DEVKITPRO=/opt/devkitpro`. Build target `j2me-nx_nro` (hoặc Build Project).
+- Profile Switch: CMake options `-DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake`, Environment `DEVKITPRO=/opt/devkitpro`. Build target `j2me-nxx_nro` (hoặc Build Project).
 - Profile Desktop: CMake options `-DJ2ME_NX_DESKTOP=ON`, chạy được bằng nút Run.
 
 ## Tải bản build
@@ -54,9 +54,9 @@ GitHub Actions tự build mỗi lần push; push tag `v*` (vd `git tag v0.1.0 &&
 
 ## Dùng trên Switch
 
-1. Chép `j2me-nx.nro` vào `sdmc:/switch/`.
-2. Chép game `.jar` (và `.jad` cùng tên nếu có) vào `sdmc:/switch/j2me-nx/games/`. Có thể chia thư mục con (tối đa 3 cấp), app tự tạo thư mục `games` ở lần chạy đầu.
-3. Mở bằng hbmenu. Save game ở `sdmc:/switch/j2me-nx/rms/`, log ở `sdmc:/switch/j2me-nx/log.txt`.
+1. Chép `j2me-nxx.nro` vào `sdmc:/switch/`.
+2. Chép game `.jar` (và `.jad` cùng tên nếu có) vào `sdmc:/switch/j2me-nxx/games/`. Có thể chia thư mục con (tối đa 3 cấp), app tự tạo thư mục `games` ở lần chạy đầu.
+3. Mở bằng hbmenu. Save game ở `sdmc:/switch/j2me-nxx/rms/`, log ở `sdmc:/switch/j2me-nxx/log.txt`.
 
 | Nút | Phím J2ME |
 |---|---|
@@ -78,7 +78,7 @@ Danh sách game hiện tên, nhà phát hành, phiên bản và icon đọc từ
 
 Trong danh sách game:
 - **X**: Cài đặt chung: giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chơi, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English).
-- **−**: Tuỳ chọn riêng cho game đang chọn (FPS, kích thước màn hình, kiểu phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nx/games/<tên>.ini`.
+- **−**: Tuỳ chọn riêng cho game đang chọn (FPS, kích thước màn hình, kiểu phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nxx/options/<tên>.ini`.
 
 Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng của game > `Nokia-MIDlet-Original-Display-Size` trong MANIFEST/JAD > cài đặt chung (mặc định 240x320).
 
@@ -89,7 +89,7 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 - Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) từ JAR, `file://` hoặc `http://`; vẽ đè lên Canvas (`USE_DIRECT_VIDEO`, cả toàn màn hình) hoặc trong Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), lặp, tua. Chưa có camera (`capture://`).
 - `MIDlet.platformRequest`: link video (`http://`, `file:///`...) phát bằng trình xem video đè lên app (B để quay lại), trang web mở bằng trình duyệt có sẵn của Switch (cần chạy hbmenu ở chế độ full RAM). Dùng cho app như JTube (chọn Playback method: Via browser).
 - Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ), `datagram://` (UDP).
-- File: JSR-75 FileConnection với ổ `C:/`, `E:/` trong sandbox riêng của từng game (`sdmc:/switch/j2me-nx/files/<game>/`).
+- File: JSR-75 FileConnection với ổ `C:/`, `E:/` trong sandbox riêng của từng game (`sdmc:/switch/j2me-nxx/files/<game>/`).
 - API của hãng: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
 - Giả lập để game không lỗi thiếu lớp: Bluetooth (JSR-82), SMS (JSR-120, gửi luôn báo lỗi), `PushRegistry`.
 - Kiểu phím theo hãng (Nokia, Sony Ericsson, Samsung, Motorola, Siemens, LG) trong Cài đặt / Tuỳ chọn game; JAR nhiều MIDlet có hộp chọn MIDlet.
@@ -101,7 +101,7 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 Bản desktop đọc vài biến môi trường để chạy kịch bản (tính theo ms từ lúc game chạy):
 
 ```bash
-J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nx game.jar
+J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
 `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách game) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 22050Hz) ra file, `J2ME_NX_SCREEN=settings` mở thẳng màn hình cài đặt.
@@ -137,7 +137,7 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
 ```
 
-Output: `build/j2me-nx.nro`. It still builds without mbedTLS, just without `https://` / `ssl://`; without FFmpeg there is no video and no AMR/AAC.
+Output: `build/j2me-nxx.nro`. It still builds without mbedTLS, just without `https://` / `ssl://`; without FFmpeg there is no video and no AMR/AAC.
 
 #### Desktop build (quick testing on Mac/Linux)
 
@@ -145,14 +145,14 @@ Output: `build/j2me-nx.nro`. It still builds without mbedTLS, just without `http
 brew install sdl2 sdl2_ttf libpng mbedtls ffmpeg pkgconf
 cmake -B build-desktop -DJ2ME_NX_DESKTOP=ON
 cmake --build build-desktop
-./build-desktop/j2me-nx path/to/game.jar     # or a .mp4 / .3gp video file
+./build-desktop/j2me-nxx path/to/game.jar     # or a .mp4 / .3gp video file
 ```
 
 Environment variables: `J2ME_NX_GAMES` (games folder, default `./games`), `J2ME_NX_DATA` (logs, saves, settings; default `./data`).
 
 #### CLion
 
-- Switch profile: CMake options `-DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake`, environment `DEVKITPRO=/opt/devkitpro`. Build the `j2me-nx_nro` target (or Build Project).
+- Switch profile: CMake options `-DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake`, environment `DEVKITPRO=/opt/devkitpro`. Build the `j2me-nxx_nro` target (or Build Project).
 - Desktop profile: CMake options `-DJ2ME_NX_DESKTOP=ON`, runnable with the Run button.
 
 ### Download
@@ -162,9 +162,9 @@ GitHub Actions builds on every push; pushing a `v*` tag (e.g. `git tag v0.1.0 &&
 
 ### Using it on the Switch
 
-1. Copy `j2me-nx.nro` to `sdmc:/switch/`.
-2. Copy your `.jar` games (and the matching `.jad` if you have one) to `sdmc:/switch/j2me-nx/games/`. Subfolders are supported (up to 3 levels); the `games` folder is created on first launch.
-3. Launch from hbmenu. Saves go to `sdmc:/switch/j2me-nx/rms/`, the log to `sdmc:/switch/j2me-nx/log.txt`.
+1. Copy `j2me-nxx.nro` to `sdmc:/switch/`.
+2. Copy your `.jar` games (and the matching `.jad` if you have one) to `sdmc:/switch/j2me-nxx/games/`. Subfolders are supported (up to 3 levels); the `games` folder is created on first launch.
+3. Launch from hbmenu. Saves go to `sdmc:/switch/j2me-nxx/rms/`, the log to `sdmc:/switch/j2me-nxx/log.txt`.
 
 | Button | J2ME key |
 |---|---|
@@ -186,7 +186,7 @@ The game list shows the name, vendor, version and icon read from each game's `MA
 
 In the game list:
 - **X**: Global settings: FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while playing, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English).
-- **−**: Options for the selected game (FPS, screen size, key layout, font size, smooth text), saved to `sdmc:/switch/j2me-nx/games/<name>.ini`.
+- **−**: Options for the selected game (FPS, screen size, key layout, font size, smooth text), saved to `sdmc:/switch/j2me-nxx/options/<name>.ini`.
 
 Screen size is chosen in this order: the game's own options > `Nokia-MIDlet-Original-Display-Size` in MANIFEST/JAD > global settings (default 240x320).
 
@@ -197,7 +197,7 @@ Screen size is chosen in this order: the game's own options > `Nokia-MIDlet-Orig
 - Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) from the JAR, `file://` or `http://`; drawn over a Canvas (`USE_DIRECT_VIDEO`, including full screen) or inside a Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), looping, seeking. No camera (`capture://`) yet.
 - `MIDlet.platformRequest`: video links (`http://`, `file:///`...) play in the video player on top of the app (B to go back), web pages open in the Switch's built-in browser (requires hbmenu in full RAM mode). Useful for apps like JTube (set Playback method to Via browser).
 - Networking: `socket://`, `http://`, `https://`, `ssl://` (TLS via mbedTLS, certificates are not verified), `datagram://` (UDP).
-- Files: JSR-75 FileConnection with `C:/` and `E:/` drives in a per-game sandbox (`sdmc:/switch/j2me-nx/files/<game>/`).
+- Files: JSR-75 FileConnection with `C:/` and `E:/` drives in a per-game sandbox (`sdmc:/switch/j2me-nxx/files/<game>/`).
 - Vendor APIs: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
 - Stubbed so games don't fail on missing classes: Bluetooth (JSR-82), SMS (JSR-120, sending always reports an error), `PushRegistry`.
 - Per-vendor key layouts (Nokia, Sony Ericsson, Samsung, Motorola, Siemens, LG) in Settings / Game options; JARs with several MIDlets show a MIDlet picker.
@@ -209,7 +209,7 @@ Screen size is chosen in this order: the game's own options > `Nokia-MIDlet-Orig
 The desktop build reads a few environment variables to run a script (times in ms since the game started):
 
 ```bash
-J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nx game.jar
+J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
 `J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (game list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 22050 Hz) to a file, `J2ME_NX_SCREEN=settings` opens the settings screen directly.

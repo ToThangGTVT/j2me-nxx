@@ -1,4 +1,4 @@
-# J2ME-NX
+# J2ME-NXX
 #
 # Switch (mặc định): cần CMake option
 #   -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake
@@ -19,13 +19,13 @@ if(NOT J2ME_NX_DESKTOP AND NOT CMAKE_TOOLCHAIN_FILE)
     endif()
 endif()
 
-project(j2me-nx VERSION 0.4.1 LANGUAGES C CXX)
+project(j2me-nxx VERSION 0.5.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-set(APP_TITLE  "J2ME-NX")
+set(APP_TITLE  "J2ME-NXX")
 set(APP_AUTHOR "toquangthang")
 
 # ---------------------------------------------------------------------------
@@ -77,7 +77,7 @@ add_custom_command(
 
 # ---------------------------------------------------------------------------
 
-add_executable(j2me-nx
+add_executable(j2me-nxx
     source/main.c
     source/platform.c
     source/gfx.c
@@ -115,11 +115,11 @@ add_executable(j2me-nx
     "${UI_FONT_C}"
 )
 
-target_compile_options(j2me-nx PRIVATE -Wall)
-target_compile_definitions(j2me-nx PRIVATE APP_VERSION_STR="${PROJECT_VERSION}")
+target_compile_options(j2me-nxx PRIVATE -Wall)
+target_compile_definitions(j2me-nxx PRIVATE APP_VERSION_STR="${PROJECT_VERSION}")
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Interpreter rất chậm khi không tối ưu
-    target_compile_options(j2me-nx PRIVATE -O2)
+    target_compile_options(j2me-nxx PRIVATE -O2)
 endif()
 
 # SDL2 + SDL2_ttf + libpng + zlib qua pkg-config. Trên Switch, Switch.cmake trỏ pkg-config
@@ -145,7 +145,7 @@ if(NINTENDO_SWITCH)
 else()
     pkg_check_modules(MBEDTLS mbedtls mbedx509 mbedcrypto)
     if(MBEDTLS_FOUND)
-        target_include_directories(j2me-nx PRIVATE ${MBEDTLS_INCLUDE_DIRS})
+        target_include_directories(j2me-nxx PRIVATE ${MBEDTLS_INCLUDE_DIRS})
         set(TLS_LIBS ${MBEDTLS_LINK_LIBRARIES})
     endif()
 endif()
@@ -153,14 +153,14 @@ if(TLS_LIBS)
     message(STATUS "HTTPS: dung mbedTLS")
 else()
     message(WARNING "Khong tim thay mbedTLS: build khong co HTTPS. Switch: sudo dkp-pacman -S switch-mbedtls, Mac: brew install mbedtls")
-    target_compile_definitions(j2me-nx PRIVATE J2ME_NX_NO_TLS)
+    target_compile_definitions(j2me-nxx PRIVATE J2ME_NX_NO_TLS)
 endif()
 
 # FFmpeg cho video (3GP/MP4...) và âm thanh AMR/AAC (không bắt buộc: thiếu thì build không có video)
 pkg_check_modules(FFMPEG libavformat libavcodec libswscale libswresample libavutil)
 if(FFMPEG_FOUND)
     message(STATUS "Video: dung FFmpeg ${FFMPEG_libavcodec_VERSION}")
-    target_include_directories(j2me-nx PRIVATE ${FFMPEG_INCLUDE_DIRS})
+    target_include_directories(j2me-nxx PRIVATE ${FFMPEG_INCLUDE_DIRS})
     if(NINTENDO_SWITCH)
         set(VIDEO_LIBS ${FFMPEG_LDFLAGS})
     else()
@@ -168,25 +168,25 @@ if(FFMPEG_FOUND)
     endif()
 else()
     message(WARNING "Khong tim thay FFmpeg: build khong co video / AMR. Switch: sudo dkp-pacman -S switch-ffmpeg, Mac: brew install ffmpeg")
-    target_compile_definitions(j2me-nx PRIVATE J2ME_NX_NO_VIDEO)
+    target_compile_definitions(j2me-nxx PRIVATE J2ME_NX_NO_VIDEO)
 endif()
 
-target_include_directories(j2me-nx PRIVATE ${DEPS_INCLUDE_DIRS})
-target_compile_options(j2me-nx PRIVATE ${DEPS_CFLAGS_OTHER})
+target_include_directories(j2me-nxx PRIVATE ${DEPS_INCLUDE_DIRS})
+target_compile_options(j2me-nxx PRIVATE ${DEPS_CFLAGS_OTHER})
 
 if(NINTENDO_SWITCH)
     # mbedTLS phải đứng trước libnx trong lệnh link
-    target_link_libraries(j2me-nx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LDFLAGS})
+    target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LDFLAGS})
 
-    nx_generate_nacp(j2me-nx.nacp
+    nx_generate_nacp(j2me-nxx.nacp
         NAME    "${APP_TITLE}"
         AUTHOR  "${APP_AUTHOR}"
         VERSION "${PROJECT_VERSION}"
     )
 
-    nx_create_nro(j2me-nx
-        NACP j2me-nx.nacp
+    nx_create_nro(j2me-nxx
+        NACP j2me-nxx.nacp
     )
 else()
-    target_link_libraries(j2me-nx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LINK_LIBRARIES} m)
+    target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LINK_LIBRARIES} m)
 endif()

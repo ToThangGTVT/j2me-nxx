@@ -11,16 +11,19 @@ typedef enum {
     // Danh sách game
     S_APP_SUBTITLE,
     S_GAME_COUNT,           // %d
-    S_NO_JAR,               // %s
     S_FOLDER,               // %s
     S_NO_MIDLET,
     S_MENU_HINTS,
     S_PICK_MIDLET,
+    // Chưa có game
+    S_EMPTY_TITLE,
+    S_EMPTY_COPY,
+    S_EMPTY_SUBDIR,
+    S_EMPTY_VIDEO,
+    S_EMPTY_RESCAN,
     // Thông báo ở thanh dưới
     S_ERROR_FMT,            // %s
     S_RESCANNED,            // %d
-    S_DEMO_LIST_COPY,       // %s
-    S_DEMO_LIST,
     S_SETTINGS_SAVED,
     S_GAME_EXITED,
     // Lỗi khi chạy game

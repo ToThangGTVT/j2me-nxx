@@ -14,23 +14,6 @@
 #define MAX_GAMES 2048
 #define MAX_DEPTH 3
 
-static const char *demo_names[] = {
-    "Bounce Tales.jar", "Snake Xenzia.jar", "Space Impact.jar",
-    "Gunbound.jar", "Ninja School Online.jar", "Ngoc Rong Online.jar",
-    "Avatar.jar", "Army Online.jar", "Asphalt 4.jar", "Prince of Persia.jar",
-    "Diamond Rush.jar", "Bubble Bash.jar", "Brick Breaker Revolution.jar",
-    "Tetris.jar", "Zuma.jar", "Need for Speed Most Wanted.jar",
-    "Assassin's Creed.jar", "Real Football 2009.jar", "Gangstar 2.jar",
-    "Block Breaker Deluxe.jar", "Midnight Pool.jar", "Opera Mini 4.jar",
-    "Ultimate Spider-Man.jar", "Rally Pro Contest.jar", "Bomberman.jar",
-    "Sky Force.jar", "Contra 4.jar", "Metal Slug Mobile.jar",
-    "Pac-Man.jar", "Crash Nitro Kart.jar", "Doom RPG.jar",
-    "Wolfenstein RPG.jar", "Orcs & Elves.jar", "Townsmen 6.jar",
-    "Heroes Lore.jar", "Age of Empires III.jar", "Worms 2008.jar",
-    "Galaxy on Fire.jar", "Siberian Strike.jar", "Hero of Sparta.jar",
-    "Call of Duty 4.jar", "Splinter Cell.jar", "Lumines.jar",
-};
-
 static int cmp_entries(const void *a, const void *b) {
     return strcasecmp(((const GameEntry *)a)->name, ((const GameEntry *)b)->name);
 }
@@ -108,6 +91,18 @@ static void scan_dir(GameList *list, const char *root, const char *rel, int dept
     closedir(d);
 }
 
+// Tạo thư mục và thư mục cha (vd "sdmc:/switch/j2me-nxx" rồi ".../games")
+static void make_dirs(const char *dir) {
+    char tmp[512];
+    snprintf(tmp, sizeof(tmp), "%s", dir);
+    char *slash = strrchr(tmp, '/');
+    if (slash) {
+        *slash = '\0';
+        mkdir(tmp, 0777);
+    }
+    mkdir(dir, 0777);
+}
+
 void game_list_scan(GameList *list, const char *dir) {
     game_list_free(list);
     list->items = calloc(MAX_GAMES, sizeof(GameEntry));
@@ -115,22 +110,8 @@ void game_list_scan(GameList *list, const char *dir) {
         return;
 
     // Tạo sẵn thư mục để người dùng biết chép game vào đâu
-    mkdir(dir, 0777);
+    make_dirs(dir);
     scan_dir(list, dir, "", 0);
-
-    if (list->count == 0) {
-        list->demo = true;
-        int n = sizeof(demo_names) / sizeof(demo_names[0]);
-        for (int i = 0; i < n; i++) {
-            GameEntry *g = &list->items[i];
-            snprintf(g->name, sizeof(g->name), "%s", demo_names[i]);
-            g->size = -1;
-            g->info_loaded = true;
-            g->valid = true;
-            base_title(g);
-        }
-        list->count = n;
-    }
 
     qsort(list->items, list->count, sizeof(GameEntry), cmp_entries);
 }
@@ -220,5 +201,4 @@ void game_list_free(GameList *list) {
     free(list->items);
     list->items = NULL;
     list->count = 0;
-    list->demo = false;
 }

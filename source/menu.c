@@ -28,9 +28,7 @@
 #define COL_WARN     RGB(0xff, 0xc1, 0x4d)
 
 static void format_size(long size, char *out, size_t len) {
-    if (size < 0)
-        snprintf(out, len, "demo");
-    else if (size >= 1024 * 1024)
+    if (size >= 1024 * 1024)
         snprintf(out, len, "%.1f MB", size / (1024.0 * 1024.0));
     else
         snprintf(out, len, "%ld KB", (size + 1023) / 1024);
@@ -98,7 +96,7 @@ MenuAction menu_update(Menu *m, GameList *list) {
         GameEntry *g = &list->items[m->cursor];
         game_list_load_info(g);
         m->midlet = 1;
-        if (!list->demo && !g->video && g->midlet_count > 1) {
+        if (!g->video && g->midlet_count > 1) {
             m->picking = true;
             m->pick = 0;
             return MENU_NONE;
@@ -119,21 +117,38 @@ static void draw_header(const GameList *list, const char *games_dir) {
     gfx_fill_rect(0, HEADER_H, SCREEN_W, 2, COL_ACCENT);
 
     int title_y = (HEADER_H - gfx_font_height(FONT_LARGE)) / 2;
-    int w = gfx_text(FONT_LARGE, LIST_X, title_y, 0, ALIGN_LEFT, COL_TEXT, "J2ME-NX");
+    int w = gfx_text(FONT_LARGE, LIST_X, title_y, 0, ALIGN_LEFT, COL_TEXT, "J2ME-NXX");
     gfx_text(FONT_SMALL, LIST_X + w + 14, title_y + gfx_font_height(FONT_LARGE) - gfx_font_height(FONT_SMALL) - 4,
              0, ALIGN_LEFT, COL_DIM, line_subtitle());
 
     char count[32];
-    snprintf(count, sizeof(count), tr(S_GAME_COUNT), list->demo ? 0 : list->count);
+    snprintf(count, sizeof(count), tr(S_GAME_COUNT), list->count);
     gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, (HEADER_H - gfx_font_height(FONT_NORMAL)) / 2, 0, ALIGN_RIGHT,
              COL_DIM, count);
 
     char line[600];
-    if (list->demo)
-        snprintf(line, sizeof(line), tr(S_NO_JAR), games_dir);
-    else
-        snprintf(line, sizeof(line), tr(S_FOLDER), games_dir);
-    gfx_text(FONT_SMALL, LIST_X, HEADER_H + 18, LIST_W, ALIGN_LEFT, list->demo ? COL_WARN : COL_DIM, line);
+    snprintf(line, sizeof(line), tr(S_FOLDER), games_dir);
+    gfx_text(FONT_SMALL, LIST_X, HEADER_H + 18, LIST_W, ALIGN_LEFT, COL_DIM, line);
+}
+
+// Chưa có game: hướng dẫn chép .jar vào thư mục games
+static void draw_empty(const char *games_dir) {
+    int y = LIST_TOP + 40;
+    gfx_text(FONT_LARGE, SCREEN_W / 2, y, 0, ALIGN_CENTER, COL_TEXT, tr(S_EMPTY_TITLE));
+    y += gfx_font_height(FONT_LARGE) + 28;
+    gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_DIM, tr(S_EMPTY_COPY));
+    y += gfx_font_height(FONT_NORMAL) + 14;
+
+    char dir[600];
+    snprintf(dir, sizeof(dir), "%s/", games_dir);
+    gfx_text(FONT_LARGE, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_ACCENT, dir);
+    y += gfx_font_height(FONT_LARGE) + 28;
+
+    gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_DIM, tr(S_EMPTY_SUBDIR));
+    y += gfx_font_height(FONT_NORMAL) + 10;
+    gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_DIM, tr(S_EMPTY_VIDEO));
+    y += gfx_font_height(FONT_NORMAL) + 28;
+    gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_WARN, tr(S_EMPTY_RESCAN));
 }
 
 // Video: ô tối có hình tam giác "phát"
@@ -301,7 +316,10 @@ static void draw_picker(const Menu *m, const GameList *list) {
 void menu_draw(const Menu *m, GameList *list, const char *games_dir) {
     gfx_clear(COL_BG);
     draw_header(list, games_dir);
-    draw_list(m, list);
+    if (list->count == 0)
+        draw_empty(games_dir);
+    else
+        draw_list(m, list);
     draw_footer(m, list);
     if (m->picking)
         draw_picker(m, list);

@@ -1,4 +1,4 @@
-# Build J2ME-NX cho Switch. Push tag v* (vd v0.1.0) để tạo bản phát hành kèm file zip.
+# Build J2ME-NXX cho Switch. Push tag v* (vd v0.1.0) để tạo bản phát hành kèm file zip.
 name: Build
 
 on:
@@ -44,12 +44,11 @@ jobs:
             refs/tags/*) VERSION="$GITHUB_REF_NAME" ;;
             *) VERSION="dev-$(echo "$GITHUB_SHA" | cut -c1-7)" ;;
           esac
-          mkdir -p pkg/switch/j2me-nx/games
-          cp build/j2me-nx.nro pkg/switch/
-          cp dist/CHEP_GAME_VAO_DAY.txt pkg/switch/j2me-nx/games/
-          (cd pkg && zip -r "../j2me-nx-$VERSION.zip" switch)
-          cp build/j2me-nx.nro j2me-nx.nro
-          echo "zip=j2me-nx-$VERSION.zip" >> "$GITHUB_OUTPUT"
+          mkdir -p pkg/switch/j2me-nxx/games
+          cp build/j2me-nxx.nro pkg/switch/
+          (cd pkg && zip -r "../j2me-nxx-$VERSION.zip" switch)
+          cp build/j2me-nxx.nro j2me-nxx.nro
+          echo "zip=j2me-nxx-$VERSION.zip" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -62,5 +61,5 @@ jobs:
         with:
           files: |
             ${{ steps.pack.outputs.zip }}
-            j2me-nx.nro
+            j2me-nxx.nro
           body_path: dist/RELEASE_NOTES.md

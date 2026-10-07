@@ -95,7 +95,7 @@ bool settings_save(void) {
 }
 
 static void game_path(const char *game, char *out, size_t size) {
-    snprintf(out, size, "%s/games/%s.ini", platform_data_dir(), game);
+    snprintf(out, size, "%s/options/%s.ini", platform_data_dir(), game);
 }
 
 void game_settings_load(const char *game, GameSettings *out) {
@@ -131,7 +131,7 @@ void game_settings_load(const char *game, GameSettings *out) {
 bool game_settings_save(const char *game, const GameSettings *gs) {
     char dir[512];
     mkdir(platform_data_dir(), 0777);
-    snprintf(dir, sizeof(dir), "%s/games", platform_data_dir());
+    snprintf(dir, sizeof(dir), "%s/options", platform_data_dir());
     mkdir(dir, 0777);
     char path[512];
     game_path(game, path, sizeof(path));

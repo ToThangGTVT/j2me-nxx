@@ -1,4 +1,4 @@
-// J2ME-NX - J2ME emulator cho Nintendo Switch
+// J2ME-NXX - J2ME emulator cho Nintendo Switch
 //
 // Màn hình chọn game (.jar) -> chạy MIDlet trên máy ảo Java tự viết (source/vm, source/midp).
 // Chạy được cả trên Switch (devkitPro) và desktop (để test nhanh).
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     Menu menu = { 0 };
     const char *games_dir = platform_games_dir();
 
-    if (!gfx_init("J2ME-NX")) {
+    if (!gfx_init("J2ME-NXX")) {
         ret = 1;
         goto out;
     }
@@ -184,17 +184,15 @@ int main(int argc, char *argv[]) {
             menu_free_textures(&list);
             game_list_scan(&list, games_dir);
             menu.cursor = menu.scroll = 0;
-            snprintf(menu.status, sizeof(menu.status), tr(S_RESCANNED), list.demo ? 0 : list.count);
+            snprintf(menu.status, sizeof(menu.status), tr(S_RESCANNED), list.count);
             break;
         case MENU_SETTINGS:
             settings_screen_open();
             in_settings = true;
             break;
         case MENU_GAME_OPTIONS:
-            if (!list.demo && list.items[menu.cursor].video) {
+            if (list.items[menu.cursor].video) {
                 snprintf(menu.status, sizeof(menu.status), "%s", tr(S_VIDEO_NO_OPTIONS));
-            } else if (list.demo) {
-                snprintf(menu.status, sizeof(menu.status), "%s", tr(S_DEMO_LIST));
             } else {
                 char id[256];
                 game_list_id(&list.items[menu.cursor], id, sizeof(id));
@@ -204,9 +202,7 @@ int main(int argc, char *argv[]) {
             }
             break;
         case MENU_LAUNCH:
-            if (list.demo)
-                snprintf(menu.status, sizeof(menu.status), tr(S_DEMO_LIST_COPY), games_dir);
-            else if (list.items[menu.cursor].video) {
+            if (list.items[menu.cursor].video) {
                 char err[160];
                 in_video = video_screen_open(list.items[menu.cursor].path, list.items[menu.cursor].title, err,
                                              sizeof(err));

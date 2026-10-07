@@ -7,8 +7,6 @@ static Lang current = LANG_VI;
 static const char *const strings[S_COUNT][LANG_COUNT] = {
     [S_APP_SUBTITLE]   = { "Trình giả lập J2ME cho Nintendo Switch", "J2ME emulator for Nintendo Switch" },
     [S_GAME_COUNT]     = { "%d game", "%d games" },
-    [S_NO_JAR]         = { "Không tìm thấy .jar trong %s  ->  đang hiện danh sách demo",
-                           "No .jar found in %s  ->  showing demo list" },
     [S_FOLDER]         = { "Thư mục: %s", "Folder: %s" },
     [S_NO_MIDLET]      = { "Không có MIDlet-1 trong MANIFEST: có thể không chạy được",
                            "No MIDlet-1 in MANIFEST: may not run" },
@@ -17,11 +15,17 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
 
     [S_PICK_MIDLET]    = { "Chọn MIDlet:  (A) Chạy   (B) Quay lại", "Choose MIDlet:  (A) Run   (B) Back" },
 
+    [S_EMPTY_TITLE]    = { "Chưa có game nào", "No games yet" },
+    [S_EMPTY_COPY]     = { "Chép file game .jar (và .jad cùng tên nếu có) vào thư mục:",
+                           "Copy your .jar games (and the matching .jad if any) to:" },
+    [S_EMPTY_SUBDIR]   = { "Có thể chia thư mục con, ví dụ: games/RPG/game.jar",
+                           "Subfolders are supported, e.g. games/RPG/game.jar" },
+    [S_EMPTY_VIDEO]    = { "File video (.mp4, .3gp...) để cùng chỗ cũng mở được",
+                           "Video files (.mp4, .3gp...) placed there can be played too" },
+    [S_EMPTY_RESCAN]   = { "Chép xong nhấn (Y) để quét lại", "Then press (Y) to rescan" },
+
     [S_ERROR_FMT]      = { "Lỗi: %s", "Error: %s" },
     [S_RESCANNED]      = { "Đã quét lại: %d file", "Rescanned: %d files" },
-    [S_DEMO_LIST_COPY] = { "Đây là danh sách demo: chép file .jar vào %s",
-                           "This is a demo list: copy .jar files to %s" },
-    [S_DEMO_LIST]      = { "Đây là danh sách demo", "This is a demo list" },
     [S_SETTINGS_SAVED] = { "Đã lưu cài đặt", "Settings saved" },
     [S_GAME_EXITED]    = { "Đã thoát game", "Game closed" },
 

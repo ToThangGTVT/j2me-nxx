@@ -479,7 +479,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     snprintf(log_path, sizeof(log_path), "%s/log.txt", platform_data_dir());
     log_file = fopen(log_path, "w");
     if (log_file)
-        fprintf(log_file, "J2ME-NX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
+        fprintf(log_file, "J2ME-NXX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
     prof_start();
 
     GameSettings gs;

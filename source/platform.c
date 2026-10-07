@@ -120,13 +120,36 @@ char *platform_keyboard(const char *title, const char *text, int max_len, int ty
     return R_SUCCEEDED(rc) ? strdup(out) : NULL;
 }
 
-static TTF_Font *open_shared_font(int ptsize) {
+static TTF_Font *open_shared_font_type(PlSharedFontType type, int ptsize) {
     PlFontData font;
-    if (R_FAILED(plGetSharedFontByType(&font, PlSharedFontType_Standard)))
+    if (R_FAILED(plGetSharedFontByType(&font, type)))
         return NULL;
     // Bộ nhớ shared font do pl service giữ, không cần free
     SDL_RWops *rw = SDL_RWFromConstMem(font.address, font.size);
-    return TTF_OpenFontRW(rw, 1, ptsize);
+    return rw ? TTF_OpenFontRW(rw, 1, ptsize) : NULL;
+}
+
+static TTF_Font *open_shared_font(int ptsize) {
+    return open_shared_font_type(PlSharedFontType_Standard, ptsize);
+}
+
+static const PlSharedFontType system_fonts[] = {
+    PlSharedFontType_Standard,
+    PlSharedFontType_ChineseSimplified,
+    PlSharedFontType_ExtChineseSimplified,
+    PlSharedFontType_ChineseTraditional,
+    PlSharedFontType_KO,
+    PlSharedFontType_NintendoExt,
+};
+
+int platform_system_font_count(void) {
+    return (int)(sizeof(system_fonts) / sizeof(system_fonts[0]));
+}
+
+TTF_Font *platform_open_system_font(int index, int ptsize) {
+    if (index < 0 || index >= platform_system_font_count())
+        return NULL;
+    return open_shared_font_type(system_fonts[index], ptsize);
 }
 
 #else // desktop
@@ -206,6 +229,31 @@ static TTF_Font *open_system_font(int ptsize) {
             return f;
     }
     return NULL;
+}
+
+// Font có nhiều thứ tiếng trên macOS / Linux / Windows; file nào không có thì bỏ qua
+static const char *system_fonts[] = {
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+    "/System/Library/Fonts/ThonburiUI.ttc",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+    "C:/Windows/Fonts/arial.ttf",
+    "C:/Windows/Fonts/msyh.ttc",
+    "C:/Windows/Fonts/malgun.ttf",
+    "C:/Windows/Fonts/tahoma.ttf",
+};
+
+int platform_system_font_count(void) {
+    return (int)(sizeof(system_fonts) / sizeof(system_fonts[0]));
+}
+
+TTF_Font *platform_open_system_font(int index, int ptsize) {
+    if (index < 0 || index >= platform_system_font_count())
+        return NULL;
+    return TTF_OpenFont(system_fonts[index], ptsize);
 }
 
 #endif

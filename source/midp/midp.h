@@ -47,6 +47,7 @@ typedef struct {
     bool smooth_text;                                       // chữ khử răng cưa (mặc định: chữ điểm ảnh)
     int font_scale;                                         // cỡ chữ, % so với cỡ gốc
     int text_hires;                                         // chữ mịn vẽ nét cao gấp n lần (< 2 = tắt)
+    bool system_font;                                       // font hệ thống làm font chính cho chữ
     const char *lang;                                       // "vi" / "en": ngôn ngữ giao diện MIDP
     const char *platform;                                   // microedition.platform
     // Mã phím của hãng: lên, xuống, trái, phải, fire, mềm trái, mềm phải, xoá
@@ -109,7 +110,8 @@ void midp_tls_shutdown(void);
 
 // graphics.c
 void midp_graphics_register(void);
-void midp_graphics_set_text_style(bool smooth, int scale_pct, int hires, int screen_w, int screen_h);
+void midp_graphics_set_text_style(bool smooth, int scale_pct, bool system_font, int hires, int screen_w,
+                                  int screen_h);
 // Ghép khung hình nét cao của mảng pixel arr (luồng VM); false nếu ảnh không có chữ nét cao
 bool midp_text_compose(void *arr, const uint32_t *px, int w, int h, uint32_t *out);
 void midp_graphics_shutdown(void);

@@ -106,6 +106,11 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
                              "tắt thì chữ vẽ điểm ảnh như điện thoại thật.",
                              "Anti-aliased in-game text. Recommended for text-heavy apps like Opera Mini; "
                              "when off, text is drawn as pixels like on real phones." },
+    [S_SYSTEM_FONT]    = { "Font hệ thống", "System font" },
+    [S_SYSTEM_FONT_HINT] = { "Chữ trong game dùng font của máy (Switch: font hệ thống có chữ Nhật, Trung, Hàn). "
+                             "Tắt thì dùng font của app; ký tự font đang dùng không có luôn được lấy từ font kia.",
+                             "In-game text uses the device font (Switch: system fonts with Japanese, Chinese, Korean). "
+                             "When off, the app font is used; characters missing from either font are taken from the other." },
     [S_ON]             = { "Bật", "On" },
     [S_OFF]            = { "Tắt", "Off" },
     [S_SETTINGS_HINTS] = { "(<>) Đổi giá trị   (A) Chọn / nhập số   (B) Lưu và quay lại",

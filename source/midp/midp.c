@@ -553,7 +553,8 @@ void midp_register_natives(void) {
 
 bool midp_start(const MidpConfig *c, const char *midlet_class) {
     cfg = *c;
-    midp_graphics_set_text_style(cfg.smooth_text, cfg.font_scale, cfg.text_hires, cfg.screen_w, cfg.screen_h);
+    midp_graphics_set_text_style(cfg.smooth_text, cfg.font_scale, cfg.system_font, cfg.text_hires, cfg.screen_w,
+                                 cfg.screen_h);
     if (!q_lock) {
         q_lock = SDL_CreateMutex();
         fb_lock = SDL_CreateMutex();

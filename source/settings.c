@@ -35,6 +35,7 @@ static Settings current = {
     .show_fps = false,
     .smooth_text = false,
     .font_scale = 100,
+    .check_update = true,
     .soundfont = "-",       // mặc định tắt: bộ tổng hợp sóng
 };
 
@@ -74,6 +75,8 @@ void settings_load(void) {
             current.smooth_text = v != 0;
         else if (sscanf(line, "font_scale=%d", &v) == 1 && v >= 50 && v <= 400)
             current.font_scale = v;
+        else if (sscanf(line, "check_update=%d", &v) == 1)
+            current.check_update = v != 0;
         else if (sscanf(line, "vkb_bubble=%d", &v) == 1)
             current.vkb_bubble = v != 0;
         else if (strncmp(line, "soundfont=", 10) == 0) {
@@ -101,6 +104,7 @@ bool settings_save(void) {
     fprintf(f, "scale_mode=%d\n", current.scale_mode);
     fprintf(f, "smooth_text=%d\n", current.smooth_text ? 1 : 0);
     fprintf(f, "font_scale=%d\n", current.font_scale);
+    fprintf(f, "check_update=%d\n", current.check_update ? 1 : 0);
     fprintf(f, "vkb_bubble=%d\n", current.vkb_bubble ? 1 : 0);
     fprintf(f, "soundfont=%s\n", current.soundfont);
     return fclose(f) == 0;

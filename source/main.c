@@ -19,6 +19,8 @@
 #include "platform.h"
 #include "settings.h"
 #include "settings_screen.h"
+#include "update.h"
+#include "update_screen.h"
 #include "video_screen.h"
 
 // Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây (J2ME_NX_APPSHOT_MS để đổi); trả về true khi đã chụp
@@ -118,8 +120,13 @@ int main(int argc, char *argv[]) {
     input_init();
     settings_load();
     game_list_scan(&list, games_dir);
+    update_init(argc > 0 ? argv[0] : NULL);
+    if (settings()->check_update)
+        update_check();
     bool in_settings = false;
     bool in_video = false;
+    bool in_update = false;
+    bool update_prompted = false;   // đã tự hiện hộp thoại "có bản mới" (1 lần mỗi lần mở app)
 #ifndef __SWITCH__
     // Desktop: J2ME_NX_SCREEN=settings mở thẳng màn hình cài đặt (để test giao diện)
     const char *start_screen = SDL_getenv("J2ME_NX_SCREEN");
@@ -185,6 +192,21 @@ int main(int argc, char *argv[]) {
             video_screen_close();
         }
 
+        if (in_update) {
+            bool quit = false;
+            in_update = update_screen_update(&quit);
+            if (quit)
+                running = false;
+            if (in_update) {
+                menu_draw(&menu, &list, games_dir);
+                update_screen_draw();
+                if (debug_appshot())
+                    running = false;
+                gfx_present();
+                continue;
+            }
+        }
+
         if (in_settings) {
             in_settings = settings_screen_update();
             if (in_settings) {
@@ -195,6 +217,16 @@ int main(int argc, char *argv[]) {
                 continue;
             }
             snprintf(menu.status, sizeof(menu.status), "%s", tr(S_SETTINGS_SAVED));
+            if (settings()->check_update && update_state() == UPDATE_IDLE)
+                update_check();
+        }
+
+        // Kiểm tra xong, có bản mới: hỏi 1 lần khi đang ở danh sách game
+        if (!update_prompted && update_state() == UPDATE_AVAILABLE) {
+            update_prompted = true;
+            update_screen_open();
+            in_update = true;
+            continue;
         }
 
         switch (menu_update(&menu, &list)) {
@@ -210,6 +242,10 @@ int main(int argc, char *argv[]) {
         case MENU_SETTINGS:
             settings_screen_open();
             in_settings = true;
+            break;
+        case MENU_UPDATE:
+            update_screen_open();
+            in_update = true;
             break;
         case MENU_GAME_OPTIONS:
             if (list.items[menu.cursor].video) {
@@ -245,6 +281,7 @@ int main(int argc, char *argv[]) {
         gfx_present();
     }
 
+    update_shutdown();
     video_screen_close();
     emu_stop();
     menu_free_textures(&list);

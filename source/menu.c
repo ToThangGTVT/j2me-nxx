@@ -6,6 +6,7 @@
 #include "gfx.h"
 #include "input.h"
 #include "lang.h"
+#include "update.h"
 
 #define HEADER_H    80
 #define FOOTER_H    72
@@ -59,6 +60,8 @@ MenuAction menu_update(Menu *m, GameList *list) {
         return MENU_RESCAN;
     if (input_pressed(BTN_X))
         return MENU_SETTINGS;
+    if (input_pressed(BTN_B) && update_available())
+        return MENU_UPDATE;
     if (input_pressed(BTN_MINUS) && list->count > 0)
         return MENU_GAME_OPTIONS;
     if (list->count == 0)
@@ -125,8 +128,17 @@ static void draw_header(const GameList *list, const char *games_dir) {
 
     char count[32];
     snprintf(count, sizeof(count), tr(S_GAME_COUNT), list->count);
-    gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, (HEADER_H - gfx_font_height(FONT_NORMAL)) / 2, 0, ALIGN_RIGHT,
-             COL_DIM, count);
+    int cw = gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, (HEADER_H - gfx_font_height(FONT_NORMAL)) / 2, 0, ALIGN_RIGHT,
+                      COL_DIM, count);
+    if (update_available()) {
+        // Nhãn "có bản mới" bên trái số game
+        char badge[64];
+        snprintf(badge, sizeof(badge), tr(S_UPDATE_BADGE), update_latest_version());
+        int bw = gfx_text_width(FONT_SMALL, badge) + 32, bh = gfx_font_height(FONT_SMALL) + 14;
+        int bx = SCREEN_W - LIST_X - cw - 28 - bw, by = (HEADER_H - bh) / 2;
+        gfx_fill_rect(bx, by, bw, bh, COL_ACCENT);
+        gfx_text(FONT_SMALL, bx + bw / 2, by + 7, 0, ALIGN_CENTER, COL_BAR, badge);
+    }
 
     char line[600];
     snprintf(line, sizeof(line), tr(S_FOLDER), games_dir);

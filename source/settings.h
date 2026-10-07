@@ -14,6 +14,7 @@ typedef struct {
     bool show_fps;          // hiện FPS và thời gian VM ở góc màn hình
     bool smooth_text;       // chữ trong game khử răng cưa (tắt: chữ điểm ảnh như điện thoại thật)
     int font_scale;         // cỡ chữ trong game, % so với cỡ gốc
+    bool check_update;      // mở app thì kiểm tra bản mới trên GitHub
     bool vkb_bubble;        // bong bóng bàn phím ảo QWERTY khi chơi
     char soundfont[128];    // file .sf2 trong <data_dir>/soundfonts; "" = tự động, "builtin" = bản có sẵn, "-" = tắt
 } Settings;

@@ -106,6 +106,32 @@ static const char *const strings[S_COUNT][LANG_COUNT] = {
                              "tắt thì chữ vẽ điểm ảnh như điện thoại thật.",
                              "Anti-aliased in-game text. Recommended for text-heavy apps like Opera Mini; "
                              "when off, text is drawn as pixels like on real phones." },
+    [S_CHECK_UPDATE]   = { "Tự kiểm tra bản mới", "Check for updates" },
+    [S_CHECK_UPDATE_HINT] = { "Mỗi lần mở app, hỏi GitHub xem có bản J2ME-NXX mới không; có thì hỏi tải về và tự "
+                              "thay file .nro. Cần kết nối Internet.",
+                              "Each time the app starts, ask GitHub whether a newer J2ME-NXX exists; if so, offer to "
+                              "download it and replace the .nro file. Needs an Internet connection." },
+    [S_UPDATE_BADGE]   = { "Bản mới v%s  (B) Cập nhật", "New v%s  (B) Update" },
+    [S_UPDATE_TITLE]   = { "Có bản mới: v%s", "New version: v%s" },
+    [S_UPDATE_CURRENT] = { "Đang dùng v%s", "You have v%s" },
+    [S_UPDATE_PROMPT_HINTS] = { "(A) Tải về và cập nhật   (B) Để sau", "(A) Download and update   (B) Later" },
+    [S_UPDATE_FAILED]  = { "Cập nhật lỗi: %s", "Update failed: %s" },
+    [S_UPDATE_FAILED_HINTS] = { "(A) Thử lại   (B) Đóng", "(A) Retry   (B) Close" },
+    [S_UPDATE_DOWNLOADING] = { "Đang tải v%s...", "Downloading v%s..." },
+    [S_UPDATE_CANCELLING] = { "Đang huỷ...", "Cancelling..." },
+    [S_UPDATE_ETA]     = { "còn %d:%02d", "%d:%02d left" },
+    [S_UPDATE_KEEP_OPEN] = { "Đừng thoát app hay tắt máy khi đang tải. File .nro cũ chỉ bị thay khi đã tải xong và "
+                             "kiểm tra hợp lệ.",
+                             "Do not exit the app or turn off the console while downloading. The old .nro is only "
+                             "replaced once the download is complete and verified." },
+    [S_UPDATE_CANCEL_HINT] = { "(B) Huỷ", "(B) Cancel" },
+    [S_UPDATE_DONE]    = { "Đã cập nhật lên v%s", "Updated to v%s" },
+    [S_UPDATE_DONE_INFO] = { "File .nro đã được thay bằng bản mới. Khởi động lại app để dùng bản mới.",
+                             "The .nro file has been replaced. Restart the app to use the new version." },
+    [S_UPDATE_DONE_HINTS] = { "(A) Khởi động lại   (B) Để sau", "(A) Restart   (B) Later" },
+    [S_UPDATE_DONE_DESKTOP] = { "Bản desktop chỉ tải file .nro về thư mục dữ liệu để thử, không tự thay app.",
+                                "The desktop build only downloads the .nro to the data folder for testing." },
+    [S_UPDATE_CLOSE_HINT] = { "(A) Đóng", "(A) Close" },
     [S_VKB_BUBBLE]     = { "Bong bóng bàn phím ảo", "Virtual keyboard bubble" },
     [S_VKB_BUBBLE_HINT] = { "Khi chơi có bong bóng nhỏ trên màn hình cảm ứng (kéo để di chuyển). Chạm vào để mở bàn phím "
                             "QWERTY nổi có hàng số, gõ chữ cho game / ứng dụng; nút × thu bàn phím về bong bóng.",

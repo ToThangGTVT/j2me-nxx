@@ -74,6 +74,8 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
 **Bàn phím ảo QWERTY**: bật **Cài đặt > Bong bóng bàn phím ảo** thì khi chơi có bong bóng nhỏ ở góc phải (kéo để di chuyển). Chạm vào bong bóng để mở bàn phím nổi có hàng số, chữ cái, `* # , . `, phím cách, Shift (chạm 2 lần = khoá chữ hoa; Shift + hàng số ra `! @ # $ ...`), Del (phím xoá `-8`) và Enter (phím Fire). Chữ và ký hiệu gửi đúng mã ký tự như máy có bàn phím QWERTY. Kéo thanh trên cùng để dời bàn phím, nút **×** thu về bong bóng.
 
+**Cập nhật**: mỗi lần mở app, J2ME-NXX hỏi GitHub Releases xem có bản mới không (tắt ở **Cài đặt > Tự kiểm tra bản mới**). Có bản mới thì hiện hộp thoại kèm ghi chú phát hành: **A** tải `j2me-nxx.nro` về (có thanh tiến trình, tốc độ, thời gian còn lại; **B** để huỷ), file cũ chỉ bị thay khi đã tải đủ và kiểm tra đúng là file `.nro`, xong bấm **A** để khởi động lại vào bản mới. Chọn "Để sau" thì danh sách game có nhãn "Bản mới", bấm **B** để cập nhật lúc khác.
+
 **SoundFont**: nhạc MIDI phát bằng SoundFont. App có sẵn `TimGM6mb` (~6 MB, GPL v2) nhúng trong file `.nro`, không cần chép gì thêm. Mặc định **tắt** (dùng bộ tổng hợp sóng), bật ở **Cài đặt > SoundFont MIDI**. Muốn dùng SoundFont General MIDI khác thì chép file `.sf2` vào `sdmc:/switch/j2me-nxx/soundfonts/` rồi chọn ở cùng mục đó: "Tự động" dùng file `.sf2` đầu tiên theo tên (không có thì dùng bản có sẵn), "TimGM6mb (có sẵn)" luôn dùng bản nhúng, "Tắt" dùng bộ tổng hợp sóng cũ (nhẹ hơn). File `.sf2` được nạp cả vào RAM, nên chọn file nhỏ (dưới ~50 MB).
 
 **Xem video**: chép file `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... vào cùng thư mục `games`, chúng hiện trong danh sách với biểu tượng ▶. Khi xem: **A** phát / dừng, **trái / phải** tua 10 giây, **L / R** tua 1 phút, **lên / xuống** âm lượng, **B** thoát.
@@ -108,7 +110,7 @@ Bản desktop đọc vài biến môi trường để chạy kịch bản (tính
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
-`J2ME_NX_TAPS="1000:640:500"` chạm chuột tại (x, y) trên màn hình app 1280x720, `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách game) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 48000Hz) ra file, `J2ME_NX_SCREEN=settings` mở thẳng màn hình cài đặt.
+`J2ME_NX_TAPS="1000:640:500"` chạm chuột tại (x, y) trên màn hình app 1280x720, `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách game) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 48000Hz) ra file, `J2ME_NX_SCREEN=settings` mở thẳng màn hình cài đặt, `J2ME_NX_FAKE_VERSION=0.1.0` giả làm bản cũ để thử cập nhật (bản desktop chỉ tải `.nro` về thư mục dữ liệu, hoặc `J2ME_NX_UPDATE_PATH`).
 
 ---
 
@@ -186,6 +188,8 @@ The touch screen is mapped to pointer events.
 
 **QWERTY virtual keyboard**: enable **Settings > Virtual keyboard bubble** to get a small bubble in the bottom-right corner while playing (drag to move). Tap it to open a floating keyboard with a number row, letters, `* # , .`, space, Shift (double-tap = caps lock; Shift + number row gives `! @ # $ ...`), Del (clear key `-8`) and Enter (Fire). Letters and symbols are sent as character codes like on QWERTY phones. Drag the top bar to move the keyboard; **×** collapses it back to the bubble.
 
+**Updates**: each time the app starts, J2ME-NXX asks GitHub Releases whether a newer version exists (turn off in **Settings > Check for updates**). If there is one, a dialog shows the release notes: **A** downloads `j2me-nxx.nro` (with a progress bar, speed and time left; **B** cancels), the old file is only replaced once the download is complete and verified to be an `.nro`, then **A** restarts into the new version. Choosing "Later" leaves a "New version" badge in the game list; press **B** there to update later.
+
 **SoundFont**: MIDI music is played with a SoundFont. `TimGM6mb` (~6 MB, GPL v2) is embedded in the `.nro`, so nothing extra needs to be copied. It is **off** by default (wave synth); turn it on in **Settings > MIDI SoundFont**. To use another General MIDI SoundFont, copy a `.sf2` file to `sdmc:/switch/j2me-nxx/soundfonts/` and pick it in the same setting: "Auto" uses the first `.sf2` file by name (or the built-in one if there is none), "TimGM6mb (built-in)" always uses the embedded one, "Off" uses the old wave synth (lighter). The whole `.sf2` is loaded into RAM, so prefer small files (under ~50 MB).
 
 **Watching videos**: copy `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... files into the same `games` folder; they show up in the list with a ▶ icon. While watching: **A** play / pause, **left / right** seek 10 s, **L / R** seek 1 min, **up / down** volume, **B** exit.
@@ -220,4 +224,4 @@ The desktop build reads a few environment variables to run a script (times in ms
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
-`J2ME_NX_TAPS="1000:640:500"` clicks at (x, y) on the 1280x720 app screen, `J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (game list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 48000 Hz) to a file, `J2ME_NX_SCREEN=settings` opens the settings screen directly.
+`J2ME_NX_TAPS="1000:640:500"` clicks at (x, y) on the 1280x720 app screen, `J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (game list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 48000 Hz) to a file, `J2ME_NX_SCREEN=settings` opens the settings screen directly, `J2ME_NX_FAKE_VERSION=0.1.0` pretends to be an older version to test updating (the desktop build only downloads the `.nro` into the data folder, or `J2ME_NX_UPDATE_PATH`).

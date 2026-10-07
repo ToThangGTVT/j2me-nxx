@@ -46,7 +46,7 @@ static void init_slots(void) {
 }
 
 // ---------------------------------------------------------------------------
-// Lớp chữ nét cao. Khi bật chữ mịn, chữ vẽ lên ảnh cỡ màn hình được vẽ thêm một bản ở độ phân giải
+// Lớp chữ nét cao. Khi dùng font hệ thống, chữ vẽ lên ảnh cỡ màn hình được vẽ thêm một bản ở độ phân giải
 // k lần (k = hệ số phóng ra màn hình). Ảnh gốc vẫn y như cũ (getRGB, va chạm...); lúc đẩy ra màn hình,
 // pixel nào vẫn còn là chữ đã vẽ thì lấy khối k x k nét cao thay vì phóng to pixel thấp.
 // Pixel p lấy từ hi khi valid[p] và tag[p] == giá trị pixel hiện tại. Lệnh vẽ khác đè lên thì xoá valid;
@@ -762,7 +762,7 @@ void midp_graphics_set_text_style(bool smooth, int scale_pct, bool sys_font, int
     smooth_text = smooth;
     font_scale = scale_pct > 0 ? scale_pct : 100;
     system_font = sys_font;
-    hires_k = smooth && hires >= 2 ? hires : 0;
+    hires_k = hires >= 2 ? hires : 0;
     layer_w = screen_w;
     layer_h = screen_h;
 

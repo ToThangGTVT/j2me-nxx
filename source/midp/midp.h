@@ -46,7 +46,7 @@ typedef struct {
     int fps_limit;                                          // 0 = không giới hạn
     bool smooth_text;                                       // chữ khử răng cưa (mặc định: chữ điểm ảnh)
     int font_scale;                                         // cỡ chữ, % so với cỡ gốc
-    int text_hires;                                         // chữ mịn vẽ nét cao gấp n lần (< 2 = tắt)
+    int text_hires;                                         // vẽ chữ nét cao gấp n lần (< 2 = tắt)
     bool system_font;                                       // font hệ thống làm font chính cho chữ
     const char *lang;                                       // "vi" / "en": ngôn ngữ giao diện MIDP
     const char *platform;                                   // microedition.platform

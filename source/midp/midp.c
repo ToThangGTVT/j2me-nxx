@@ -577,7 +577,7 @@ bool midp_start(const MidpConfig *c, const char *midlet_class) {
     free(fb_hi);
     fb_hi = NULL;
     fb_hi_valid = false;
-    if (!cfg.smooth_text)
+    if (cfg.text_hires < 2)
         cfg.text_hires = 0;
     memset(overlays, 0, sizeof(overlays));
     fb_dirty = true;

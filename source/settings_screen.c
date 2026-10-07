@@ -98,8 +98,11 @@ static int visible_items(ItemId *out) {
     }
     out[n++] = ITEM_KEYMAP;
     out[n++] = ITEM_FONT_SCALE;
-    out[n++] = ITEM_SMOOTH_TEXT;
     out[n++] = ITEM_SYSTEM_FONT;
+    // Font hệ thống luôn mịn: bỏ mục chữ mịn (đặt sau để bật/tắt không làm nhảy con trỏ)
+    bool sys = game_mode && game.system_font >= 0 ? game.system_font == 1 : settings()->system_font;
+    if (!sys)
+        out[n++] = ITEM_SMOOTH_TEXT;
     if (!game_mode) {
         out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;

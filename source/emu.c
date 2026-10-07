@@ -512,9 +512,11 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         return false;
     }
 
-    // Chữ mịn vẽ ở cỡ gần độ phân giải màn hình: hệ số nguyên nhỏ nhất >= tỉ lệ phóng
-    bool smooth_text = gs.smooth_text >= 0 ? gs.smooth_text != 0 : settings()->smooth_text;
-    hires_k = smooth_text ? (dst.h + scr_h - 1) / scr_h : 0;
+    // Font hệ thống: tự khử răng cưa và vẽ ở cỡ gần độ phân giải màn hình (hệ số nguyên nhỏ nhất >= tỉ lệ
+    // phóng). Chữ mịn thường chỉ khử răng cưa ở độ phân giải của game.
+    bool system_font = gs.system_font >= 0 ? gs.system_font != 0 : settings()->system_font;
+    bool smooth_text = system_font || (gs.smooth_text >= 0 ? gs.smooth_text != 0 : settings()->smooth_text);
+    hires_k = system_font ? (dst.h + scr_h - 1) / scr_h : 0;
     if (hires_k > 4)
         hires_k = 4;
     if (hires_k < 2)
@@ -533,7 +535,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         .fps_limit = fps_limit,
         .smooth_text = smooth_text,
         .text_hires = hires_k,
-        .system_font = gs.system_font >= 0 ? gs.system_font != 0 : settings()->system_font,
+        .system_font = system_font,
         .font_scale = gs.font_scale > 0 ? gs.font_scale : settings()->font_scale,
         .lang = lang_code(lang_get()),
         .platform = keymap->platform,

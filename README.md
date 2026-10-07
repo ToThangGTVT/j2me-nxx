@@ -86,6 +86,8 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
 **SoundFont**: nhạc MIDI phát bằng SoundFont. App có sẵn `TimGM6mb` (~6 MB, GPL v2) nhúng trong file `.nro`, không cần chép gì thêm. Mặc định **tắt** (dùng bộ tổng hợp sóng), bật ở **Cài đặt > SoundFont MIDI**. Muốn dùng SoundFont General MIDI khác thì chép file `.sf2` vào `sdmc:/switch/j2me-nxx/soundfonts/` rồi chọn ở cùng mục đó: "Tự động" dùng file `.sf2` đầu tiên theo tên (không có thì dùng bản có sẵn), "TimGM6mb (có sẵn)" luôn dùng bản nhúng, "Tắt" dùng bộ tổng hợp sóng cũ (nhẹ hơn). File `.sf2` được nạp cả vào RAM, nên chọn file nhỏ (dưới ~50 MB).
 
+**Gửi game, video từ điện thoại**: ở danh sách game bấm **R**, Switch hiện mã QR. Điện thoại (cùng mạng Wi-Fi với Switch) quét mã để mở trang tải lên, chọn một hoặc nhiều file game `.jar` / `.jad` hoặc video, file được lưu thẳng vào thư mục `games` (có thanh tiến trình trên cả điện thoại và Switch). Không quét được mã thì gõ địa chỉ hiện bên cạnh (dạng `http://192.168.x.x:8080/`) vào trình duyệt. Bấm **B** để đóng, danh sách tự quét lại.
+
 **Xem video**: chép file `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... vào cùng thư mục `games`, chúng hiện trong danh sách với biểu tượng ▶. Khi xem: **A** phát / dừng, **trái / phải** tua 10 giây, **L / R** tua 1 phút, **lên / xuống** âm lượng, **B** thoát.
 
 Danh sách game hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng game (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
@@ -201,6 +203,8 @@ The touch screen is mapped to pointer events.
 **Updates**: each time the app starts, J2ME-NXX asks GitHub Releases whether a newer version exists (turn off in **Settings > Check for updates**). If there is one, a dialog shows the release notes: **A** downloads `j2me-nxx.nro` (with a progress bar, speed and time left; **B** cancels), the old file is only replaced once the download is complete and verified to be an `.nro`, then **A** restarts into the new version. Choosing "Later" leaves a "New version" badge in the game list; press **B** there to update later.
 
 **SoundFont**: MIDI music is played with a SoundFont. `TimGM6mb` (~6 MB, GPL v2) is embedded in the `.nro`, so nothing extra needs to be copied. It is **off** by default (wave synth); turn it on in **Settings > MIDI SoundFont**. To use another General MIDI SoundFont, copy a `.sf2` file to `sdmc:/switch/j2me-nxx/soundfonts/` and pick it in the same setting: "Auto" uses the first `.sf2` file by name (or the built-in one if there is none), "TimGM6mb (built-in)" always uses the embedded one, "Off" uses the old wave synth (lighter). The whole `.sf2` is loaded into RAM, so prefer small files (under ~50 MB).
+
+**Sending games and videos from your phone**: press **R** in the game list and the Switch shows a QR code. Scan it with a phone on the same Wi-Fi network to open the upload page, then pick one or more `.jar` / `.jad` games or videos; they are saved straight into the `games` folder (with progress on both the phone and the Switch). If scanning does not work, type the address shown next to the code (like `http://192.168.x.x:8080/`) into the browser. Press **B** to close; the list is rescanned automatically.
 
 **Watching videos**: copy `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... files into the same `games` folder; they show up in the list with a ▶ icon. While watching: **A** play / pause, **left / right** seek 10 s, **L / R** seek 1 min, **up / down** volume, **B** exit.
 

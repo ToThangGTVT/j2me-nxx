@@ -5,6 +5,13 @@
 #include <string.h>
 #include <SDL.h>
 
+#ifndef __SWITCH__
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#endif
+
 #if defined(__APPLE__) && !defined(__SWITCH__)
 #include <mach/mach.h>
 #elif defined(__linux__) && !defined(__SWITCH__)
@@ -12,6 +19,8 @@
 #endif
 
 #ifdef __SWITCH__
+#include <arpa/inet.h>
+#include <unistd.h>
 #include <switch.h>
 
 bool platform_init(void) {
@@ -152,6 +161,15 @@ TTF_Font *platform_open_system_font(int index, int ptsize) {
     return open_shared_font_type(system_fonts[index], ptsize);
 }
 
+bool platform_local_ip(char *out, size_t size) {
+    // libnx: gethostid hỏi nifm địa chỉ IP hiện tại, lỗi / chưa có mạng thì trả 127.0.0.1
+    struct in_addr a = { .s_addr = (in_addr_t)gethostid() };
+    if (a.s_addr == 0 || a.s_addr == htonl(INADDR_LOOPBACK) || a.s_addr == INADDR_LOOPBACK)
+        return false;
+    snprintf(out, size, "%s", inet_ntoa(a));
+    return true;
+}
+
 #else // desktop
 
 bool platform_init(void) {
@@ -254,6 +272,23 @@ TTF_Font *platform_open_system_font(int index, int ptsize) {
     if (index < 0 || index >= platform_system_font_count())
         return NULL;
     return TTF_OpenFont(system_fonts[index], ptsize);
+}
+
+bool platform_local_ip(char *out, size_t size) {
+    // Card mạng IPv4 đầu tiên không phải loopback
+    struct ifaddrs *list;
+    if (getifaddrs(&list) != 0)
+        return false;
+    bool found = false;
+    for (struct ifaddrs *i = list; i && !found; i = i->ifa_next) {
+        if (!i->ifa_addr || i->ifa_addr->sa_family != AF_INET || (i->ifa_flags & IFF_LOOPBACK) ||
+            !(i->ifa_flags & IFF_UP))
+            continue;
+        inet_ntop(AF_INET, &((struct sockaddr_in *)i->ifa_addr)->sin_addr, out, (socklen_t)size);
+        found = true;
+    }
+    freeifaddrs(list);
+    return found;
 }
 
 #endif

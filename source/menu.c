@@ -64,6 +64,8 @@ MenuAction menu_update(Menu *m, GameList *list) {
         return MENU_UPDATE;
     if (input_pressed(BTN_MINUS) && list->count > 0)
         return MENU_GAME_OPTIONS;
+    if (input_pressed(BTN_R))
+        return MENU_UPLOAD;
     if (list->count == 0)
         return MENU_NONE;
 
@@ -74,7 +76,7 @@ MenuAction menu_update(Menu *m, GameList *list) {
         m->cursor++;
     if (input_pressed(BTN_UP))
         m->cursor--;
-    if (input_pressed(BTN_RIGHT) || input_pressed(BTN_R)) {
+    if (input_pressed(BTN_RIGHT)) {
         m->cursor += LIST_ROWS;
         paging = true;
     }
@@ -163,6 +165,8 @@ static void draw_empty(const char *games_dir) {
     gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_DIM, tr(S_EMPTY_VIDEO));
     y += gfx_font_height(FONT_NORMAL) + 28;
     gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_WARN, tr(S_EMPTY_RESCAN));
+    y += gfx_font_height(FONT_NORMAL) + 10;
+    gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_WARN, tr(S_EMPTY_UPLOAD));
 }
 
 // Video: ô tối có hình tam giác "phát"

@@ -24,14 +24,16 @@ static bool has_jar_ext(const char *name) {
     return n > 4 && strcasecmp(name + n - 4, ".jar") == 0;
 }
 
-static bool has_video_ext(const char *name) {
-    static const char *exts[] = { ".3gp", ".3g2", ".mp4", ".m4v", ".mov", ".avi", ".mkv", ".webm",
-                                  ".flv", ".mpg", ".mpeg", ".ts", ".wmv", ".asf" };
+const char *const game_list_video_exts[] = { ".3gp", ".3g2", ".mp4", ".m4v", ".mov", ".avi", ".mkv",
+                                              ".webm", ".flv", ".mpg", ".mpeg", ".ts", ".wmv", ".asf" };
+const int game_list_video_ext_count = (int)(sizeof(game_list_video_exts) / sizeof(game_list_video_exts[0]));
+
+bool game_list_is_video(const char *name) {
     const char *dot = strrchr(name, '.');
     if (!dot)
         return false;
-    for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++) {
-        if (strcasecmp(dot, exts[i]) == 0)
+    for (int i = 0; i < game_list_video_ext_count; i++) {
+        if (strcasecmp(dot, game_list_video_exts[i]) == 0)
             return true;
     }
     return false;
@@ -74,7 +76,7 @@ static void scan_dir(GameList *list, const char *root, const char *rel, int dept
                 scan_dir(list, root, child_rel, depth + 1);
             continue;
         }
-        bool video = has_video_ext(ent->d_name);
+        bool video = game_list_is_video(ent->d_name);
         if (!has_jar_ext(ent->d_name) && !video)
             continue;
         GameEntry *g = &list->items[list->count++];

@@ -10,6 +10,7 @@ typedef enum {
     MENU_SETTINGS,
     MENU_GAME_OPTIONS,  // tuỳ chọn riêng của game menu.cursor
     MENU_UPDATE,        // mở màn hình cập nhật (có bản mới)
+    MENU_UPLOAD,        // gửi game từ điện thoại (mã QR)
     MENU_QUIT,
 } MenuAction;
 

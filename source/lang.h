@@ -124,6 +124,31 @@ typedef enum {
     S_LINK_OPENING,
     S_LINK_FAILED,
     S_BROWSER_NEEDS_APP,
+    // Gửi game từ điện thoại (mã QR)
+    S_EMPTY_UPLOAD,
+    S_UPLOAD_TITLE,
+    S_UPLOAD_STEP1,
+    S_UPLOAD_STEP2,
+    S_UPLOAD_STEP3,
+    S_UPLOAD_WAITING,
+    S_UPLOAD_RECEIVING,     // %s
+    S_UPLOAD_RECEIVED,      // %d %s
+    S_UPLOAD_NO_NET,
+    S_UPLOAD_SERVER_FAILED, // %s
+    S_UPLOAD_WRITE_FAILED,
+    S_UPLOAD_HINTS,
+    S_UPLOAD_DONE_STATUS,   // %d
+    // Trang web trên điện thoại
+    S_WEB_TITLE,
+    S_WEB_INTRO,
+    S_WEB_CHOOSE,
+    S_WEB_WAITING,
+    S_WEB_SENDING,
+    S_WEB_DONE,
+    S_WEB_FAILED,
+    S_WEB_NETWORK,
+    S_WEB_WRONG_TYPE,
+    S_WEB_ALL_DONE,
     S_COUNT,
 } StrId;
 

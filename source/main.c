@@ -22,6 +22,7 @@
 #include "settings_screen.h"
 #include "update.h"
 #include "update_screen.h"
+#include "upload_screen.h"
 #include "video_screen.h"
 
 // Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây (J2ME_NX_APPSHOT_MS để đổi); trả về true khi đã chụp
@@ -133,6 +134,7 @@ int main(int argc, char *argv[]) {
     bool in_settings = false;
     bool in_video = false;
     bool in_update = false;
+    bool in_upload = false;
     bool update_prompted = false;   // đã tự hiện hộp thoại "có bản mới" (1 lần mỗi lần mở app)
 #ifndef __SWITCH__
     // Desktop: J2ME_NX_SCREEN=settings mở thẳng màn hình cài đặt (để test giao diện)
@@ -214,6 +216,25 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        if (in_upload) {
+            in_upload = upload_screen_update();
+            if (in_upload) {
+                menu_draw(&menu, &list, games_dir);
+                upload_screen_draw();
+                if (debug_appshot())
+                    running = false;
+                gfx_present();
+                continue;
+            }
+            int received = upload_screen_close();
+            if (received > 0) {
+                menu_free_textures(&list);
+                game_list_scan(&list, games_dir);
+                menu.cursor = menu.scroll = 0;
+                snprintf(menu.status, sizeof(menu.status), tr(S_UPLOAD_DONE_STATUS), received);
+            }
+        }
+
         if (in_settings) {
             in_settings = settings_screen_update();
             if (in_settings) {
@@ -254,6 +275,10 @@ int main(int argc, char *argv[]) {
             update_screen_open();
             in_update = true;
             break;
+        case MENU_UPLOAD:
+            upload_screen_open(games_dir);
+            in_upload = true;
+            break;
         case MENU_GAME_OPTIONS:
             if (list.items[menu.cursor].video) {
                 snprintf(menu.status, sizeof(menu.status), "%s", tr(S_VIDEO_NO_OPTIONS));
@@ -289,6 +314,7 @@ int main(int argc, char *argv[]) {
     }
 
     update_shutdown();
+    upload_screen_close();
     video_screen_close();
     emu_stop();
     menu_free_textures(&list);

@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -85,6 +86,23 @@ static FILE *open_report(char *name, size_t name_size) {
     return NULL;
 }
 
+// RAM dự phòng: nhả ra khi sập / hết RAM để còn chỗ ghi báo cáo và thoát game cho gọn
+#define RESERVE_SIZE (2 * 1024 * 1024)
+static void *reserve;
+
+void crash_release_reserve(void) {
+    free(reserve);
+    reserve = NULL;
+}
+
+void crash_restore_reserve(void) {
+    if (!reserve) {
+        reserve = malloc(RESERVE_SIZE);
+        if (reserve)
+            memset(reserve, 0, RESERVE_SIZE);   // chiếm thật trang nhớ
+    }
+}
+
 static void write_header(FILE *f, const char *title) {
     time_t now = time(NULL);
     struct tm *tm = localtime(&now);
@@ -102,6 +120,14 @@ static void write_header(FILE *f, const char *title) {
         fprintf(f, "Game: %s (%s)\n", game_jar, game_cls);
     else
         fprintf(f, "Game: (khong co, dang o danh sach game)\n");
+#ifdef __SWITCH__
+    // Chỉ hỏi kernel (không đụng malloc: có thể đang sập giữa malloc)
+    u64 used = 0, total = 0;
+    svcGetInfo(&used, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
+    svcGetInfo(&total, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
+    fprintf(f, "RAM he thong cap: %lluM / %lluM, Java heap %zuK\n", (unsigned long long)(used >> 20),
+            (unsigned long long)(total >> 20), heap_used() / 1024);
+#endif
     fprintf(f, "Loi: %s\n\n", title);
 }
 
@@ -122,6 +148,7 @@ static void write_marker(const char *name) {
 }
 
 bool crash_write_report(const char *title, const char *detail, char *name, size_t name_size) {
+    crash_release_reserve();
     FILE *f = open_report(name, name_size);
     if (!f)
         return false;
@@ -210,6 +237,7 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
     if (busy)
         return;
     busy = true;
+    crash_release_reserve();
     char name[64], title[128];
     snprintf(title, sizeof(title), "App bi sap - exception 0x%x (%s)", ctx->error_desc,
              exception_name(ctx->error_desc));
@@ -249,6 +277,7 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
 
 void crash_init(void) {
     snprintf(crash_dir, sizeof(crash_dir), "%s/crash", platform_data_dir());
+    crash_restore_reserve();
 }
 
 #else
@@ -257,6 +286,7 @@ static void on_signal(int sig) {
     static volatile sig_atomic_t busy;
     if (!busy) {
         busy = 1;
+        crash_release_reserve();
         char name[64], title[128];
         snprintf(title, sizeof(title), "App bi sap - signal %d (%s)", sig, strsignal(sig));
         FILE *f = open_report(name, sizeof(name));
@@ -280,6 +310,7 @@ static void on_signal(int sig) {
 
 void crash_init(void) {
     snprintf(crash_dir, sizeof(crash_dir), "%s/crash", platform_data_dir());
+    crash_restore_reserve();
     // Stack riêng để vẫn ghi được khi tràn stack
     static char alt[64 * 1024];
     stack_t ss = { .ss_sp = alt, .ss_size = sizeof(alt), .ss_flags = 0 };

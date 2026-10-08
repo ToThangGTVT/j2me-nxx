@@ -8,8 +8,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 
 #include <glad/glad.h>
+
+#ifdef __SWITCH__
+#include <switch.h>
+#endif
 
 #include "ui/common.hpp"
 #include "ui/lang_activity.hpp"
@@ -165,11 +170,82 @@ static void debug_press()
 }
 #endif
 
+// Lỗi nghiêm trọng không phải lỗi bộ nhớ (borealis ném std::logic_error khi không tạo được cửa sổ / OpenGL...,
+// abort): ghi báo cáo crash kèm nội dung lỗi; Switch hiện hộp thoại lỗi của hệ thống thay vì thoát im lặng
+static void report_fatal(const char* what)
+{
+    char name[64] = "";
+    crash_write_report("App bi loi nghiem trong", what, name, sizeof(name));
+#ifdef __SWITCH__
+    char detail[1024];
+    snprintf(detail, sizeof(detail), "%s\n\n%s/crash/%s", what, platform_data_dir(), name);
+    ErrorApplicationConfig c;
+    if (R_SUCCEEDED(errorApplicationCreate(&c, "J2ME-NXX gap loi va phai dong / J2ME-NXX hit an error and must close", detail)))
+        errorApplicationShow(&c);
+#endif
+}
+
+static void on_terminate()
+{
+    std::string what = "std::terminate";
+    if (std::exception_ptr e = std::current_exception())
+    {
+        try
+        {
+            std::rethrow_exception(e);
+        }
+        catch (const std::exception& ex)
+        {
+            what = ex.what();
+        }
+        catch (...)
+        {
+            what = "unknown exception";
+        }
+    }
+    report_fatal(what.c_str());
+    exit(1);
+}
+
+static int run(int argc, char* argv[]);
+
 int main(int argc, char* argv[])
 {
     if (!platform_init())
         return 1;
     crash_init();
+    std::set_terminate(on_terminate);
+    // Log của borealis vào bộ đệm của báo cáo crash, và ra file (Switch không có console)
+    brls::Logger::getLogEvent()->subscribe([](brls::Logger::TimePoint, brls::LogLevel, std::string line)
+        { crash_log(line.c_str()); });
+#ifdef __SWITCH__
+    char log_path[600];
+    snprintf(log_path, sizeof(log_path), "%s/borealis.log", platform_data_dir());
+    if (FILE* f = fopen(log_path, "w"))
+    {
+        setvbuf(f, nullptr, _IONBF, 0);     // sập giữa chừng vẫn còn log
+        brls::Logger::setLogOutput(f);
+    }
+#endif
+    int ret = 1;
+    try
+    {
+        ret = run(argc, argv);
+    }
+    catch (const std::exception& e)
+    {
+        report_fatal(e.what());
+    }
+    catch (...)
+    {
+        report_fatal("unknown exception");
+    }
+    platform_exit();
+    return ret;
+}
+
+static int run(int argc, char* argv[])
+{
     bool first_run = !settings_load();
 
     // Chữ của borealis (gợi ý nút) theo ngôn ngữ đã chọn; lần đầu theo máy
@@ -177,11 +253,13 @@ int main(int argc, char* argv[])
                                                                                                     : "vi";
     brls::Logger::setLogLevel(SDL_getenv("J2ME_NX_BRLS_DEBUG") ? brls::LogLevel::LOG_DEBUG : brls::LogLevel::LOG_INFO);
     if (!brls::Application::init())
-    {
-        platform_exit();
-        return 1;
-    }
+        throw std::runtime_error("brls::Application::init failed");
     brls::Application::createWindow("J2ME-NXX");
+#ifndef __SWITCH__
+    // Test desktop: J2ME_NX_FATAL=1 giả lập borealis báo lỗi nghiêm trọng lúc khởi động
+    if (SDL_getenv("J2ME_NX_FATAL"))
+        brls::fatal("test: J2ME_NX_FATAL");
+#endif
     brls::Application::getPlatform()->setThemeVariant(brls::ThemeVariant::DARK);
     brls::Application::setGlobalQuit(false);
 
@@ -252,6 +330,5 @@ int main(int argc, char* argv[])
 
     if (TTF_WasInit())
         TTF_Quit();
-    platform_exit();
     return 0;
 }

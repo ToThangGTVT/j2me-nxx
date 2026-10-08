@@ -546,6 +546,8 @@ void emu_stop(void) {
         fclose(log_file);
     log_file = NULL;
     crash_set_game(NULL, NULL);
+    // Game đã giải phóng bộ nhớ: lấy lại RAM dự phòng (nếu đã nhả vì hết RAM)
+    crash_restore_reserve();
 }
 
 bool emu_running(void) {
@@ -842,6 +844,7 @@ bool emu_update(void) {
     vkb_update();
     // Hết RAM: thoát luôn (chạy tiếp thì chỗ cấp bộ nhớ khác cũng sẽ lỗi), giao diện báo cho người dùng
     if (heap_out_of_memory()) {
+        crash_release_reserve();
         exit_oom = true;
         snprintf(exit_msg, sizeof(exit_msg), "%s", tr(S_OUT_OF_MEMORY));
         size_t used, total;

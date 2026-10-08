@@ -7,6 +7,9 @@
 
 // Cài bộ bắt crash (Switch: exception handler của libnx, desktop: signal). Gọi sớm trong main.
 void crash_init(void);
+// RAM dự phòng (giữ từ crash_init): nhả ra khi hết RAM / sập để còn chỗ thoát cho gọn, lấy lại khi đã có chỗ
+void crash_release_reserve(void);
+void crash_restore_reserve(void);
 // Game đang chạy (NULL khi về danh sách game), để ghi vào báo cáo
 void crash_set_game(const char *jar_path, const char *midlet_class);
 // Thêm 1 dòng vào bộ đệm log gần nhất

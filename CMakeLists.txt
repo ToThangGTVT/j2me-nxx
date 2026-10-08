@@ -213,3 +213,40 @@ if(NINTENDO_SWITCH)
 else()
     target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LINK_LIBRARIES} m)
 endif()
+
+# ---------------------------------------------------------------------------
+# vmbench: đo tốc độ trình thông dịch trên desktop (không cần cửa sổ)
+#   cmake --build <dir> --target vmbench && <dir>/vmbench <dir>/bench.jar
+if(NOT NINTENDO_SWITCH)
+    file(GLOB VMBENCH_JAVA CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/vmbench/src/*.java")
+    set(VMBENCH_DIR "${CMAKE_BINARY_DIR}/vmbench_classes")
+    set(VMBENCH_JAR "${CMAKE_BINARY_DIR}/bench.jar")
+    add_custom_command(
+        OUTPUT "${VMBENCH_JAR}"
+        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${VMBENCH_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${VMBENCH_DIR}"
+        COMMAND "${JAVAC_EXE}" -source 8 -target 8 -bootclasspath "${CLASSLIB_DIR}" -Xlint:-options -nowarn
+                -encoding UTF-8 -g:source,lines -d "${VMBENCH_DIR}" ${VMBENCH_JAVA}
+        COMMAND "${JAR_EXE}" cf "${VMBENCH_JAR}" -C "${VMBENCH_DIR}" .
+        DEPENDS ${VMBENCH_JAVA} "${CLASSLIB_JAR}"
+        COMMENT "Bien dich bench.jar"
+        VERBATIM)
+    add_custom_target(vmbench_jar DEPENDS "${VMBENCH_JAR}")
+
+    add_executable(vmbench EXCLUDE_FROM_ALL
+        tests/vmbench/vmbench.c
+        source/vm/class.c
+        source/vm/heap.c
+        source/vm/interp.c
+        source/vm/jstring.c
+        source/vm/native.c
+        source/vm/native_lang.c
+        source/vm/thread.c
+        source/vm/vm.c
+        source/vm/zip.c
+        "${CLASSLIB_C}")
+    add_dependencies(vmbench vmbench_jar)
+    target_include_directories(vmbench PRIVATE source)
+    target_compile_options(vmbench PRIVATE -O2 -Wall)
+    target_link_libraries(vmbench PRIVATE ${DEPS_LINK_LIBRARIES} m)
+endif()

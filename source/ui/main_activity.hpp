@@ -1,12 +1,15 @@
-// Màn hình chính: danh sách ứng dụng (.jar) và video trong thư mục games
+// Màn hình chính: danh sách ứng dụng (.jar) và video trong thư mục games.
+// Vẽ và xử lý phím y như giao diện cũ (menu.c, vẽ bằng gfx.h trên NanoVG); phím đến từ action của borealis.
 #pragma once
 
 #include "ui/common.hpp"
 
+extern "C" {
+#include "menu.h"
+}
+
 namespace ui
 {
-
-class GameDataSource;
 
 class MainActivity : public brls::Activity
 {
@@ -16,14 +19,15 @@ class MainActivity : public brls::Activity
 
     brls::View* createContentView() override;
     void onContentAvailable() override;
-    void onResume() override;
 
     static void open();
     static MainActivity* get();
-    // Mỗi vòng lặp: hỏi cập nhật khi có bản mới, nhãn "bản mới" ở góc trên
+    // Mỗi vòng lặp: hỏi cập nhật khi có bản mới
     static void tick();
     // Trước khi thoát app: giải phóng ảnh icon
     static void shutdown();
+    // Dòng thông báo ở thanh dưới (giữ tới khi di chuyển con trỏ); không có màn hình chính thì hiện thông báo nổi
+    static void set_status(const std::string& text);
 
     // game_id: khoá cho save / tuỳ chọn riêng (NULL = tên file)
     static bool launch_game(const char* path, const char* game_id, int midlet);
@@ -31,35 +35,14 @@ class MainActivity : public brls::Activity
 
     // Quét lại thư mục games; keep: giữ con trỏ ở gần chỗ cũ
     void rescan(bool keep);
-    // Ngôn ngữ đổi: dựng lại chữ và gợi ý nút
-    void relabel();
+    // Ngôn ngữ đổi (chữ vẽ lại mỗi khung hình nên không cần dựng lại gì)
+    void relabel() { }
+
+    // Một lần bấm nút / chạm đã được menu.c xử lý
+    void handle(MenuAction action);
 
     GameList list = {};
-    int focused   = 0;
-
-  private:
-    brls::AppletFrame* frame     = nullptr;
-    brls::Box* body              = nullptr;
-    brls::RecyclerFrame* recycler = nullptr;
-    brls::Box* empty             = nullptr;
-    brls::Label* count_label     = nullptr;
-    brls::Label* subtitle_label  = nullptr;
-    brls::Box* badge             = nullptr;
-    brls::Label* badge_label     = nullptr;
-    brls::Label* folder_label    = nullptr;
-    GameDataSource* source       = nullptr;
-    std::vector<brls::ActionIdentifier> actions;
-    bool update_shown            = false;   // đang hiện nhãn có bản mới
-
-    void build_empty();
-    void register_actions();
-    void refresh_header();
-
-  public:
-    void open_entry(int index);
-    void open_options(int index);
-    void confirm_delete(int index);
-    void free_icons();
+    Menu menu     = {};
 };
 
 } // namespace ui

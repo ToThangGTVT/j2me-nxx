@@ -20,8 +20,8 @@ Chạy file `.jar` của ứng dụng, game điện thoại Java cũ trực ti�
 | `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, API Nokia (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; `tsf.h` (TinySoundFont, MIT); SoundFont `TimGM6mb.sf2` (GPL v2, nhúng vào binary); font Google Sans (OFL) có đủ chữ tiếng Việt |
-| `source/ui/` | Giao diện dựng bằng [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): danh sách ứng dụng, cài đặt, ánh xạ phím, cập nhật, gửi game từ điện thoại |
-| `source/` | Phiên chạy ứng dụng (`emu.c`), lớp vẽ `gfx.c` trên NanoVG cho màn hình chạy game / phím ảo / trình xem video, giải mã video qua FFmpeg (`video_dec.c`), lớp nền tảng Switch/desktop |
+| `source/ui/` | Giao diện dựng bằng [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): cài đặt, ánh xạ phím, cập nhật, gửi game từ điện thoại |
+| `source/` | Danh sách ứng dụng (`menu.c`), phiên chạy ứng dụng (`emu.c`), lớp vẽ `gfx.c` trên NanoVG cho danh sách ứng dụng / màn hình chạy game / phím ảo / trình xem video, giải mã video qua FFmpeg (`video_dec.c`), lớp nền tảng Switch/desktop |
 | `resources/` | Tài nguyên của borealis (chữ gợi ý nút vi/en, icon): nằm trong romfs của `.nro` |
 | `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video trên Canvas, trong Form, `platformRequest`) |
 
@@ -148,8 +148,8 @@ It runs `.jar` files of old Java phone apps and games directly on the Switch (ho
 | `javalib/src/` | CLDC 1.1 / MIDP 2.0 library written in Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, Nokia API (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; `tsf.h` (TinySoundFont, MIT); `TimGM6mb.sf2` SoundFont (GPL v2, embedded in the binary); Google Sans font (OFL) with full Vietnamese coverage |
-| `source/ui/` | UI built with [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): app list, settings, button mapping, updates, sending apps from a phone |
-| `source/` | App session (`emu.c`), `gfx.c` drawing layer on NanoVG for the running app / on-screen keypad / video player, FFmpeg video decoding (`video_dec.c`), Switch/desktop platform layer |
+| `source/ui/` | UI built with [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): settings, button mapping, updates, sending apps from a phone |
+| `source/` | App list (`menu.c`), app session (`emu.c`), `gfx.c` drawing layer on NanoVG for the app list / running app / on-screen keypad / video player, FFmpeg video decoding (`video_dec.c`), Switch/desktop platform layer |
 | `resources/` | borealis resources (vi/en button hint strings, icons): packed into the `.nro` romfs |
 | `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video on a Canvas, in a Form, `platformRequest`) |
 

@@ -186,9 +186,9 @@ int main(int argc, char* argv[])
     brls::Application::getPlatform()->setThemeVariant(brls::ThemeVariant::DARK);
     brls::Application::setGlobalQuit(false);
 
-    gfx_init(brls::Application::getNVGContext(), setup_fonts());
-    // Chữ trong game (MIDP) vẽ bằng SDL_ttf
+    // Chữ trong game (MIDP) vẽ bằng SDL_ttf; gfx cũng lấy số đo dòng chữ từ đây
     TTF_Init();
+    gfx_init(brls::Application::getNVGContext(), setup_fonts());
     SDL_InitSubSystem(SDL_INIT_JOYSTICK);
     input_init();
     ui::sdl_events_init();
@@ -226,7 +226,8 @@ int main(int argc, char* argv[])
         else
             ui::MainActivity::launch_game(argv[1], nullptr, argc > 2 ? atoi(argv[2]) : 1);
     }
-    ui::notify(startup_note);
+    if (!startup_note.empty())
+        ui::MainActivity::set_status(startup_note);
 
     brls::Application::getRunLoopEvent()->subscribe([]()
         {

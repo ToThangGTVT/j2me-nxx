@@ -7,18 +7,22 @@
 #include <glad/glad.h>
 #include <nanovg.h>
 
+#include "platform.h"
+
 // Có trong nanovg_gl.h (bản GL3 borealis dùng); khai báo lại để khỏi phải định nghĩa NANOVG_GL3 ở đây
 GLuint nvglImageHandleGL3(NVGcontext *ctx, int image);
 
-// Cỡ chữ của NanoVG tính theo chiều cao dòng (ascent - descent), lớn hơn cỡ pt của SDL_ttf cũ ~1.17 lần
+// Cùng cỡ với SDL_ttf trước đây (Google Sans ra cùng kích thước chữ ở cùng con số)
 static const float font_sizes[FONT_COUNT] = {
-    [FONT_SMALL]  = 23,
-    [FONT_NORMAL] = 30,
-    [FONT_LARGE]  = 44,
+    [FONT_SMALL]  = 20,
+    [FONT_NORMAL] = 26,
+    [FONT_LARGE]  = 38,
 };
 
 static NVGcontext *vg;
 static int font_face = -1;
+// Chiều cao dòng và khoảng từ đỉnh dòng tới chân chữ, lấy từ SDL_ttf để bố cục giống hệt bản vẽ bằng SDL trước đây
+static int line_height[FONT_COUNT], line_ascent[FONT_COUNT];
 // Ma trận toạ độ 1280x720 -> điểm ảnh của khung hình, và nghịch đảo của nó
 static float xform[6], inv_xform[6];
 static GLuint blit_fbo[2];
@@ -26,6 +30,14 @@ static GLuint blit_fbo[2];
 void gfx_init(struct NVGcontext *ctx, int font) {
     vg = ctx;
     font_face = font;
+    for (int i = 0; i < FONT_COUNT; i++) {
+        TTF_Font *f = TTF_WasInit() ? platform_open_font((int)font_sizes[i]) : NULL;
+        if (f) {
+            line_height[i] = TTF_FontHeight(f);
+            line_ascent[i] = TTF_FontAscent(f);
+            TTF_CloseFont(f);
+        }
+    }
     nvgTransformIdentity(xform);
     nvgTransformIdentity(inv_xform);
 }
@@ -116,11 +128,13 @@ void gfx_unclip(void) {
 static void set_font(FontId font) {
     nvgFontFaceId(vg, font_face);
     nvgFontSize(vg, font_sizes[font]);
-    nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
+    nvgTextAlign(vg, NVG_ALIGN_LEFT | (line_ascent[font] ? NVG_ALIGN_BASELINE : NVG_ALIGN_TOP));
     nvgTextLetterSpacing(vg, 0);
 }
 
 int gfx_font_height(FontId font) {
+    if (line_height[font])
+        return line_height[font];
     if (!vg)
         return (int)font_sizes[font];
     set_font(font);
@@ -153,15 +167,14 @@ int gfx_text(FontId font, int x, int y, int max_w, TextAlign align, SDL_Color c,
     }
     set_font(font);
     nvgFillColor(vg, color(c));
-    nvgText(vg, x, y, text, NULL);
+    nvgText(vg, x, y + line_ascent[font], text, NULL);
     if (clip)
         nvgRestore(vg);
     return w;
 }
 
 int gfx_text_wrapped(FontId font, int x, int y, int max_w, SDL_Color c, const char *text) {
-    // Giãn dòng thêm cho dấu tiếng Việt khỏi chạm dòng trên
-    int line_h = gfx_font_height(font) + (int)(font_sizes[font] * 0.2f);
+    int line_h = gfx_font_height(font);
     int dy = 0;
     char line[512];
     const char *p = text;

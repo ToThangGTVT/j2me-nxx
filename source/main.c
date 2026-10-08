@@ -25,6 +25,7 @@
 #include "update_screen.h"
 #include "upload_screen.h"
 #include "video_screen.h"
+#include "vm/aot.h"
 
 // Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây (J2ME_NX_APPSHOT_MS để đổi); trả về true khi đã chụp
 static bool debug_appshot(void) {
@@ -406,6 +407,8 @@ int main(int argc, char *argv[]) {
     video_screen_close();
     emu_stop();
     crash_logf("Thoat: da dung luong nen, game");
+    if (aot_mem_exit())
+        crash_logf("Thoat: da tra bo nho AOT");
     menu_free_textures(&list);
     game_list_free(&list);
     input_exit();

@@ -1,4 +1,4 @@
-## J2ME-NXX v0.8.3
+## J2ME-NXX v0.8.4
 
 - New Switch-style interface (borealis), with touch support.
 - Video playback removed; the `.nro` is much smaller.

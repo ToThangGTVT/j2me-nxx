@@ -37,5 +37,7 @@ void update_progress(int64_t *done, int64_t *total, int *bytes_per_sec);
 void update_error(char *out, size_t size);
 // Khởi động lại vào bản mới khi app thoát (Switch, chạy từ hbmenu). false nếu không làm được
 bool update_restart(void);
+// Gọi mỗi vòng lặp trên luồng chính: thay file .nro khi đã tải xong
+void update_tick(void);
 // Huỷ và chờ luồng nền (trước khi thoát app)
 void update_shutdown(void);

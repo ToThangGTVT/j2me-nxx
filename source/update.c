@@ -28,6 +28,9 @@ static char error[192];
 static bool has_new;
 static int64_t done_bytes, total_bytes;
 static Uint32 started_at;
+// Tải xong, chờ luồng chính thay file (update_tick)
+static bool replace_pending;
+static char pending_tmp[600], pending_old[600];
 
 static void set_state(UpdateState s) {
     SDL_LockMutex(lock);
@@ -430,28 +433,60 @@ static int download_thread(void *arg) {
         set_error(UPDATE_FAILED, "downloaded file is not a valid .nro");
         return 0;
     }
-    // Thay file: cũ -> .old, mới -> tên chính, rồi xoá .old (lỗi thì trả lại file cũ)
+    // Thay file trên luồng chính (phải gỡ romfs trong lúc thay, xem update_tick)
+    SDL_LockMutex(lock);
+    snprintf(pending_tmp, sizeof(pending_tmp), "%s", tmp_path);
+    snprintf(pending_old, sizeof(pending_old), "%s", old_path);
+    replace_pending = true;
+    SDL_UnlockMutex(lock);
+    return 0;
+}
+
+// Thay file: cũ -> .old, mới -> tên chính, rồi xoá .old (lỗi thì trả lại file cũ)
+static bool replace_self(const char *tmp_path, const char *old_path) {
     struct stat st;
     bool had_old = stat(self_path, &st) == 0;
     remove(old_path);
     if (had_old && rename(self_path, old_path) != 0) {
         remove(tmp_path);
-        set_error(UPDATE_FAILED, "cannot replace the .nro file");
-        return 0;
+        return false;
     }
     if (rename(tmp_path, self_path) != 0) {
         if (had_old)
             rename(old_path, self_path);
         remove(tmp_path);
-        set_error(UPDATE_FAILED, "cannot replace the .nro file");
-        return 0;
+        return false;
     }
     remove(old_path);
+    return true;
+}
+
+void update_tick(void) {
+    if (!lock)
+        return;
+    SDL_LockMutex(lock);
+    bool pending = replace_pending;
+    replace_pending = false;
+    SDL_UnlockMutex(lock);
+    if (!pending)
+        return;
+#ifdef __SWITCH__
+    // romfs (tài nguyên giao diện) giữ file .nro đang chạy mở, hệ thống không cho đổi tên file đang mở:
+    // gỡ ra trong lúc thay rồi gắn lại (từ file mới nếu thay xong)
+    romfsExit();
+#endif
+    bool ok = replace_self(pending_tmp, pending_old);
+#ifdef __SWITCH__
+    romfsInit();
+#endif
+    if (!ok) {
+        set_error(UPDATE_FAILED, "cannot replace the .nro file");
+        return;
+    }
     SDL_LockMutex(lock);
     has_new = false;
     state = UPDATE_DONE;
     SDL_UnlockMutex(lock);
-    return 0;
 }
 
 void update_download(void) {
@@ -489,5 +524,10 @@ void update_shutdown(void) {
     if (worker) {
         SDL_WaitThread(worker, NULL);
         worker = NULL;
+    }
+    // Tải xong nhưng chưa kịp thay: bỏ file tạm
+    if (replace_pending) {
+        remove(pending_tmp);
+        replace_pending = false;
     }
 }

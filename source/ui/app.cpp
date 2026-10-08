@@ -230,6 +230,7 @@ int main(int argc, char* argv[])
 #endif
             ui::sdl_events_pump();
             input_update();
+            update_tick();
             ui::ScreenActivity::tick();
             ui::MainActivity::tick();
 #ifndef __SWITCH__

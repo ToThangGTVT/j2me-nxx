@@ -1,6 +1,7 @@
 // Vùng nhớ thực thi cho mã máy của chế độ AOT: cấp 1 lần, mỗi phiên VM dùng lại từ đầu
 #include "aot.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #define AOT_MEM_SIZE (32u * 1024 * 1024)
@@ -15,6 +16,19 @@ static size_t used;
 static Jit jit;
 static bool ready;
 
+bool aot_mem_exit(void) {
+    if (!ready)
+        return false;
+    ready = false;
+    used = 0;
+    jitClose(&jit);
+    return true;
+}
+
+static void exit_hook(void) {
+    aot_mem_exit();
+}
+
 bool aot_mem_init(void) {
     if (ready)
         return true;
@@ -25,6 +39,11 @@ bool aot_mem_init(void) {
         return false;
     }
     ready = true;
+    // Vùng này lấy từ heap và bị khoá cho mã máy: không trả thì .nro nạp sau (hbmenu, bản vừa cập nhật)
+    // dùng lại heap đó sẽ sập
+    static bool hooked;
+    if (!hooked)
+        hooked = atexit(exit_hook) == 0;
     return true;
 }
 
@@ -55,6 +74,15 @@ void *aot_mem_put(const void *code, size_t size) {
 #endif
 
 static uint8_t *base;
+
+bool aot_mem_exit(void) {
+    if (!base)
+        return false;
+    munmap(base, AOT_MEM_SIZE);
+    base = NULL;
+    used = 0;
+    return true;
+}
 
 bool aot_mem_init(void) {
     if (base)
@@ -90,6 +118,10 @@ void *aot_mem_put(const void *code, size_t size) {
 #else
 // Không phải ARM64: không có chế độ AOT
 bool aot_mem_init(void) {
+    return false;
+}
+
+bool aot_mem_exit(void) {
     return false;
 }
 

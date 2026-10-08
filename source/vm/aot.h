@@ -41,3 +41,6 @@ bool aot_mem_init(void);
 void *aot_mem_put(const void *code, size_t size);
 void aot_mem_reset(void);
 size_t aot_mem_used(void);
+// Trả vùng nhớ thực thi cho hệ thống (khi thoát app; tự gọi qua atexit). Trả về true nếu đã có vùng để trả.
+// Switch: bắt buộc, vì hbmenu nạp .nro tiếp theo vào cùng tiến trình và vùng heap đó
+bool aot_mem_exit(void);

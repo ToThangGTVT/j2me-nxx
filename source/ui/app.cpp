@@ -23,6 +23,7 @@
 #include "ui/settings_activity.hpp"
 
 extern "C" {
+#include "vm/aot.h"
 // Font giao diện nhúng (Google Sans, có đủ chữ tiếng Việt)
 extern const unsigned char ui_font_ttf[];
 extern const size_t ui_font_ttf_size;
@@ -321,6 +322,8 @@ static int run(int argc, char* argv[])
             update_shutdown();
             upload_stop();
             emu_stop();
+            // Trả vùng nhớ mã máy của AOT: hbmenu nạp .nro tiếp theo vào cùng tiến trình
+            aot_mem_exit();
             ui::MainActivity::shutdown();
             input_exit();
         });

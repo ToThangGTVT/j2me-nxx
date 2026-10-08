@@ -38,6 +38,7 @@ static Settings current = {
     .font_scale = 100,
     .check_update = true,
     .soundfont = "-",       // mặc định tắt: bộ tổng hợp sóng
+    .aot = false,           // thử nghiệm: người dùng tự bật
 };
 
 Settings *settings(void) {

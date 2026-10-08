@@ -48,16 +48,21 @@ static void set_insert_raw(Object *o) {
     set[i] = o;
 }
 
-static void set_rebuild(size_t min_cap) {
+// Cấp bảng mới trước khi bỏ bảng cũ: hết RAM thì giữ nguyên bảng cũ và trả về false
+static bool set_rebuild(size_t min_cap) {
     size_t cap = 1024;
     while (cap < min_cap * 2)
         cap <<= 1;
+    Object **n = calloc(cap, sizeof(Object *));
+    if (!n)
+        return false;
     free(set);
-    set = calloc(cap, sizeof(Object *));
+    set = n;
     set_cap = cap;
     set_used = 0;
     for (size_t i = 0; i < obj_count; i++)
         set_insert_raw(objs[i]);
+    return true;
 }
 
 bool heap_is_object(const void *p) {
@@ -82,8 +87,9 @@ static Object *alloc_raw(VMThread *t, Class *c, size_t size) {
         objs = n;
         obj_cap = cap;
     }
-    if ((set_used + 1) * 2 > set_cap)
-        set_rebuild(obj_count + 1);
+    // Bảng đầy quá nửa thì nới. Không nới được (hết RAM) thì dùng tiếp tới khi chỉ còn 1/8 chỗ trống
+    if ((set_used + 1) * 2 > set_cap && !set_rebuild(obj_count + 1) && (set_used + 1) * 8 > set_cap * 7)
+        goto oom;
 
     Object *o = calloc(1, size);
     if (!o)
@@ -231,7 +237,13 @@ void heap_gc(void) {
         }
     }
     obj_count = live;
-    set_rebuild(obj_count);
+    if (!set_rebuild(obj_count) && set_cap) {
+        // Hết RAM: dọn lại bảng cũ tại chỗ (đủ chỗ vì số object chỉ giảm), bỏ địa chỉ object đã giải phóng
+        memset(set, 0, set_cap * sizeof(Object *));
+        set_used = 0;
+        for (size_t i = 0; i < obj_count; i++)
+            set_insert_raw(objs[i]);
+    }
 
     alloc_since_gc = 0;
     gc_threshold = used_bytes > GC_MIN_THRESHOLD ? used_bytes : GC_MIN_THRESHOLD;

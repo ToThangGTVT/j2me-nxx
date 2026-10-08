@@ -402,6 +402,7 @@ void interp_run(VMThread *t, int budget) {
     CPEntry *cp;
     Method *target;             // invoke: method sẽ gọi, số slot tham số, độ dài lệnh
     int nargs, len;
+    int ret_slots;              // return: số slot giá trị trả về
 
 #define LOAD()                                  \
     do {                                        \
@@ -872,20 +873,25 @@ next:
         }
 
         // --- return
-        CASE(OP_IRETURN) CASE(OP_FRETURN) CASE(OP_ARETURN)
-        CASE(OP_LRETURN) CASE(OP_DRETURN) CASE(OP_RETURN) {
-            int slots = (op == OP_RETURN) ? 0 : (op == OP_LRETURN || op == OP_DRETURN) ? 2 : 1;
-            Value ret = slots ? sp[-slots] : (Value){ .j = 0 };
-            frame_pop(t);
+        CASE(OP_IRETURN) CASE(OP_FRETURN) CASE(OP_ARETURN) ret_slots = 1; goto do_return;
+        CASE(OP_LRETURN) CASE(OP_DRETURN) ret_slots = 2; goto do_return;
+        CASE(OP_RETURN) ret_slots = 0;
+        do_return: {
+            Value ret = ret_slots ? sp[-ret_slots] : (Value){ .j = 0 };
+            // Frame thường (không giữ monitor, không phải <clinit>) chỉ cần bỏ đi
+            if (f->sync_obj || f->clinit_of)
+                frame_pop(t);
+            else
+                t->frame_count--;
             if (t->frame_count == 0) {
                 t->result = ret;
                 thread_terminate(t);
                 return;
             }
             LOAD();
-            if (slots) {
+            if (ret_slots) {
                 sp[0] = ret;
-                sp += slots;
+                sp += ret_slots;
             }
             break;
         }
@@ -1121,6 +1127,33 @@ next:
                 }
                 }
                 break;
+            }
+
+            // Đường nhanh cho lời gọi Java -> Java không synchronized (abstract / native đã xử lý ở
+            // trên): tham số đang nằm trên stack của caller trở thành locals của frame mới tại chỗ.
+            // Tràn stack thì để thread_push_frame ném StackOverflowError.
+            if (!(target->access & ACC_SYNCHRONIZED)) {
+                Value *nl = sp - nargs;
+                int nlocals = target->max_locals > nargs ? target->max_locals : nargs;
+                if (t->frame_count < THREAD_MAX_FRAMES &&
+                    nl + nlocals + target->max_stack + 4 <= t->stack + THREAD_STACK_SLOTS) {
+                    f->retry = 0;
+                    f->pc = pc + len;
+                    f->sp = nl;
+                    for (Value *v = nl + nargs; v < nl + nlocals; v++)
+                        v->j = 0;
+                    f = &t->frames[t->frame_count++];
+                    f->m = m = target;
+                    f->pc = pc = target->code;
+                    f->locals = locals = nl;
+                    f->stack_base = f->sp = sp = nl + nlocals;
+                    f->clinit_of = NULL;
+                    f->sync_obj = NULL;
+                    f->retry = 0;
+                    cp = target->owner->cp;
+                    TICK();
+                    break;
+                }
             }
 
             Object *sync = NULL;

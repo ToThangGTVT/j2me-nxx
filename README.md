@@ -18,12 +18,12 @@ Chạy file `.jar` của ứng dụng, game điện thoại Java cũ trực ti�
 | `source/vm/` | Máy ảo Java tự viết: đọc class file, trình thông dịch bytecode (đủ ~200 opcode, kể cả `jsr/ret`), green thread + monitor, GC mark-sweep, đọc JAR (zip + zlib) |
 | `source/vm/aot*` | Chế độ AOT thử nghiệm (bật trong Cài đặt): dịch bytecode sang mã máy ARM64 khi nạp lớp, chạy chung với trình thông dịch |
 | `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, API Nokia (`FullCanvas`, `DirectGraphics`) |
-| `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
-| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; `tsf.h` (TinySoundFont, MIT); SoundFont `TimGM6mb.sf2` (GPL v2, nhúng vào binary); font Google Sans (OFL) có đủ chữ tiếng Việt |
+| `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3/AMR/AAC + tổng hợp MIDI/tone), socket/HTTP/TLS |
+| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), `minimp4.h` (đọc MP4 / M4A / 3GP), đều public domain / CC0; `faad2` (AAC, GPL v2+); `opencore-amr` (AMR-NB / AMR-WB, Apache 2.0); `tsf.h` (TinySoundFont, MIT); SoundFont `TimGM6mb.sf2` (GPL v2, nhúng vào binary); font Google Sans (OFL) có đủ chữ tiếng Việt |
 | `source/ui/` | Giao diện dựng bằng [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): danh sách ứng dụng, cài đặt, ánh xạ phím, cập nhật, gửi game từ điện thoại |
 | `source/` | Phiên chạy ứng dụng (`emu.c`), lớp vẽ `gfx.c` trên NanoVG cho màn hình chạy game / phím ảo, lớp nền tảng Switch/desktop |
 | `resources/` | Tài nguyên của borealis (chữ gợi ý nút vi/en, icon): nằm trong romfs của `.nro` |
-| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
+| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, AMR, AAC, M4A, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
 
 Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng vào binary dưới dạng `classlib.jar`.
 
@@ -109,7 +109,7 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 ## Trạng thái
 
 - Đã chạy: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (bàn phím ảo của Switch), RecordStore, Timer, thread / wait / notify.
-- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (phát bằng SoundFont `.sf2` qua TinySoundFont; không có file `.sf2` thì tổng hợp bằng sóng cơ bản + trống), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. Không phát được AMR, AAC, M4A (game vẫn chạy, chỉ không có tiếng đó).
+- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (phát bằng SoundFont `.sf2` qua TinySoundFont; không có file `.sf2` thì tổng hợp bằng sóng cơ bản + trống), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR-NB / AMR-WB (`.amr`, tiếng trong 3GP), AAC (`.aac`, M4A / MP4) giải mã bằng opencore-amr và faad2.
 - Không hỗ trợ video (MMAPI `VideoControl`): Player kiểu `video/...` báo `MediaException`. Chưa có camera (`capture://`).
 - `MIDlet.platformRequest`: trang web (`http://`, `https://`) mở bằng trình duyệt có sẵn của Switch (cần chạy hbmenu ở chế độ full RAM).
 - Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ), `datagram://` (UDP).
@@ -144,12 +144,12 @@ It runs `.jar` files of old Java phone apps and games directly on the Switch (ho
 | `source/vm/` | Custom Java VM: class file loader, bytecode interpreter (all ~200 opcodes, including `jsr/ret`), green threads + monitors, mark-sweep GC, JAR reader (zip + zlib) |
 | `source/vm/aot*` | Experimental AOT mode (enable in Settings): compiles bytecode to ARM64 machine code at class load, running alongside the interpreter |
 | `javalib/src/` | CLDC 1.1 / MIDP 2.0 library written in Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, Nokia API (`FullCanvas`, `DirectGraphics`) |
-| `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
-| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; `tsf.h` (TinySoundFont, MIT); `TimGM6mb.sf2` SoundFont (GPL v2, embedded in the binary); Google Sans font (OFL) with full Vietnamese coverage |
+| `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3/AMR/AAC mixing + MIDI/tone synthesis), socket/HTTP/TLS |
+| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), `minimp4.h` (MP4 / M4A / 3GP reader), public domain / CC0; `faad2` (AAC, GPL v2+); `opencore-amr` (AMR-NB / AMR-WB, Apache 2.0); `tsf.h` (TinySoundFont, MIT); `TimGM6mb.sf2` SoundFont (GPL v2, embedded in the binary); Google Sans font (OFL) with full Vietnamese coverage |
 | `source/ui/` | UI built with [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): app list, settings, button mapping, updates, sending apps from a phone |
 | `source/` | App session (`emu.c`), `gfx.c` drawing layer on NanoVG for the running app / on-screen keypad, Switch/desktop platform layer |
 | `resources/` | borealis resources (vi/en button hint strings, icons): packed into the `.nro` romfs |
-| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
+| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, AMR, AAC, M4A, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
 
 The Java library is compiled with `javac` at build time and embedded in the binary as `classlib.jar`.
 
@@ -235,7 +235,7 @@ Screen size is chosen in this order: the app's own options > `Nokia-MIDlet-Origi
 ### Status
 
 - Working: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (Switch software keyboard), RecordStore, Timer, threads / wait / notify.
-- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (played with a `.sf2` SoundFont via TinySoundFont; without one, synthesized with basic waveforms + drums), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC and M4A are not supported (the app still runs, just without those sounds).
+- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (played with a `.sf2` SoundFont via TinySoundFont; without one, synthesized with basic waveforms + drums), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR-NB / AMR-WB (`.amr`, 3GP audio) and AAC (`.aac`, M4A / MP4) are decoded with opencore-amr and faad2.
 - No video support (MMAPI `VideoControl`): `video/...` players throw `MediaException`. No camera (`capture://`) yet.
 - `MIDlet.platformRequest`: web pages (`http://`, `https://`) open in the Switch's built-in browser (requires hbmenu in full RAM mode).
 - Networking: `socket://`, `http://`, `https://`, `ssl://` (TLS via mbedTLS, certificates are not verified), `datagram://` (UDP).

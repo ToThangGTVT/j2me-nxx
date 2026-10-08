@@ -103,6 +103,170 @@ endif()
 
 set(RESOURCES_DIR "${CMAKE_SOURCE_DIR}/resources")
 
+# ---------------------------------------------------------------------------
+# Giải mã âm thanh nén cho AudioPlayer: AAC / M4A (faad2, GPL v2+), AMR-NB / AMR-WB (opencore-amr,
+# Apache 2.0). File MP4 / M4A / 3GP bóc tách bằng minimp4.h (CC0). Mã nguồn nằm sẵn trong source/third_party.
+
+set(FAAD_DIR "${CMAKE_SOURCE_DIR}/source/third_party/faad2")
+file(GLOB FAAD_SOURCES "${FAAD_DIR}/libfaad/*.c")
+add_library(faad STATIC ${FAAD_SOURCES})
+target_include_directories(faad PUBLIC "${FAAD_DIR}/include" PRIVATE "${FAAD_DIR}/libfaad")
+target_compile_definitions(faad PRIVATE HAVE_INTTYPES_H=1 HAVE_MEMCPY=1 HAVE_STRING_H=1 HAVE_STRINGS_H=1
+    HAVE_SYS_STAT_H=1 HAVE_SYS_TYPES_H=1 HAVE_LRINTF=1 PACKAGE_VERSION="2.11.4")
+target_compile_options(faad PRIVATE -O2 -w)
+
+set(AMRNB_SOURCES
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/amrnb/wrapper.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/agc.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/amrdecode.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/a_refl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/b_cn_cod.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/bgnscd.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/c_g_aver.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d1035pf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d2_11pf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d2_9pf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d3_14pf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d4_17pf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d8_31pf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/dec_amr.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/dec_gain.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/dec_input_format_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/dec_lag3.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/dec_lag6.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d_gain_c.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d_gain_p.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d_plsf_3.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d_plsf_5.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/d_plsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/dtx_dec.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/ec_gains.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/ex_ctrl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/if2_to_ets.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/int_lsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/lsp_avg.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/ph_disp.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/post_pro.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/preemph.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/pstfilt.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/qgain475_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/sp_dec.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src/wmf_to_ets.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/add.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/az_lsp.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/bitno_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/bitreorder_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/c2_9pf_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/div_s.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/extract_h.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/extract_l.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/gains_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/gc_pred.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/get_const_tbls.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/gmed_n.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/gray_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/grid_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/int_lpc.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/inv_sqrt.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/inv_sqrt_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/l_deposit_h.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/l_deposit_l.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/log2.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/log2_norm.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/log2_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/lsfwt.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/l_shr_r.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/lsp_az.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/lsp.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/lsp_lsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/lsp_lsf_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/lsp_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/mult_r.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/negate.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/norm_l.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/norm_s.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/overflow_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/ph_disp_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/pow2.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/pow2_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/pred_lt.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/q_plsf_3.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/q_plsf_3_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/q_plsf_5.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/q_plsf_5_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/q_plsf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/qua_gain_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/reorder.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/residu.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/round.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/set_zero.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/shr.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/shr_r.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/sqrt_l.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/sqrt_l_tbl.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/sub.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/syn_filt.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/weight_a.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/src/window_tab.cpp
+)
+set(AMRWB_SOURCES
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/amrwb/wrapper.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/agc2_amr_wb.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/band_pass_6k_7k.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/dec_acelp_2p_in_64.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/dec_acelp_4p_in_64.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/dec_alg_codebook.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/dec_gain2_amr_wb.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/deemphasis_32.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/dtx_decoder_amr_wb.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/get_amr_wb_bits.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/highpass_400hz_at_12k8.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/highpass_50hz_at_12k8.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/homing_amr_wb_dec.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/interpolate_isp.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/isf_extrapolation.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/isp_az.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/isp_isf.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/lagconceal.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/low_pass_filt_7k.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/median5.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/mime_io.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/noise_gen_amrwb.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/normalize_amr_wb.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/oversamp_12k8_to_16k.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/phase_dispersion.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/pit_shrp.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/pred_lt4.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/preemph_amrwb_dec.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/pvamrwbdecoder.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/pvamrwb_math_op.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/q_gain2_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/qisf_ns.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/qisf_ns_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/qpisf_2s.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/qpisf_2s_tab.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/scale_signal.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/synthesis_amr_wb.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/voice_factor.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/wb_syn_filt.cpp
+    ${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src/weight_amrwb_lpc.cpp
+)
+set(AMR_DIR "${CMAKE_SOURCE_DIR}/source/third_party/opencore-amr")
+set(GSM_AMR "${AMR_DIR}/opencore/codecs_v2/audio/gsm_amr")
+add_library(amrnb STATIC ${AMRNB_SOURCES})
+target_include_directories(amrnb PUBLIC "${AMR_DIR}/amrnb" PRIVATE "${AMR_DIR}/oscl" "${GSM_AMR}/amr_nb/dec/src"
+    "${GSM_AMR}/amr_nb/dec/include" "${GSM_AMR}/amr_nb/common/include" "${GSM_AMR}/common/dec/include"
+    "${GSM_AMR}/amr_nb/enc/src")
+target_compile_definitions(amrnb PRIVATE DISABLE_AMRNB_ENCODER)
+add_library(amrwb STATIC ${AMRWB_SOURCES})
+target_include_directories(amrwb PUBLIC "${AMR_DIR}/amrwb" PRIVATE "${AMR_DIR}/oscl" "${GSM_AMR}/amr_wb/dec/src"
+    "${GSM_AMR}/amr_wb/dec/include" "${GSM_AMR}/common/dec/include")
+foreach(lib amrnb amrwb)
+    # Mã C++ cũ (dùng register): không biên dịch theo C++17 được
+    set_target_properties(${lib} PROPERTIES CXX_STANDARD 11)
+    target_compile_options(${lib} PRIVATE -O2 -w)
+endforeach()
+
 # Font giao diện (Google Sans, OFL) nhúng vào binary
 set(UI_FONT   "${CMAKE_SOURCE_DIR}/source/third_party/fonts/GoogleSans-Regular.ttf")
 set(UI_FONT_C "${CMAKE_BINARY_DIR}/ui_font_data.c")
@@ -169,6 +333,7 @@ add_executable(j2me-nxx
     source/midp/net.c
     source/midp/tls.c
     source/midp/audio.c
+    source/midp/audio_dec.c
     source/midp/fileio.c
     source/midp/m3g.c
     source/third_party/dr_mp3.c
@@ -179,7 +344,7 @@ add_executable(j2me-nxx
 
 target_compile_options(j2me-nxx PRIVATE -Wall)
 target_include_directories(j2me-nxx PRIVATE source)
-target_link_libraries(j2me-nxx PRIVATE borealis)
+target_link_libraries(j2me-nxx PRIVATE borealis faad amrnb amrwb)
 target_compile_definitions(j2me-nxx PRIVATE APP_VERSION_STR="${PROJECT_VERSION}")
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Interpreter rất chậm khi không tối ưu

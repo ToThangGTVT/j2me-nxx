@@ -1,4 +1,4 @@
-// Âm thanh cho javax.microedition.media: trộn WAV, tổng hợp MIDI / tone bằng phần mềm qua SDL audio.
+// Âm thanh cho javax.microedition.media: trộn WAV / MP3 / AMR / AAC, tổng hợp MIDI / tone bằng phần mềm qua SDL audio.
 // Có SoundFont (.sf2) thì MIDI / tone phát bằng TinySoundFont, không thì dùng bộ tổng hợp sóng cơ bản.
 #include "midp.h"
 
@@ -9,6 +9,7 @@
 #include <SDL.h>
 
 #include "../third_party/dr_mp3.h"
+#include "audio_dec.h"
 #define TSF_IMPLEMENTATION
 #include "../third_party/tsf.h"
 #include "../vm/vm.h"
@@ -732,6 +733,20 @@ static bool load_mp3(Player *p, const uint8_t *d, size_t size) {
     return true;
 }
 
+// AMR, AAC, M4A, tiếng trong 3GP (audio_dec.c)
+static bool load_compressed(Player *p, const uint8_t *d, size_t size) {
+    if (!audio_dec_probe(d, size))
+        return false;
+    int16_t *pcm = NULL;
+    size_t frames = 0;
+    int rate = 0;
+    if (!audio_dec_decode(d, size, &pcm, &frames, &rate))
+        return false;
+    set_pcm(p, pcm, (uint32_t)frames, rate);
+    free(pcm);
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // Đọc MIDI (SMF 0/1)
 
@@ -960,12 +975,12 @@ static NativeResult A_create0(VMThread *t, Value *args, Value *ret) {
     int h = player_alloc();
     unlock();
     if (h) {
-        // Giải mã ngoài khoá (MP3 dài có thể mất vài trăm ms): player chưa có kind nên bộ trộn bỏ qua,
+        // Giải mã ngoài khoá (MP3 / AAC dài có thể mất vài trăm ms): player chưa có kind nên bộ trộn bỏ qua,
         // set_pcm / load_midi gán kind sau cùng
         Player *p = &players[h];
         const uint8_t *d = ARRAY_DATA(data, uint8_t);
         size_t n = (size_t)ARRAY_LEN(data);
-        if (!load_wav(p, d, n) && !load_midi(p, d, n) && !load_mp3(p, d, n)) {
+        if (!load_wav(p, d, n) && !load_midi(p, d, n) && !load_compressed(p, d, n) && !load_mp3(p, d, n)) {
             lock();
             player_free(p);
             unlock();

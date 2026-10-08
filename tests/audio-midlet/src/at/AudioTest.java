@@ -23,6 +23,12 @@ public class AudioTest extends MIDlet implements PlayerListener, Runnable {
             Player mp3 = Manager.createPlayer(getClass().getResourceAsStream("/tone.mp3"), "audio/mpeg");
             mp3.addPlayerListener(this); mp3.realize(); System.out.println("MP3 duration us=" + mp3.getDuration());
             mp3.start(); Thread.sleep(1200);
+            String[][] more = { { "/tone.amr", "audio/amr" }, { "/tone.aac", "audio/aac" }, { "/tone.m4a", "audio/mp4" } };
+            for (int i = 0; i < more.length; i++) {
+                Player p = Manager.createPlayer(getClass().getResourceAsStream(more[i][0]), more[i][1]);
+                p.addPlayerListener(this); p.realize(); System.out.println(more[i][1] + " duration us=" + p.getDuration());
+                p.start(); Thread.sleep(1200);
+            }
         } catch (Throwable e) { e.printStackTrace(); }
         notifyDestroyed();
     }

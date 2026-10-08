@@ -17,7 +17,8 @@ public final class Manager {
     }
 
     public static String[] getSupportedContentTypes(String protocol) {
-        return new String[] { "audio/midi", "audio/x-wav", "audio/mpeg", "audio/x-tone-seq" };
+        return new String[] { "audio/midi", "audio/x-wav", "audio/mpeg", "audio/amr", "audio/amr-wb", "audio/mp4",
+                "audio/aac", "audio/3gpp", "audio/x-tone-seq" };
     }
 
     public static String[] getSupportedProtocols(String contentType) {
@@ -30,6 +31,18 @@ public final class Manager {
         int q = l.indexOf('?');
         if (q >= 0) {
             l = l.substring(0, q);
+        }
+        if (l.endsWith(".amr")) {
+            return "audio/amr";
+        }
+        if (l.endsWith(".aac")) {
+            return "audio/aac";
+        }
+        if (l.endsWith(".m4a") || l.endsWith(".mp4")) {
+            return "audio/mp4";
+        }
+        if (l.endsWith(".3gp") || l.endsWith(".3g2")) {
+            return "audio/3gpp";
         }
         if (l.endsWith(".mp3")) {
             return "audio/mpeg";

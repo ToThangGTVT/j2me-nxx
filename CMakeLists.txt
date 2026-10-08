@@ -99,6 +99,7 @@ add_executable(j2me-nxx
     source/keymap.c
     source/settings.c
     source/settings_screen.c
+    source/lang_screen.c
     source/qr.c
     source/upload.c
     source/upload_screen.c

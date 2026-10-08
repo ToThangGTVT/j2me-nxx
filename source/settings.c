@@ -48,12 +48,12 @@ bool settings_valid_screen(int w, int h) {
     return w >= SCREEN_MIN && h >= SCREEN_MIN && w <= SCREEN_MAX && h <= SCREEN_MAX;
 }
 
-void settings_load(void) {
+bool settings_load(void) {
     char path[512];
     snprintf(path, sizeof(path), "%s/settings.ini", platform_data_dir());
     FILE *f = fopen(path, "r");
     if (!f)
-        return;
+        return false;
     char line[256];
     while (fgets(line, sizeof(line), f)) {
         int v, w, h;
@@ -89,6 +89,7 @@ void settings_load(void) {
     }
     fclose(f);
     lang_set((Lang)current.lang);
+    return true;
 }
 
 bool settings_save(void) {

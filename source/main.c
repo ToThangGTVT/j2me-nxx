@@ -15,6 +15,7 @@
 #include "gfx.h"
 #include "input.h"
 #include "lang.h"
+#include "lang_screen.h"
 #include "menu.h"
 #include "platform.h"
 #include "settings.h"
@@ -121,7 +122,10 @@ int main(int argc, char *argv[]) {
     }
     input_init();
     crash_init();
-    settings_load();
+    // Mở app lần đầu: chọn ngôn ngữ trước
+    bool in_lang = !settings_load();
+    if (in_lang)
+        lang_screen_open();
     {
         char name[64];
         if (crash_take_previous(name, sizeof(name)))
@@ -137,11 +141,14 @@ int main(int argc, char *argv[]) {
     bool in_upload = false;
     bool update_prompted = false;   // đã tự hiện hộp thoại "có bản mới" (1 lần mỗi lần mở app)
 #ifndef __SWITCH__
-    // Desktop: J2ME_NX_SCREEN=settings mở thẳng màn hình cài đặt (để test giao diện)
+    // Desktop: J2ME_NX_SCREEN=settings / lang mở thẳng màn hình cài đặt / chọn ngôn ngữ (để test giao diện)
     const char *start_screen = SDL_getenv("J2ME_NX_SCREEN");
     if (start_screen && SDL_strcmp(start_screen, "settings") == 0) {
         settings_screen_open();
         in_settings = true;
+    } else if (start_screen && SDL_strcmp(start_screen, "lang") == 0) {
+        lang_screen_open();
+        in_lang = true;
     }
 #endif
     if (argc > 1) {
@@ -165,6 +172,8 @@ int main(int argc, char *argv[]) {
             if (e.type == SDL_QUIT)
                 running = false;
             input_handle_event(&e);
+            if (in_lang)
+                lang_screen_handle_event(&e);
             if (emu_running())
                 emu_handle_event(&e);
         }
@@ -182,6 +191,17 @@ int main(int argc, char *argv[]) {
 #endif
             } else {
                 emu_draw();
+                if (debug_appshot())
+                    running = false;
+                gfx_present();
+                continue;
+            }
+        }
+
+        if (in_lang) {
+            in_lang = lang_screen_update();
+            if (in_lang) {
+                lang_screen_draw();
                 if (debug_appshot())
                     running = false;
                 gfx_present();

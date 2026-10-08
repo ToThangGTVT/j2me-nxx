@@ -33,7 +33,8 @@ typedef struct {
     int w, h;
 } ScreenSize;
 
-void settings_load(void);
+// Trả về false khi chưa có settings.ini (mở app lần đầu)
+bool settings_load(void);
 bool settings_save(void);
 Settings *settings(void);
 

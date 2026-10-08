@@ -12,8 +12,9 @@ using namespace brls::literals;
 namespace ui
 {
 
-#define ROW_H     88
-#define ICON_SIZE 56
+// 7 dòng vừa một màn hình
+#define ROW_H     70
+#define ICON_SIZE 50
 
 static MainActivity* instance;
 
@@ -126,16 +127,16 @@ class GameCell : public brls::RecyclerCell
         this->setPadding(0, 24, 0, 16);
 
         icon = new GameIcon();
-        icon->setMargins(0, 20, 0, 0);
+        icon->setMargins(0, 18, 0, 0);
         this->addView(icon);
 
         auto* text = new brls::Box(brls::Axis::COLUMN);
         text->setGrow(1.0f);
         text->setShrink(1.0f);
         text->setJustifyContent(brls::JustifyContent::CENTER);
-        title = make_label("", 24, brls::Application::getTheme()["brls/text"], false);
-        sub   = make_label("", 17, color_dim(), false);
-        sub->setMarginTop(4);
+        title = make_label("", 23, brls::Application::getTheme()["brls/text"], false);
+        sub   = make_label("", 16, color_dim(), false);
+        sub->setMarginTop(2);
         text->addView(title);
         text->addView(sub);
         this->addView(text);
@@ -254,7 +255,7 @@ brls::View* MainActivity::createContentView()
 
     recycler = new brls::RecyclerFrame();
     recycler->setGrow(1.0f);
-    recycler->setPadding(8, 40, 24, 40);
+    recycler->setPadding(4, 40, 8, 40);
     recycler->estimatedRowHeight = ROW_H;
     recycler->setScrollingBehavior(brls::ScrollingBehavior::CENTERED);
     recycler->registerCell("game", []()

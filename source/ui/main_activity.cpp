@@ -513,8 +513,27 @@ bool MainActivity::launch_game(const char* path, const char* game_id, int midlet
     hooks.closed = []()
     {
         std::string msg = emu_exit_message();
+        bool oom        = emu_exit_out_of_memory();
         emu_stop();
-        notify(msg.empty() ? T(S_GAME_EXITED) : msg);
+        if (oom)
+        {
+            // Báo rõ bằng hộp thoại sau khi đã về màn hình chính
+            brls::sync([]()
+                {
+                    auto* box = new brls::Box(brls::Axis::COLUMN);
+                    box->setPadding(36, 40, 24, 40);
+                    box->addView(make_label(T(S_OUT_OF_MEMORY), 28, color_warn()));
+                    auto* hint = make_label(T(S_OUT_OF_MEMORY_HINT), 20, brls::Application::getTheme()["brls/text"]);
+                    hint->setMarginTop(16);
+                    box->addView(hint);
+                    auto* dialog = new brls::Dialog(box);
+                    dialog->addButton("hints/ok"_i18n, []() {});
+                    dialog->open(); });
+        }
+        else
+        {
+            notify(msg.empty() ? T(S_GAME_EXITED) : msg);
+        }
 #ifndef __SWITCH__
         // Kịch bản test (J2ME_NX_QUIT): thoát app luôn khi game kết thúc
         if (SDL_getenv("J2ME_NX_QUIT"))

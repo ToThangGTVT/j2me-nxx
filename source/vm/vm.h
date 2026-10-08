@@ -339,6 +339,9 @@ void heap_gc(void);
 size_t heap_used(void);
 size_t heap_total(void);
 void heap_free_all(void);
+// Máy hết RAM (không cấp được object / bảng của heap). Đọc được từ luồng khác; heap_free_all xoá cờ
+bool heap_out_of_memory(void);
+void heap_set_out_of_memory(void);
 
 // --- thread
 VMThread *thread_new(Object *jthread);

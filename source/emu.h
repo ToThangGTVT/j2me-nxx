@@ -18,3 +18,5 @@ void emu_draw(void);
 
 // Lý do thoát gần nhất (rỗng nếu thoát bình thường)
 const char *emu_exit_message(void);
+// Lần thoát gần nhất là do hết RAM
+bool emu_exit_out_of_memory(void);

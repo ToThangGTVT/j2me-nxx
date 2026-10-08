@@ -22,6 +22,7 @@ static size_t used_bytes;
 static size_t alloc_since_gc;
 static size_t gc_threshold = GC_MIN_THRESHOLD;
 static bool gc_requested;
+static volatile bool out_of_memory;    // máy không cấp được bộ nhớ (hết RAM thật, không phải mảng quá lớn)
 static uint32_t next_hash = 0x9e3779b9u;
 
 static Object ***roots;
@@ -108,6 +109,7 @@ static Object *alloc_raw(VMThread *t, Class *c, size_t size) {
 
 oom:
     gc_requested = true;
+    out_of_memory = true;
     if (t)
         throw_new(t, "java/lang/OutOfMemoryError", NULL);
     return NULL;
@@ -275,4 +277,13 @@ void heap_free_all(void) {
     used_bytes = alloc_since_gc = 0;
     gc_threshold = GC_MIN_THRESHOLD;
     gc_requested = false;
+    out_of_memory = false;
+}
+
+bool heap_out_of_memory(void) {
+    return out_of_memory;
+}
+
+void heap_set_out_of_memory(void) {
+    out_of_memory = true;
 }

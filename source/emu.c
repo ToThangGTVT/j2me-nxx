@@ -37,6 +37,7 @@ static char game_name[128];
 static char rms_dir[512];
 static char files_dir[512];
 static char exit_msg[256];
+static bool exit_oom;               // thoát vì hết RAM
 static FILE *log_file;
 
 static int screen_img;
@@ -358,6 +359,7 @@ static void compute_dst(void) {
 bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err, size_t err_size) {
     emu_stop();
     exit_msg[0] = '\0';
+    exit_oom = false;
     exit_now = false;
     exit_confirm_until = 0;
     memset(key_held, 0, sizeof(key_held));
@@ -552,6 +554,10 @@ bool emu_running(void) {
 
 const char *emu_exit_message(void) {
     return exit_msg;
+}
+
+bool emu_exit_out_of_memory(void) {
+    return exit_oom;
 }
 
 // ---------------------------------------------------------------------------
@@ -808,6 +814,10 @@ static void script_step(void) {
         if (*p == ',')
             p++;
     }
+    // J2ME_NX_OOM=<ms>: giả lập hết RAM để thử màn hình báo lỗi
+    const char *oom = SDL_getenv("J2ME_NX_OOM");
+    if (oom && t >= (Uint32)atoi(oom))
+        heap_set_out_of_memory();
     if (quit && t >= (Uint32)atoi(quit)) {
         SDL_Event e = { .type = SDL_QUIT };
         SDL_PushEvent(&e);
@@ -830,6 +840,16 @@ bool emu_update(void) {
     link_update();
     update_repeat();
     vkb_update();
+    // Hết RAM: thoát luôn (chạy tiếp thì chỗ cấp bộ nhớ khác cũng sẽ lỗi), giao diện báo cho người dùng
+    if (heap_out_of_memory()) {
+        exit_oom = true;
+        snprintf(exit_msg, sizeof(exit_msg), "%s", tr(S_OUT_OF_MEMORY));
+        size_t used, total;
+        platform_mem_usage(&used, &total);
+        host_log("Het RAM, dong ung dung");
+        vm_log("RAM %zu/%zuM, Java %zuK", used >> 20, total >> 20, heap_used() / 1024);
+        return false;
+    }
     bool dead = vm_dead, quit = exit_now || midp_exit_requested();
     if (!exit_now && !dead && !quit)
         return true;

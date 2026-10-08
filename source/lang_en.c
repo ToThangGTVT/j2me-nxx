@@ -225,4 +225,6 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_KEYBIND_INFO] = "Choose the phone key each Switch button presses. " ICON_Y " resets the selected button.",
     [S_KEYBIND_INFO_APP] = "For this app only. Buttons left on Default follow the global settings. " ICON_Y " resets the selected button.",
     [S_LANG_RESTART] = "A few system labels (button hints) switch after restarting the app.",
+    [S_OUT_OF_MEMORY] = "Out of memory, the app was closed",
+    [S_OUT_OF_MEMORY_HINT] = "The app needed more memory than is free, so it was closed to keep J2ME-NXX from crashing. Open J2ME-NXX in full RAM mode (hold R while launching a game to get hbmenu, not from the Album) and try turning off AOT in App options.",
 };

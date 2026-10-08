@@ -225,4 +225,6 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_KEYBIND_INFO] = "Chọn phím điện thoại mà mỗi nút Switch sẽ bấm. " ICON_Y " đưa nút đang chọn về mặc định.",
     [S_KEYBIND_INFO_APP] = "Chỉ áp dụng cho ứng dụng này. Nút để Mặc định theo cài đặt chung. " ICON_Y " đưa nút đang chọn về mặc định.",
     [S_LANG_RESTART] = "Một vài chữ của hệ thống (gợi ý nút) đổi theo sau khi mở lại app.",
+    [S_OUT_OF_MEMORY] = "Hết RAM, đã đóng ứng dụng",
+    [S_OUT_OF_MEMORY_HINT] = "Ứng dụng cần nhiều bộ nhớ hơn lượng RAM còn trống nên đã được đóng để J2ME-NXX không bị sập. Hãy mở J2ME-NXX ở chế độ full RAM (giữ R khi mở một game rồi chọn hbmenu, không mở từ Album) và thử tắt AOT trong Tùy chọn ứng dụng.",
 };

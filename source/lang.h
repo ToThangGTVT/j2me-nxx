@@ -214,6 +214,8 @@ typedef enum {
     S_KEYBIND_INFO,
     S_KEYBIND_INFO_APP,
     S_LANG_RESTART,
+    S_OUT_OF_MEMORY,
+    S_OUT_OF_MEMORY_HINT,
     S_COUNT,
 } StrId;
 

@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
         { "loops", 3000000, -1494167887 }, { "fields", 1000000, -3497990 },
         { "statics", 1000000, 2129123390 }, { "calls", 500000, 18947926 },
         { "arrays", 300, 236734017 },       { "fib", 27, 196418 },
-        { "library", 30000, 508853941 },    { "exceptions", 30000, 1707000 },
+        { "library", 30000, 508853941 },    { "exceptions", 30000, 1708000 },
         { "mixed", 500000, 1815789883 },    { "threads", 20000, 1481370101 },
     };
     int ntests = (int)(sizeof(tests) / sizeof(tests[0]));

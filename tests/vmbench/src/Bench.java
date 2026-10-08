@@ -224,6 +224,11 @@ public class Bench {
     static int exceptions(int n) {
         int acc = 0;
         int[] small = new int[4];
+        try {
+            acc += deep(0);
+        } catch (StackOverflowError e) {
+            acc += 1000;
+        }
         for (int i = 0; i < n; i++) {
             try {
                 acc += small[i & 7];
@@ -250,6 +255,10 @@ public class Bench {
             }
         }
         return acc;
+    }
+
+    static int deep(int depth) {
+        return deep(depth + 1) + 1;
     }
 
     static void thrower(int i) {

@@ -21,6 +21,7 @@
 
 static bool active;
 static int compiled, skipped;
+static size_t table_bytes;       // bảng điểm vào + cache chỗ gọi
 
 bool aot_available(void) {
 #ifdef AOT_ARM64
@@ -34,12 +35,14 @@ bool aot_start(void) {
     active = aot_available() && aot_mem_init();
     aot_mem_reset();
     compiled = skipped = 0;
+    table_bytes = 0;
     return active;
 }
 
 void aot_stop(void) {
     if (active)
-        vm_log("AOT: %d method dich, %d bo qua, %zuK ma may", compiled, skipped, aot_mem_used() / 1024);
+        vm_log("AOT: %d method dich, %d bo qua, %zuK ma may, %zuK bang phu", compiled, skipped,
+               aot_mem_used() / 1024, table_bytes / 1024);
     active = false;
     aot_mem_reset();
 }
@@ -1709,6 +1712,7 @@ void aot_compile(Class *c, Method *m) {
         m->aot_entry = entry;
         m->aot_sites = g.sites;
         compiled++;
+        table_bytes += (size_t)len * sizeof(uint32_t) + (size_t)g.nsites * sizeof(AotSite);
     } else {
         free(entry);
         free(g.sites);

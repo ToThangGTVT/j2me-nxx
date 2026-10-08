@@ -5,15 +5,15 @@
 
 const char *const lang_strings_vi[S_COUNT] = {
     [S_APP_SUBTITLE]   = "Trình giả lập J2ME cho Nintendo Switch",
-    [S_GAME_COUNT]     = "%d game",
+    [S_GAME_COUNT]     = "%d ứng dụng",
     [S_FOLDER]         = "Thư mục: %s",
     [S_NO_MIDLET]      = "Không có MIDlet-1 trong MANIFEST: có thể không chạy được",
-    [S_MENU_HINTS]     = ICON_A " Chơi   " ICON_MINUS " Tùy chọn game   " ICON_X " Cài đặt   " ICON_Y " Quét lại   " ICON_R " Gửi game   " ICON_L " Xoá   " ICON_PLUS " Thoát",
+    [S_MENU_HINTS]     = ICON_A " Mở   " ICON_MINUS " Tùy chọn   " ICON_X " Cài đặt   " ICON_Y " Quét lại   " ICON_R " Upload   " ICON_L " Xoá   " ICON_PLUS " Thoát",
 
     [S_PICK_MIDLET]    = "Chọn MIDlet:  " ICON_A " Chạy   " ICON_B " Quay lại",
 
-    [S_EMPTY_TITLE]    = "Chưa có game nào",
-    [S_EMPTY_COPY]     = "Chép file game .jar (và .jad cùng tên nếu có) vào thư mục:",
+    [S_EMPTY_TITLE]    = "Chưa có ứng dụng nào",
+    [S_EMPTY_COPY]     = "Chép file ứng dụng .jar (và .jad cùng tên nếu có) vào thư mục:",
     [S_EMPTY_SUBDIR]   = "Có thể chia thư mục con, ví dụ: games/RPG/game.jar",
     [S_EMPTY_VIDEO]    = "File video (.mp4, .3gp...) để cùng chỗ cũng mở được",
     [S_EMPTY_RESCAN]   = "Chép xong nhấn " ICON_Y " để quét lại",
@@ -21,36 +21,36 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_ERROR_FMT]      = "Lỗi: %s",
     [S_RESCANNED]      = "Đã quét lại: %d file",
     [S_SETTINGS_SAVED] = "Đã lưu cài đặt",
-    [S_GAME_EXITED]    = "Đã thoát game",
+    [S_GAME_EXITED]    = "Đã thoát ứng dụng",
 
     [S_ERR_SYSLIB]     = "Thư viện hệ thống bị hỏng",
     [S_ERR_OPEN_JAR]   = "Không mở được file JAR",
     [S_ERR_NO_MIDLET]  = "JAR không có MIDlet-1 trong MANIFEST",
     [S_ERR_VM]         = "Lỗi khởi động VM: %s",
     [S_ERR_MIDLET]     = "Không chạy được MIDlet: %s",
-    [S_GAME_ENDED]     = "Game đã kết thúc (không còn thread nào chạy)",
-    [S_GAME_CRASHED]   = "Game lỗi, đã ghi crash/%s",
+    [S_GAME_ENDED]     = "Ứng dụng đã kết thúc (không còn thread nào chạy)",
+    [S_GAME_CRASHED]   = "Ứng dụng lỗi, đã ghi crash/%s",
     [S_APP_CRASHED_BEFORE] = "Lần trước app bị sập, đã ghi crash/%s",
 
-    [S_EXIT_CONFIRM]   = "Nhấn - (hoặc Esc) lần nữa để thoát game",
+    [S_EXIT_CONFIRM]   = "Nhấn - (hoặc Esc) lần nữa để thoát ứng dụng",
     [S_SCREEN_INFO_FPS] = "%dx%d  -  giới hạn %d FPS",
     [S_HELP_DPAD]      = "Điều hướng",
     [S_HELP_SOFT_RIGHT] = "Phím mềm phải",
     [S_HELP_SOFT_LEFT] = "Phím mềm trái",
     [S_HELP_STICK_CLICK] = "Bấm L / R stick",
-    [S_HELP_EXIT]      = "Thoát game",
+    [S_HELP_EXIT]      = "Thoát ứng dụng",
 
     [S_SETTINGS]       = "Cài đặt",
-    [S_GAME_OPTIONS]   = "Tùy chọn game",
+    [S_GAME_OPTIONS]   = "Tùy chọn ứng dụng",
     [S_FPS_LIMIT]      = "Giới hạn FPS",
-    [S_FPS_HINT]       = "Số khung hình tối đa mỗi giây của game. Giúp game chạy đúng tốc độ và đỡ tốn pin.",
+    [S_FPS_HINT]       = "Số khung hình tối đa mỗi giây của ứng dụng. Giúp ứng dụng chạy đúng tốc độ và đỡ tốn pin.",
     [S_UNLIMITED]      = "Không giới hạn",
     [S_DEFAULT_FMT]    = "Mặc định (%s)",
     [S_SCREEN_SIZE]    = "Kích thước màn hình",
     [S_SCREEN_SIZE_DEFAULT] = "Kích thước màn hình mặc định",
-    [S_SCREEN_SIZE_HINT_GAME] = "Tự động: lấy từ MANIFEST của game, nếu không có thì dùng kích thước mặc định. "
+    [S_SCREEN_SIZE_HINT_GAME] = "Tự động: lấy từ MANIFEST của ứng dụng, nếu không có thì dùng kích thước mặc định. "
                                 "Chọn 'Tùy chỉnh' để nhập kích thước bất kỳ.",
-    [S_SCREEN_SIZE_HINT] = "Dùng cho game không khai báo kích thước. Phổ biến nhất là 240x320. "
+    [S_SCREEN_SIZE_HINT] = "Dùng cho ứng dụng không khai báo kích thước. Phổ biến nhất là 240x320. "
                            "Chọn 'Tùy chỉnh' để nhập kích thước bất kỳ.",
     [S_AUTO]           = "Tự động",
     [S_CUSTOM]         = "Tùy chỉnh",
@@ -65,25 +65,25 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_KB_WIDTH]       = "Chiều rộng màn hình",
     [S_KB_HEIGHT]      = "Chiều cao màn hình",
     [S_LANGUAGE]       = "Ngôn ngữ / Language",
-    [S_LANGUAGE_HINT]  = "Ngôn ngữ của giao diện. Game cũng nhận microedition.locale tương ứng.",
+    [S_LANGUAGE_HINT]  = "Ngôn ngữ của giao diện. Ứng dụng cũng nhận microedition.locale tương ứng.",
     [S_KEYMAP]         = "Kiểu phím",
-    [S_KEYMAP_HINT]    = "Mã phím mềm / điều hướng theo hãng điện thoại mà game được làm cho. "
+    [S_KEYMAP_HINT]    = "Mã phím mềm / điều hướng theo hãng điện thoại mà ứng dụng được làm cho. "
                          "Dùng khi phím mềm hoặc phím Fire không ăn.",
     [S_SCALE_MODE]     = "Kiểu phóng to",
-    [S_SCALE_HINT]     = "Phóng màn hình game bằng GPU. Sắc nét: giữ điểm ảnh rõ mà vẫn đều (khuyên dùng). "
+    [S_SCALE_HINT]     = "Phóng màn hình ứng dụng bằng GPU. Sắc nét: giữ điểm ảnh rõ mà vẫn đều (khuyên dùng). "
                          "Điểm ảnh: nét nhất nhưng điểm ảnh có thể to nhỏ không đều. Số nguyên: đúng 2x/3x, có viền.",
     [S_SCALE_SMOOTH]   = "Sắc nét",
     [S_SCALE_SHARP]    = "Điểm ảnh",
     [S_SCALE_INTEGER]  = "Điểm ảnh (số nguyên)",
-    [S_SHOW_HELP]      = "Hiện chú thích phím khi chơi",
-    [S_SHOW_HELP_HINT] = "Bảng phím ở bên trái màn hình game.",
+    [S_SHOW_HELP]      = "Hiện chú thích phím khi chạy",
+    [S_SHOW_HELP_HINT] = "Bảng phím ở bên trái màn hình ứng dụng.",
     [S_SHOW_FPS]       = "Hiện FPS",
-    [S_SHOW_FPS_HINT]  = "Góc trên trái: số khung hình game vẽ mỗi giây, % CPU dùng để chạy game, bộ nhớ Java và RAM của cả app.",
+    [S_SHOW_FPS_HINT]  = "Góc trên trái: số khung hình ứng dụng vẽ mỗi giây, % CPU dùng để chạy ứng dụng, bộ nhớ Java và RAM của cả trình giả lập.",
     [S_FONT_SCALE]     = "Cỡ chữ",
-    [S_FONT_SCALE_HINT] = "Phóng to / thu nhỏ chữ trong game so với cỡ gốc. Hợp với Opera Mini, nhất là khi tăng "
-                          "kích thước màn hình (vd 480x800 + 200%). Game tự tính bố cục theo cỡ chữ mới.",
+    [S_FONT_SCALE_HINT] = "Phóng to / thu nhỏ chữ trong ứng dụng so với cỡ gốc. Hợp với Opera Mini, nhất là khi tăng "
+                          "kích thước màn hình (vd 480x800 + 200%). Ứng dụng tự tính bố cục theo cỡ chữ mới.",
     [S_SMOOTH_TEXT]    = "Chữ mịn",
-    [S_SMOOTH_TEXT_HINT] = "Khử răng cưa chữ trong game. Nên bật cho ứng dụng nhiều chữ như Opera Mini; "
+    [S_SMOOTH_TEXT_HINT] = "Khử răng cưa chữ trong ứng dụng. Nên bật cho ứng dụng nhiều chữ như Opera Mini; "
                            "tắt thì chữ vẽ điểm ảnh như điện thoại thật.",
     [S_CHECK_UPDATE]   = "Tự kiểm tra bản mới",
     [S_CHECK_UPDATE_HINT] = "Mỗi lần mở app, hỏi GitHub xem có bản J2ME-NXX mới không; có thì hỏi tải về và tự "
@@ -106,8 +106,8 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_UPDATE_DONE_DESKTOP] = "Bản desktop chỉ tải file .nro về thư mục dữ liệu để thử, không tự thay app.",
     [S_UPDATE_CLOSE_HINT] = ICON_A " Đóng",
     [S_VKB_BUBBLE]     = "Bong bóng bàn phím ảo",
-    [S_VKB_BUBBLE_HINT] = "Khi chơi có bong bóng nhỏ trên màn hình cảm ứng (kéo để di chuyển). Chạm vào để mở bàn phím "
-                          "QWERTY nổi có hàng số, gõ chữ cho game / ứng dụng; nút × thu bàn phím về bong bóng.",
+    [S_VKB_BUBBLE_HINT] = "Khi chạy có bong bóng nhỏ trên màn hình cảm ứng (kéo để di chuyển). Chạm vào để mở bàn phím "
+                          "QWERTY nổi có hàng số, gõ chữ cho ứng dụng; nút × thu bàn phím về bong bóng.",
     [S_SOUNDFONT]      = "SoundFont MIDI",
     [S_SOUNDFONT_HINT] = "Phát nhạc MIDI bằng SoundFont cho giống nhạc cụ thật: có sẵn TimGM6mb, hoặc chép file .sf2 vào "
                          "sdmc:/switch/j2me-nxx/soundfonts/. Tắt: bộ tổng hợp sóng, nhẹ hơn.",
@@ -115,7 +115,7 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_SOUNDFONT_NONE] = "Tắt - tổng hợp sóng",
     [S_SOUNDFONT_BUILTIN] = "TimGM6mb (có sẵn)",
     [S_SYSTEM_FONT]    = "Font hệ thống",
-    [S_SYSTEM_FONT_HINT] = "Chữ trong game dùng font của máy (Switch: font hệ thống có chữ Nhật, Trung, Hàn), "
+    [S_SYSTEM_FONT_HINT] = "Chữ trong ứng dụng dùng font của máy (Switch: font hệ thống có chữ Nhật, Trung, Hàn), "
                            "tự mịn và vẽ nét theo độ phân giải màn hình. Tắt thì dùng font của app; ký tự font "
                            "đang dùng không có luôn được lấy từ font kia.",
     [S_ON]             = "Bật",
@@ -132,11 +132,11 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_LINK_OPENING]   = "Đang mở liên kết...   " ICON_B " Huỷ",
     [S_LINK_FAILED]    = "Không mở được liên kết",
     [S_BROWSER_NEEDS_APP] = "Muốn mở trình duyệt, hãy chạy hbmenu ở chế độ full RAM (giữ R khi mở một game)",
-    [S_EMPTY_UPLOAD]   = "Hoặc nhấn " ICON_R " để gửi game, video từ điện thoại bằng mã QR",
-    [S_UPLOAD_TITLE]   = "Gửi game, video từ điện thoại",
+    [S_EMPTY_UPLOAD]   = "Hoặc nhấn " ICON_R " để gửi ứng dụng, video từ điện thoại bằng mã QR",
+    [S_UPLOAD_TITLE]   = "Gửi ứng dụng, video từ điện thoại",
     [S_UPLOAD_STEP1]   = "1. Điện thoại và Switch dùng chung một mạng Wi-Fi",
     [S_UPLOAD_STEP2]   = "2. Quét mã QR bằng camera (hoặc mở địa chỉ bên dưới)",
-    [S_UPLOAD_STEP3]   = "3. Chọn game .jar (và .jad nếu có) hoặc video để gửi lên",
+    [S_UPLOAD_STEP3]   = "3. Chọn ứng dụng .jar (và .jad nếu có) hoặc video để gửi lên",
     [S_UPLOAD_WAITING] = "Đang chờ điện thoại...",
     [S_UPLOAD_RECEIVING] = "Đang nhận %s",
     [S_UPLOAD_RECEIVED] = "Đã nhận %d file, mới nhất: %s",
@@ -145,21 +145,21 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_UPLOAD_WRITE_FAILED] = "Không ghi được file vào thẻ nhớ",
     [S_UPLOAD_HINTS]   = ICON_B " Đóng",
     [S_UPLOAD_DONE_STATUS] = "Đã nhận %d file từ điện thoại",
-    [S_DELETE_GAME]    = "Xoá game này?",
+    [S_DELETE_GAME]    = "Xoá ứng dụng này?",
     [S_DELETE_VIDEO]   = "Xoá video này?",
-    [S_DELETE_KEEP_SAVE] = "Dữ liệu save và tuỳ chọn riêng của game vẫn được giữ lại.",
+    [S_DELETE_KEEP_SAVE] = "Dữ liệu save và tuỳ chọn riêng của ứng dụng vẫn được giữ lại.",
     [S_DELETE_HINTS]   = ICON_A " Xoá   " ICON_B " Huỷ",
     [S_DELETED]        = "Đã xoá: %s",
     [S_DELETE_FAILED]  = "Không xoá được: %s",
-    [S_WEB_TITLE]      = "Gửi game, video lên Switch",
-    [S_WEB_INTRO]      = "Chọn game .jar (và .jad nếu có) hoặc video (.mp4, .3gp, .mkv...). File được lưu vào "
-                         "thư mục games và hiện trong danh sách khi đóng màn hình gửi game trên Switch.",
-    [S_WEB_CHOOSE]     = "Chọn game / video",
+    [S_WEB_TITLE]      = "Gửi ứng dụng, video lên Switch",
+    [S_WEB_INTRO]      = "Chọn ứng dụng .jar (và .jad nếu có) hoặc video (.mp4, .3gp, .mkv...). File được lưu vào "
+                         "thư mục games và hiện trong danh sách khi đóng màn hình gửi ứng dụng trên Switch.",
+    [S_WEB_CHOOSE]     = "Chọn ứng dụng / video",
     [S_WEB_WAITING]    = "Chờ gửi",
     [S_WEB_SENDING]    = "Đang gửi",
     [S_WEB_DONE]       = "Đã gửi",
     [S_WEB_FAILED]     = "Lỗi",
     [S_WEB_NETWORK]    = "mất kết nối với Switch",
-    [S_WEB_WRONG_TYPE] = "Chỉ nhận game .jar / .jad hoặc video",
-    [S_WEB_ALL_DONE]   = "Xong! Đóng màn hình gửi game trên Switch để thấy file mới trong danh sách.",
+    [S_WEB_WRONG_TYPE] = "Chỉ nhận ứng dụng .jar / .jad hoặc video",
+    [S_WEB_ALL_DONE]   = "Xong! Đóng màn hình gửi ứng dụng trên Switch để thấy file mới trong danh sách.",
 };

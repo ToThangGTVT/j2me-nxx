@@ -5,15 +5,15 @@
 
 const char *const lang_strings_en[S_COUNT] = {
     [S_APP_SUBTITLE]   = "J2ME emulator for Nintendo Switch",
-    [S_GAME_COUNT]     = "%d games",
+    [S_GAME_COUNT]     = "%d apps",
     [S_FOLDER]         = "Folder: %s",
     [S_NO_MIDLET]      = "No MIDlet-1 in MANIFEST: may not run",
-    [S_MENU_HINTS]     = ICON_A " Play   " ICON_MINUS " Game options   " ICON_X " Settings   " ICON_Y " Rescan   " ICON_R " Send games   " ICON_L " Delete   " ICON_PLUS " Exit",
+    [S_MENU_HINTS]     = ICON_A " Open   " ICON_MINUS " Options   " ICON_X " Settings   " ICON_Y " Rescan   " ICON_R " Upload   " ICON_L " Delete   " ICON_PLUS " Exit",
 
     [S_PICK_MIDLET]    = "Choose MIDlet:  " ICON_A " Run   " ICON_B " Back",
 
-    [S_EMPTY_TITLE]    = "No games yet",
-    [S_EMPTY_COPY]     = "Copy your .jar games (and the matching .jad if any) to:",
+    [S_EMPTY_TITLE]    = "No apps yet",
+    [S_EMPTY_COPY]     = "Copy your .jar apps (and the matching .jad if any) to:",
     [S_EMPTY_SUBDIR]   = "Subfolders are supported, e.g. games/RPG/game.jar",
     [S_EMPTY_VIDEO]    = "Video files (.mp4, .3gp...) placed there can be played too",
     [S_EMPTY_RESCAN]   = "Then press " ICON_Y " to rescan",
@@ -21,36 +21,36 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_ERROR_FMT]      = "Error: %s",
     [S_RESCANNED]      = "Rescanned: %d files",
     [S_SETTINGS_SAVED] = "Settings saved",
-    [S_GAME_EXITED]    = "Game closed",
+    [S_GAME_EXITED]    = "App closed",
 
     [S_ERR_SYSLIB]     = "System library is corrupted",
     [S_ERR_OPEN_JAR]   = "Cannot open the JAR file",
     [S_ERR_NO_MIDLET]  = "JAR has no MIDlet-1 in MANIFEST",
     [S_ERR_VM]         = "VM startup error: %s",
     [S_ERR_MIDLET]     = "Cannot start MIDlet: %s",
-    [S_GAME_ENDED]     = "Game ended (no threads left)",
-    [S_GAME_CRASHED]   = "Game crashed, saved crash/%s",
+    [S_GAME_ENDED]     = "App ended (no threads left)",
+    [S_GAME_CRASHED]   = "App crashed, saved crash/%s",
     [S_APP_CRASHED_BEFORE] = "The app crashed last time, saved crash/%s",
 
-    [S_EXIT_CONFIRM]   = "Press - (or Esc) again to exit the game",
+    [S_EXIT_CONFIRM]   = "Press - (or Esc) again to exit the app",
     [S_SCREEN_INFO_FPS] = "%dx%d  -  %d FPS limit",
     [S_HELP_DPAD]      = "Directions",
     [S_HELP_SOFT_RIGHT] = "Right soft key",
     [S_HELP_SOFT_LEFT] = "Left soft key",
     [S_HELP_STICK_CLICK] = "Click L / R stick",
-    [S_HELP_EXIT]      = "Exit game",
+    [S_HELP_EXIT]      = "Exit app",
 
     [S_SETTINGS]       = "Settings",
-    [S_GAME_OPTIONS]   = "Game options",
+    [S_GAME_OPTIONS]   = "App options",
     [S_FPS_LIMIT]      = "FPS limit",
-    [S_FPS_HINT]       = "Maximum frames per second of the game. Keeps games at the right speed and saves battery.",
+    [S_FPS_HINT]       = "Maximum frames per second of the app. Keeps apps at the right speed and saves battery.",
     [S_UNLIMITED]      = "Unlimited",
     [S_DEFAULT_FMT]    = "Default (%s)",
     [S_SCREEN_SIZE]    = "Screen size",
     [S_SCREEN_SIZE_DEFAULT] = "Default screen size",
-    [S_SCREEN_SIZE_HINT_GAME] = "Auto: taken from the game's MANIFEST, otherwise the default size. "
+    [S_SCREEN_SIZE_HINT_GAME] = "Auto: taken from the app's MANIFEST, otherwise the default size. "
                                 "Choose 'Custom' to enter any size.",
-    [S_SCREEN_SIZE_HINT] = "Used for games that do not declare a size. The most common is 240x320. "
+    [S_SCREEN_SIZE_HINT] = "Used for apps that do not declare a size. The most common is 240x320. "
                            "Choose 'Custom' to enter any size.",
     [S_AUTO]           = "Auto",
     [S_CUSTOM]         = "Custom",
@@ -65,25 +65,25 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_KB_WIDTH]       = "Screen width",
     [S_KB_HEIGHT]      = "Screen height",
     [S_LANGUAGE]       = "Language / Ngôn ngữ",
-    [S_LANGUAGE_HINT]  = "Interface language. Games also receive the matching microedition.locale.",
+    [S_LANGUAGE_HINT]  = "Interface language. Apps also receive the matching microedition.locale.",
     [S_KEYMAP]         = "Key layout",
-    [S_KEYMAP_HINT]    = "Soft key / navigation codes of the phone brand the game was made for. "
+    [S_KEYMAP_HINT]    = "Soft key / navigation codes of the phone brand the app was made for. "
                          "Use it when soft keys or Fire do not work.",
     [S_SCALE_MODE]     = "Scaling",
-    [S_SCALE_HINT]     = "The game screen is upscaled by the GPU. Sharp: crisp, even pixels (recommended). "
+    [S_SCALE_HINT]     = "The app screen is upscaled by the GPU. Sharp: crisp, even pixels (recommended). "
                          "Pixel: crispest but pixels may be uneven. Integer: exact 2x/3x with borders.",
     [S_SCALE_SMOOTH]   = "Sharp",
     [S_SCALE_SHARP]    = "Pixel",
     [S_SCALE_INTEGER]  = "Pixel (integer)",
-    [S_SHOW_HELP]      = "Show key help while playing",
-    [S_SHOW_HELP_HINT] = "Key map shown left of the game screen.",
+    [S_SHOW_HELP]      = "Show key help while running",
+    [S_SHOW_HELP_HINT] = "Key map shown left of the app screen.",
     [S_SHOW_FPS]       = "Show FPS",
-    [S_SHOW_FPS_HINT]  = "Top left: frames the game draws per second, CPU % spent running the game, Java memory and the app's total RAM.",
+    [S_SHOW_FPS_HINT]  = "Top left: frames the app draws per second, CPU % spent running the app, Java memory and the emulator's total RAM.",
     [S_FONT_SCALE]     = "Font size",
-    [S_FONT_SCALE_HINT] = "Scale in-game text relative to the original size. Useful for Opera Mini, especially with a "
+    [S_FONT_SCALE_HINT] = "Scale in-app text relative to the original size. Useful for Opera Mini, especially with a "
                           "larger screen size (e.g. 480x800 + 200%). Apps lay out text using the new size.",
     [S_SMOOTH_TEXT]    = "Smooth text",
-    [S_SMOOTH_TEXT_HINT] = "Anti-aliased in-game text. Recommended for text-heavy apps like Opera Mini; "
+    [S_SMOOTH_TEXT_HINT] = "Anti-aliased in-app text. Recommended for text-heavy apps like Opera Mini; "
                            "when off, text is drawn as pixels like on real phones.",
     [S_CHECK_UPDATE]   = "Check for updates",
     [S_CHECK_UPDATE_HINT] = "Each time the app starts, ask GitHub whether a newer J2ME-NXX exists; if so, offer to "
@@ -106,8 +106,8 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_UPDATE_DONE_DESKTOP] = "The desktop build only downloads the .nro to the data folder for testing.",
     [S_UPDATE_CLOSE_HINT] = ICON_A " Close",
     [S_VKB_BUBBLE]     = "Virtual keyboard bubble",
-    [S_VKB_BUBBLE_HINT] = "Shows a small bubble on the touch screen while playing (drag to move). Tap it to open a "
-                          "floating QWERTY keyboard with a number row for typing in games / apps; × collapses it back.",
+    [S_VKB_BUBBLE_HINT] = "Shows a small bubble on the touch screen while running (drag to move). Tap it to open a "
+                          "floating QWERTY keyboard with a number row for typing in apps; × collapses it back.",
     [S_SOUNDFONT]      = "MIDI SoundFont",
     [S_SOUNDFONT_HINT] = "Play MIDI music with a SoundFont for real-instrument sound: TimGM6mb is built in, or copy a .sf2 "
                          "file to sdmc:/switch/j2me-nxx/soundfonts/. Off: wave synth, lighter.",
@@ -115,7 +115,7 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_SOUNDFONT_NONE] = "Off - wave synth",
     [S_SOUNDFONT_BUILTIN] = "TimGM6mb (built-in)",
     [S_SYSTEM_FONT]    = "System font",
-    [S_SYSTEM_FONT_HINT] = "In-game text uses the device font (Switch: system fonts with Japanese, Chinese, Korean), "
+    [S_SYSTEM_FONT_HINT] = "In-app text uses the device font (Switch: system fonts with Japanese, Chinese, Korean), "
                            "always smooth and drawn sharp at screen resolution. When off, the app font is used; "
                            "characters missing from either font are taken from the other.",
     [S_ON]             = "On",
@@ -132,11 +132,11 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_LINK_OPENING]   = "Opening link...   " ICON_B " Cancel",
     [S_LINK_FAILED]    = "Cannot open link",
     [S_BROWSER_NEEDS_APP] = "To open the browser, run hbmenu in full RAM mode (hold R while launching a game)",
-    [S_EMPTY_UPLOAD]   = "Or press " ICON_R " to send games and videos from your phone with a QR code",
-    [S_UPLOAD_TITLE]   = "Send games and videos from your phone",
+    [S_EMPTY_UPLOAD]   = "Or press " ICON_R " to send apps and videos from your phone with a QR code",
+    [S_UPLOAD_TITLE]   = "Send apps and videos from your phone",
     [S_UPLOAD_STEP1]   = "1. Connect your phone to the same Wi-Fi as the Switch",
     [S_UPLOAD_STEP2]   = "2. Scan the QR code with the camera (or open the address below)",
-    [S_UPLOAD_STEP3]   = "3. Choose .jar games (and .jad if any) or videos to send",
+    [S_UPLOAD_STEP3]   = "3. Choose .jar apps (and .jad if any) or videos to send",
     [S_UPLOAD_WAITING] = "Waiting for your phone...",
     [S_UPLOAD_RECEIVING] = "Receiving %s",
     [S_UPLOAD_RECEIVED] = "Received %d file(s), latest: %s",
@@ -145,21 +145,21 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_UPLOAD_WRITE_FAILED] = "Cannot write the file to the SD card",
     [S_UPLOAD_HINTS]   = ICON_B " Close",
     [S_UPLOAD_DONE_STATUS] = "Received %d file(s) from your phone",
-    [S_DELETE_GAME]    = "Delete this game?",
+    [S_DELETE_GAME]    = "Delete this app?",
     [S_DELETE_VIDEO]   = "Delete this video?",
-    [S_DELETE_KEEP_SAVE] = "Save data and per-game options are kept.",
+    [S_DELETE_KEEP_SAVE] = "Save data and per-app options are kept.",
     [S_DELETE_HINTS]   = ICON_A " Delete   " ICON_B " Cancel",
     [S_DELETED]        = "Deleted: %s",
     [S_DELETE_FAILED]  = "Could not delete: %s",
-    [S_WEB_TITLE]      = "Send games and videos to the Switch",
-    [S_WEB_INTRO]      = "Choose .jar games (and .jad if any) or videos (.mp4, .3gp, .mkv...). Files are saved to the "
+    [S_WEB_TITLE]      = "Send apps and videos to the Switch",
+    [S_WEB_INTRO]      = "Choose .jar apps (and .jad if any) or videos (.mp4, .3gp, .mkv...). Files are saved to the "
                          "games folder and show up in the list once you close the send screen on the Switch.",
-    [S_WEB_CHOOSE]     = "Choose games / videos",
+    [S_WEB_CHOOSE]     = "Choose apps / videos",
     [S_WEB_WAITING]    = "Waiting",
     [S_WEB_SENDING]    = "Sending",
     [S_WEB_DONE]       = "Sent",
     [S_WEB_FAILED]     = "Failed",
     [S_WEB_NETWORK]    = "lost connection to the Switch",
-    [S_WEB_WRONG_TYPE] = "Only .jar / .jad games or videos are accepted",
+    [S_WEB_WRONG_TYPE] = "Only .jar / .jad apps or videos are accepted",
     [S_WEB_ALL_DONE]   = "Done! Close the send screen on the Switch to see the new files in the list.",
 };

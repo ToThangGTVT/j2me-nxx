@@ -2,6 +2,8 @@
 #pragma once
 
 #include <stdbool.h>
+
+#include "keybind.h"
 #include <stddef.h>
 
 typedef struct {
@@ -18,6 +20,7 @@ typedef struct {
     bool check_update;      // mở app thì kiểm tra bản mới trên GitHub
     bool vkb_bubble;        // bong bóng bàn phím ảo QWERTY khi chơi
     char soundfont[128];    // file .sf2 trong <data_dir>/soundfonts; "" = tự động, "builtin" = bản có sẵn, "-" = tắt
+    int keybinds[BIND_COUNT];   // nút Switch -> phím điện thoại (keybind.h)
 } Settings;
 
 typedef struct {
@@ -27,6 +30,7 @@ typedef struct {
     int smooth_text;        // -1 = theo cài đặt chung, 0 tắt, 1 bật
     int system_font;        // -1 = theo cài đặt chung, 0 tắt, 1 bật
     int font_scale;         // -1 = theo cài đặt chung
+    int keybinds[BIND_COUNT];   // BIND_INHERIT = theo cài đặt chung
 } GameSettings;
 
 typedef struct {

@@ -37,7 +37,6 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_HELP_DPAD]      = "Điều hướng",
     [S_HELP_SOFT_RIGHT] = "Phím mềm phải",
     [S_HELP_SOFT_LEFT] = "Phím mềm trái",
-    [S_HELP_STICK_CLICK] = "Bấm L / R stick",
     [S_HELP_EXIT]      = "Thoát ứng dụng",
 
     [S_SETTINGS]       = "Cài đặt",
@@ -69,6 +68,30 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_KEYMAP]         = "Kiểu phím",
     [S_KEYMAP_HINT]    = "Mã phím mềm / điều hướng theo hãng điện thoại mà ứng dụng được làm cho. "
                          "Dùng khi phím mềm hoặc phím Fire không ăn.",
+    [S_KEYBIND]        = "Ánh xạ phím",
+    [S_KEYBIND_HINT]   = "Chọn phím điện thoại cho từng nút của Switch. Nhấn " ICON_A " để mở.",
+    [S_KEYBIND_HINT_APP] = "Chọn phím điện thoại cho từng nút của Switch, chỉ cho ứng dụng này. Nút để Mặc định "
+                           "thì theo cài đặt chung. Nhấn " ICON_A " để mở.",
+    [S_KEYBIND_DEFAULT] = "Mặc định",
+    [S_KEYBIND_CHANGED] = "Đã đổi %d nút",
+    [S_KEYBIND_INHERIT] = "Theo cài đặt chung",
+    [S_KEYBIND_OWN]    = "%d nút riêng",
+    [S_KEYBIND_GLOBAL] = "Cài đặt chung",
+    [S_KEYBIND_HINTS]  = ICON_LEFT ICON_RIGHT " Đổi phím   " ICON_Y " Mặc định   " ICON_X " Mặc định tất cả   "
+                         ICON_B " Quay lại",
+    [S_KEYBIND_PHONE]  = "Phím trên điện thoại",
+    [S_BTN_LSTICK]     = "Bấm stick trái",
+    [S_BTN_RSTICK]     = "Bấm stick phải",
+    [S_BTN_RS_UP]      = "Stick phải lên",
+    [S_BTN_RS_DOWN]    = "Stick phải xuống",
+    [S_BTN_RS_LEFT]    = "Stick phải sang trái",
+    [S_BTN_RS_RIGHT]   = "Stick phải sang phải",
+    [S_KEY_NONE]       = "Không",
+    [S_KEY_UP]         = "Lên",
+    [S_KEY_DOWN]       = "Xuống",
+    [S_KEY_LEFT]       = "Trái",
+    [S_KEY_RIGHT]      = "Phải",
+    [S_KEY_CLEAR]      = "Xoá (C)",
     [S_SCALE_MODE]     = "Kiểu phóng to",
     [S_SCALE_HINT]     = "Phóng màn hình ứng dụng bằng GPU. Sắc nét: giữ điểm ảnh rõ mà vẫn đều (khuyên dùng). "
                          "Điểm ảnh: nét nhất nhưng điểm ảnh có thể to nhỏ không đều. Số nguyên: đúng 2x/3x, có viền.",

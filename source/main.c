@@ -174,6 +174,8 @@ int main(int argc, char *argv[]) {
             input_handle_event(&e);
             if (in_lang)
                 lang_screen_handle_event(&e);
+            if (in_settings)
+                settings_screen_handle_event(&e);
             if (emu_running())
                 emu_handle_event(&e);
         }

@@ -6,6 +6,7 @@
 
 #include "gfx.h"
 #include "input.h"
+#include "keybind_screen.h"
 #include "keymap.h"
 #include "lang.h"
 #include "platform.h"
@@ -38,6 +39,7 @@ typedef enum {
     ITEM_SHOW_HELP,
     ITEM_SHOW_FPS,
     ITEM_KEYMAP,
+    ITEM_KEYBINDS,
     ITEM_SCALE,
     ITEM_SMOOTH_TEXT,
     ITEM_SYSTEM_FONT,
@@ -56,6 +58,7 @@ static char game_title[128];
 static GameSettings game;
 static char soundfonts[SOUNDFONT_MAX][128];  // file .sf2 tìm thấy lúc mở màn hình
 static int soundfont_count;
+static bool in_keybinds;        // đang ở màn hình ánh xạ phím
 
 // Con trỏ tới kích thước đang chỉnh (cài đặt chung hoặc của game)
 static int *cur_w(void) { return game_mode ? &game.screen_w : &settings()->screen_w; }
@@ -83,6 +86,7 @@ void settings_screen_open(void) {
     cursor = 0;
     scroll = 0;
     game_mode = false;
+    in_keybinds = false;
     sync_custom();
     soundfont_count = settings_list_soundfonts(soundfonts, SOUNDFONT_MAX);
 }
@@ -91,6 +95,7 @@ void settings_screen_open_game(const char *id, const char *title) {
     cursor = 0;
     scroll = 0;
     game_mode = true;
+    in_keybinds = false;
     snprintf(game_id, sizeof(game_id), "%s", id);
     snprintf(game_title, sizeof(game_title), "%s", title);
     game_settings_load(game_id, &game);
@@ -110,6 +115,7 @@ static int visible_items(ItemId *out) {
         }
     }
     out[n++] = ITEM_KEYMAP;
+    out[n++] = ITEM_KEYBINDS;
     out[n++] = ITEM_FONT_SCALE;
     out[n++] = ITEM_SYSTEM_FONT;
     // Font hệ thống luôn mịn: bỏ mục chữ mịn (đặt sau để bật/tắt không làm nhảy con trỏ)
@@ -239,7 +245,25 @@ static void edit_number(int *value, const char *title) {
     }
 }
 
+void settings_screen_handle_event(const SDL_Event *e) {
+    if (in_keybinds)
+        keybind_screen_handle_event(e);
+}
+
+static void open_keybinds(void) {
+    if (game_mode)
+        keybind_screen_open(game.keybinds, settings()->keybinds, game_title);
+    else
+        keybind_screen_open(settings()->keybinds, NULL, tr(S_KEYBIND_GLOBAL));
+    in_keybinds = true;
+}
+
 bool settings_screen_update(void) {
+    if (in_keybinds) {
+        // Quay lại danh sách cài đặt; nút vừa bấm không được tính tiếp ở đây
+        in_keybinds = keybind_screen_update();
+        return true;
+    }
     if (input_pressed(BTN_B) || input_pressed(BTN_X) || input_pressed(BTN_PLUS) || input_pressed(BTN_MINUS)) {
         if (game_mode)
             game_settings_save(game_id, &game);
@@ -333,6 +357,10 @@ bool settings_screen_update(void) {
                 settings()->system_font = !settings()->system_font;
         }
         break;
+    case ITEM_KEYBINDS:
+        if (dir > 0 || a)
+            open_keybinds();
+        break;
     case ITEM_KEYMAP:
         if (dir || a) {
             // Chế độ game có thêm "Mặc định" (-1)
@@ -408,6 +436,16 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
         else
             snprintf(value, size, "%s", keymap_get(game_mode ? game.keymap : s->keymap)->name);
         break;
+    case ITEM_KEYBINDS: {
+        *label = tr(S_KEYBIND);
+        *hint = tr(game_mode ? S_KEYBIND_HINT_APP : S_KEYBIND_HINT);
+        int changed = keybind_changed(game_mode ? game.keybinds : s->keybinds, game_mode);
+        if (changed)
+            snprintf(value, size, tr(game_mode ? S_KEYBIND_OWN : S_KEYBIND_CHANGED), changed);
+        else
+            snprintf(value, size, "%s", tr(game_mode ? S_KEYBIND_INHERIT : S_KEYBIND_DEFAULT));
+        break;
+    }
     case ITEM_SCALE:
         *label = tr(S_SCALE_MODE);
         *hint = tr(S_SCALE_HINT);
@@ -494,6 +532,10 @@ static void draw_preview(int x, int y, int box_w, int box_h) {
 }
 
 void settings_screen_draw(void) {
+    if (in_keybinds) {
+        keybind_screen_draw();
+        return;
+    }
     gfx_clear(COL_BG);
 
     gfx_fill_rect(0, 0, SCREEN_W, HEADER_H, COL_BAR);
@@ -537,7 +579,7 @@ void settings_screen_draw(void) {
         }
         gfx_text(FONT_NORMAL, LIST_X + 28, y + font_y, 0, ALIGN_LEFT, COL_TEXT, label);
         char shown[128];
-        snprintf(shown, sizeof(shown), sel ? "<  %s  >" : "%s", value);
+        snprintf(shown, sizeof(shown), !sel ? "%s" : items[i] == ITEM_KEYBINDS ? "%s  >" : "<  %s  >", value);
         gfx_text(FONT_NORMAL, LIST_X + row_w - 24, y + font_y, 0, ALIGN_RIGHT, sel ? COL_ACCENT : COL_DIM, shown);
     }
     if (n > rows) {

@@ -37,7 +37,6 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_HELP_DPAD]      = "Directions",
     [S_HELP_SOFT_RIGHT] = "Right soft key",
     [S_HELP_SOFT_LEFT] = "Left soft key",
-    [S_HELP_STICK_CLICK] = "Click L / R stick",
     [S_HELP_EXIT]      = "Exit app",
 
     [S_SETTINGS]       = "Settings",
@@ -69,6 +68,30 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_KEYMAP]         = "Key layout",
     [S_KEYMAP_HINT]    = "Soft key / navigation codes of the phone brand the app was made for. "
                          "Use it when soft keys or Fire do not work.",
+    [S_KEYBIND]        = "Button mapping",
+    [S_KEYBIND_HINT]   = "Choose the phone key each Switch button presses. Press " ICON_A " to open.",
+    [S_KEYBIND_HINT_APP] = "Choose the phone key each Switch button presses, for this app only. Buttons left on "
+                           "Default follow the global settings. Press " ICON_A " to open.",
+    [S_KEYBIND_DEFAULT] = "Default",
+    [S_KEYBIND_CHANGED] = "%d buttons changed",
+    [S_KEYBIND_INHERIT] = "Same as global",
+    [S_KEYBIND_OWN]    = "%d own buttons",
+    [S_KEYBIND_GLOBAL] = "Global settings",
+    [S_KEYBIND_HINTS]  = ICON_LEFT ICON_RIGHT " Change key   " ICON_Y " Default   " ICON_X " Reset all   "
+                         ICON_B " Back",
+    [S_KEYBIND_PHONE]  = "Phone keys",
+    [S_BTN_LSTICK]     = "Left stick click",
+    [S_BTN_RSTICK]     = "Right stick click",
+    [S_BTN_RS_UP]      = "Right stick up",
+    [S_BTN_RS_DOWN]    = "Right stick down",
+    [S_BTN_RS_LEFT]    = "Right stick left",
+    [S_BTN_RS_RIGHT]   = "Right stick right",
+    [S_KEY_NONE]       = "None",
+    [S_KEY_UP]         = "Up",
+    [S_KEY_DOWN]       = "Down",
+    [S_KEY_LEFT]       = "Left",
+    [S_KEY_RIGHT]      = "Right",
+    [S_KEY_CLEAR]      = "Clear (C)",
     [S_SCALE_MODE]     = "Scaling",
     [S_SCALE_HINT]     = "The app screen is upscaled by the GPU. Sharp: crisp, even pixels (recommended). "
                          "Pixel: crispest but pixels may be uneven. Integer: exact 2x/3x with borders.",

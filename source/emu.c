@@ -8,6 +8,7 @@
 #include "crash.h"
 #include "gfx.h"
 #include "input.h"
+#include "keybind.h"
 #include "keymap.h"
 #include "lang.h"
 #include "manifest.h"
@@ -352,6 +353,7 @@ static void prof_stop(void) {
 static int scr_w, scr_h;
 static int fps_limit;
 static const KeyMap *keymap;
+static int binds[BIND_COUNT];      // nút Switch -> phím điện thoại của ứng dụng đang chạy
 static SDL_Rect dst;
 
 // Phím J2ME đang giữ (đếm số nguồn: tay cầm + bàn phím)
@@ -526,6 +528,8 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         (manifest_get(&manifest, "Mot-Program-Space-Requirement") || manifest_get(&manifest, "Mot-Data-Space-Requirement")))
         km = KEYMAP_MOTOROLA_OLD;
     keymap = keymap_get(km);
+    for (int b = 0; b < BIND_COUNT; b++)
+        binds[b] = gs.keybinds[b] != BIND_INHERIT ? gs.keybinds[b] : settings()->keybinds[b];
     parse_screen_size(&gs);
     compute_dst();
 
@@ -719,49 +723,39 @@ static void update_repeat(void) {
     }
 }
 
-// Nút joystick của SDL2 bản Switch -> phím J2ME
+// Nút joystick của SDL2 bản Switch -> phím J2ME theo bảng ánh xạ
 static int joy_to_key(int button) {
-    switch (button) {
-    case 0:  return MIDP_KEY_FIRE;          // A
-    case 1:  return MIDP_KEY_SOFT_RIGHT;    // B
-    case 2:  return MIDP_KEY_POUND;         // X
-    case 3:  return MIDP_KEY_STAR;          // Y
-    case 4:  return '5';                    // bấm stick trái
-    case 5:  return '0';                    // bấm stick phải
-    case 6:  return MIDP_KEY_SOFT_LEFT;     // L
-    case 7:  return MIDP_KEY_SOFT_RIGHT;    // R
-    case 8:  return '1';                    // ZL
-    case 9:  return '3';                    // ZR
-    case 10: return MIDP_KEY_SOFT_LEFT;     // +
-    case 12: case 16: return MIDP_KEY_LEFT;
-    case 13: case 17: return MIDP_KEY_UP;
-    case 14: case 18: return MIDP_KEY_RIGHT;
-    case 15: case 19: return MIDP_KEY_DOWN;
-    case 20: return '4';                    // stick phải
-    case 21: return '2';
-    case 22: return '6';
-    case 23: return '8';
-    default: return 0;
+    int b = keybind_from_joy(button);
+    return b >= 0 ? binds[b] : 0;
+}
+
+// Bàn phím desktop: các phím đóng vai nút Switch (giống input.c) đi qua bảng ánh xạ
+static int keyboard_to_bind(SDL_Keycode k) {
+    switch (k) {
+    case SDLK_UP:        return BIND_UP;
+    case SDLK_DOWN:      return BIND_DOWN;
+    case SDLK_LEFT:      return BIND_LEFT;
+    case SDLK_RIGHT:     return BIND_RIGHT;
+    case SDLK_RETURN:    return BIND_A;
+    case SDLK_BACKSPACE: return BIND_B;
+    case SDLK_s:         return BIND_X;
+    case SDLK_a:         return BIND_Y;
+    case SDLK_q:         return BIND_L;
+    case SDLK_w:         return BIND_R;
+    default:             return -1;
     }
 }
 
 static int keyboard_to_key(SDL_Keycode k) {
+    int b = keyboard_to_bind(k);
+    if (b >= 0)
+        return binds[b];
     switch (k) {
-    case SDLK_UP:       return MIDP_KEY_UP;
-    case SDLK_DOWN:     return MIDP_KEY_DOWN;
-    case SDLK_LEFT:     return MIDP_KEY_LEFT;
-    case SDLK_RIGHT:    return MIDP_KEY_RIGHT;
-    case SDLK_RETURN:
     case SDLK_SPACE:    return MIDP_KEY_FIRE;
-    case SDLK_F1:
-    case SDLK_q:        return MIDP_KEY_SOFT_LEFT;
-    case SDLK_F2:
-    case SDLK_w:
-    case SDLK_BACKSPACE: return MIDP_KEY_SOFT_RIGHT;
-    case SDLK_KP_MULTIPLY:
-    case SDLK_a:        return MIDP_KEY_STAR;
-    case SDLK_KP_DIVIDE:
-    case SDLK_s:        return MIDP_KEY_POUND;
+    case SDLK_F1:       return MIDP_KEY_SOFT_LEFT;
+    case SDLK_F2:       return MIDP_KEY_SOFT_RIGHT;
+    case SDLK_KP_MULTIPLY: return MIDP_KEY_STAR;
+    case SDLK_KP_DIVIDE:   return MIDP_KEY_POUND;
     case SDLK_KP_0:     return '0';
     case SDLK_KP_1:     return '1';
     case SDLK_KP_2:     return '2';
@@ -970,18 +964,53 @@ bool emu_update(void) {
 #define COL_DIM   RGB(0x8a, 0x8f, 0x98)
 #define COL_WARN  RGB(0xff, 0xc1, 0x4d)
 
+// Nhóm 4 hướng đang đúng mặc định thì gộp thành 1 dòng
+static bool binds_default(BindButton from, BindButton to) {
+    for (int b = from; b <= to; b++) {
+        if (binds[b] != keybind_default(b))
+            return false;
+    }
+    return true;
+}
+
+// Các dòng của bảng phím: nút (gộp các nút cùng phím) -> phím điện thoại
+static int help_lines(char names[][96], const char **keys, int max) {
+    int n = 0;
+    bool done[BIND_COUNT] = { false };
+    if (binds_default(BIND_UP, BIND_RIGHT)) {
+        snprintf(names[n], 96, "D-pad / L-stick");
+        keys[n++] = tr(S_HELP_DPAD);
+        done[BIND_UP] = done[BIND_DOWN] = done[BIND_LEFT] = done[BIND_RIGHT] = true;
+    }
+    if (binds_default(BIND_RS_UP, BIND_RS_RIGHT)) {
+        snprintf(names[n], 96, "R-stick");
+        keys[n++] = "2 4 6 8";
+        done[BIND_RS_UP] = done[BIND_RS_DOWN] = done[BIND_RS_LEFT] = done[BIND_RS_RIGHT] = true;
+    }
+    for (int b = 0; b < BIND_COUNT && n < max; b++) {
+        if (done[b] || binds[b] == BIND_NONE)
+            continue;
+        names[n][0] = '\0';
+        for (int o = b; o < BIND_COUNT; o++) {
+            if (!done[o] && binds[o] == binds[b]) {
+                size_t len = strlen(names[n]);
+                snprintf(names[n] + len, 96 - len, "%s%s", len ? " / " : "", keybind_button_name(o));
+                done[o] = true;
+            }
+        }
+        keys[n++] = keybind_key_name(binds[b]);
+    }
+    if (n < max) {
+        snprintf(names[n], 96, "%s", ICON_MINUS);
+        keys[n++] = tr(S_HELP_EXIT);
+    }
+    return n;
+}
+
 static void draw_help(void) {
-    const char *lines[][2] = {
-        { "D-pad / L-stick", tr(S_HELP_DPAD) },
-        { ICON_A, "Fire (5)" },
-        { ICON_B " / " ICON_R, tr(S_HELP_SOFT_RIGHT) },
-        { ICON_L " / " ICON_PLUS, tr(S_HELP_SOFT_LEFT) },
-        { ICON_Y " / " ICON_X, "* / #" },
-        { ICON_ZL " / " ICON_ZR, "1 / 3" },
-        { "R-stick", "2 4 6 8" },
-        { tr(S_HELP_STICK_CLICK), "5 / 0" },
-        { ICON_MINUS, tr(S_HELP_EXIT) },
-    };
+    char names[BIND_COUNT + 3][96];
+    const char *keys[BIND_COUNT + 3];
+    int count = help_lines(names, keys, BIND_COUNT + 3);
     int panel_w = dst.x;
     if (panel_w < 200)
         return;
@@ -995,9 +1024,12 @@ static void draw_help(void) {
         snprintf(info, sizeof(info), "%dx%d", scr_w, scr_h);
     gfx_text(FONT_SMALL, x, y, 0, ALIGN_LEFT, COL_DIM, info);
     y += 48;
-    for (size_t i = 0; i < sizeof(lines) / sizeof(lines[0]); i++) {
-        gfx_text(FONT_SMALL, x, y, 150, ALIGN_LEFT, COL_TEXT, lines[i][0]);
-        gfx_text(FONT_SMALL, x + 160, y, panel_w - x - 170, ALIGN_LEFT, COL_DIM, lines[i][1]);
+    for (int i = 0; i < count && y < SCREEN_H - gfx_font_height(FONT_SMALL); i++) {
+        // Tên nút dài (gộp nhiều nút) thì phím xuống dòng dưới
+        int name_w = gfx_text(FONT_SMALL, x, y, panel_w - x - 16, ALIGN_LEFT, COL_TEXT, names[i]);
+        if (name_w > 150)
+            y += gfx_font_height(FONT_SMALL) + 2;
+        gfx_text(FONT_SMALL, x + 160, y, panel_w - x - 170, ALIGN_LEFT, COL_DIM, keys[i]);
         y += gfx_font_height(FONT_SMALL) + 8;
     }
 }

@@ -97,6 +97,8 @@ add_executable(j2me-nxx
     source/lang_vi.c
     source/lang_en.c
     source/keymap.c
+    source/keybind.c
+    source/keybind_screen.c
     source/settings.c
     source/settings_screen.c
     source/lang_screen.c

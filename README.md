@@ -76,6 +76,8 @@ GitHub Actions tự build mỗi lần push; push tag `v*` (vd `git tag v0.1.0 &&
 | Bấm stick trái / phải | 5 / 0 |
 | − (2 lần) | Thoát ứng dụng |
 
+Đây là ánh xạ mặc định. Đổi được ở **Cài đặt > Ánh xạ phím** (cho mọi ứng dụng) hoặc **Tùy chọn ứng dụng > Ánh xạ phím** (riêng ứng dụng đó, nút để "Mặc định" thì theo cài đặt chung): chọn nút Switch ở danh sách bên trái rồi chọn phím điện thoại bằng **trái / phải**, hoặc chạm vào dòng rồi chạm phím trên bàn phím điện thoại bên phải. **Y** đưa nút đang chọn về mặc định, **X** đưa tất cả về mặc định. Bảng phím khi chạy hiện đúng theo ánh xạ đang dùng.
+
 Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
 **Bàn phím ảo QWERTY**: bật **Cài đặt > Bong bóng bàn phím ảo** thì khi chạy có bong bóng nhỏ ở góc phải (kéo để di chuyển). Chạm vào bong bóng để mở bàn phím nổi có hàng số, chữ cái, `* # , . `, phím cách, Shift (chạm 2 lần = khoá chữ hoa; Shift + hàng số ra `! @ # $ ...`), Del (phím xoá `-8`) và Enter (phím Fire). Chữ và ký hiệu gửi đúng mã ký tự như máy có bàn phím QWERTY. Kéo thanh trên cùng để dời bàn phím, nút **×** thu về bong bóng.
@@ -95,8 +97,8 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 Danh sách ứng dụng hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng ứng dụng (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
 Trong danh sách ứng dụng (**A** mở):
-- **X**: Cài đặt chung: giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chạy, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English).
-- **−**: Tùy chọn riêng cho ứng dụng đang chọn (FPS, kích thước màn hình, kiểu phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nxx/options/<tên>.ini`.
+- **X**: Cài đặt chung: giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chạy, ánh xạ phím, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English).
+- **−**: Tùy chọn riêng cho ứng dụng đang chọn (FPS, kích thước màn hình, kiểu phím, ánh xạ phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nxx/options/<tên>.ini`.
 
 Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng của ứng dụng > `Nokia-MIDlet-Original-Display-Size` trong MANIFEST/JAD > cài đặt chung (mặc định 240x320).
 
@@ -196,6 +198,8 @@ GitHub Actions builds on every push; pushing a `v*` tag (e.g. `git tag v0.1.0 &&
 | Left / right stick click | 5 / 0 |
 | − (twice) | Exit app |
 
+This is the default mapping. Change it in **Settings > Button mapping** (all apps) or **App options > Button mapping** (that app only; buttons left on "Default" follow the global settings): pick a Switch button in the list on the left and choose the phone key with **left / right**, or tap the row and then tap a key on the phone keypad on the right. **Y** resets the selected button, **X** resets them all. The in-app key panel follows the active mapping.
+
 The touch screen is mapped to pointer events.
 
 **QWERTY virtual keyboard**: enable **Settings > Virtual keyboard bubble** to get a small bubble in the bottom-right corner while running (drag to move). Tap it to open a floating keyboard with a number row, letters, `* # , .`, space, Shift (double-tap = caps lock; Shift + number row gives `! @ # $ ...`), Del (clear key `-8`) and Enter (Fire). Letters and symbols are sent as character codes like on QWERTY phones. Drag the top bar to move the keyboard; **×** collapses it back to the bubble.
@@ -215,8 +219,8 @@ The touch screen is mapped to pointer events.
 The app list shows the name, vendor, version and icon read from each app's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
 
 In the app list (**A** opens):
-- **X**: Global settings: FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while running, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English).
-- **−**: Options for the selected app (FPS, screen size, key layout, font size, smooth text), saved to `sdmc:/switch/j2me-nxx/options/<name>.ini`.
+- **X**: Global settings: FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while running, button mapping, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English).
+- **−**: Options for the selected app (FPS, screen size, key layout, button mapping, font size, smooth text), saved to `sdmc:/switch/j2me-nxx/options/<name>.ini`.
 
 Screen size is chosen in this order: the app's own options > `Nokia-MIDlet-Original-Display-Size` in MANIFEST/JAD > global settings (default 240x320).
 

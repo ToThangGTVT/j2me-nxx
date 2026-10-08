@@ -1,0 +1,16 @@
+{
+  "ok": "OK",
+  "cancel": "Huỷ",
+  "back": "Quay lại",
+  "exit": "Thoát",
+  "exit_hint": "Thoát J2ME-NXX?",
+  "open": "Mở",
+  "on": "Bật",
+  "off": "Tắt",
+  "delete": "Xoá",
+  "save": "Lưu",
+  "input": "Nhập...",
+  "submit": "Gửi",
+  "left": "Trái",
+  "right": "Phải"
+}

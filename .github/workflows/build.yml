@@ -22,6 +22,14 @@ jobs:
     container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # borealis (giao diện) là submodule; submodule con của nó (glfw, SDL) không cần
+          submodules: false
+
+      - name: Lay borealis
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git submodule update --init --depth 1 library/borealis
 
       - name: Cai cong cu va thu vien
         # Máy chủ gói đôi khi lỗi tạm thời: thử lại tối đa 5 lần
@@ -30,7 +38,7 @@ jobs:
           retry apt-get update
           retry apt-get install -y --no-install-recommends openjdk-17-jdk-headless cmake ninja-build pkg-config zip
           # Thư viện Switch có sẵn trong image devkitPro; không tải từ máy chủ devkitPro (hay chặn CI)
-          dkp-pacman -Q switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg
+          dkp-pacman -Q switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg switch-mesa switch-libdrm_nouveau
 
       - name: Build
         run: |

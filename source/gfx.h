@@ -1,8 +1,14 @@
-// Lớp vẽ 2D trên SDL2: cửa sổ 1280x720, hình chữ nhật, chữ (có cache texture)
+// Lớp vẽ 2D trên NanoVG của borealis: toạ độ logic 1280x720 (giữ tỉ lệ, đặt giữa vùng vẽ),
+// hình chữ nhật, chữ, ảnh. Dùng cho các màn hình tự vẽ (chạy game, phím ảo, xem video).
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <SDL.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define SCREEN_W 1280
 #define SCREEN_H 720
@@ -22,8 +28,7 @@ typedef enum {
 
 #define RGB(r, g, b) ((SDL_Color){ (r), (g), (b), 255 })
 
-// Icon nút của Switch: ký tự vùng riêng (UTF-8) trong font NintendoExt của máy, dùng thẳng trong chuỗi.
-// Desktop (không có font này) thì tự vẽ hình tròn có chữ
+// Icon nút của Switch: ký tự vùng riêng (UTF-8) trong font NintendoExt (Switch) / switch_icons.ttf (desktop)
 #define ICON_A      "\xEE\x83\xA0"   // U+E0E0
 #define ICON_B      "\xEE\x83\xA1"   // U+E0E1
 #define ICON_X      "\xEE\x83\xA2"   // U+E0E2
@@ -39,27 +44,47 @@ typedef enum {
 #define ICON_LEFT   "\xEE\x81\xBB"   // U+E07B
 #define ICON_RIGHT  "\xEE\x81\xBC"   // U+E07C
 
-bool gfx_init(const char *title);
-void gfx_exit(void);
+struct NVGcontext;
 
-SDL_Renderer *gfx_renderer(void);
+// Gọi 1 lần sau khi borealis tạo cửa sổ: context NanoVG và font chữ (id trong fontstash)
+void gfx_init(struct NVGcontext *vg, int font);
+
+// Bắt đầu / kết thúc vẽ một màn hình 1280x720 vào vùng (x, y, w, h) của khung hình borealis
+void gfx_begin(float x, float y, float w, float h);
+void gfx_end(void);
+// Đổi toạ độ cửa sổ (điểm của SDL, chuột / chạm) sang toạ độ 1280x720 của màn hình đang vẽ
+void gfx_window_to_screen(float wx, float wy, int *sx, int *sy);
+// Kích thước cửa sổ theo điểm của SDL (để đổi toạ độ chạm 0..1)
+void gfx_window_size(int *w, int *h);
 
 void gfx_clear(SDL_Color c);
-void gfx_present(void);
 void gfx_fill_rect(int x, int y, int w, int h, SDL_Color c);
-// Hình chữ nhật bo góc bán kính r / hình tròn, khử răng cưa, màu trong suốt đều
+// Hình chữ nhật bo góc bán kính r / hình tròn, khử răng cưa
 void gfx_fill_round_rect(int x, int y, int w, int h, int r, SDL_Color c);
 void gfx_fill_circle(int cx, int cy, int r, SDL_Color c);
+// Chỉ vẽ trong vùng (x, y, w, h) tới khi gfx_unclip
+void gfx_clip(int x, int y, int w, int h);
+void gfx_unclip(void);
 
 int gfx_font_height(FontId font);
 int gfx_text_width(FontId font, const char *text);
-// Vẽ đoạn chữ tự xuống dòng theo từ; trả về chiều cao đã dùng
-int gfx_text_wrapped(FontId font, int x, int y, int max_w, SDL_Color c, const char *text);
-
-// Texture từ ảnh ARGB (dùng cho icon game)
-SDL_Texture *gfx_texture_argb(const uint32_t *pixels, int w, int h);
-void gfx_draw_texture(SDL_Texture *tex, int x, int y, int w, int h);
-
 // Vẽ chữ UTF-8, cắt bớt nếu rộng hơn max_w (0 = không giới hạn).
 // y là cạnh trên của dòng chữ. Trả về độ rộng đã vẽ.
 int gfx_text(FontId font, int x, int y, int max_w, TextAlign align, SDL_Color c, const char *text);
+// Vẽ đoạn chữ tự xuống dòng theo từ; trả về chiều cao đã dùng
+int gfx_text_wrapped(FontId font, int x, int y, int max_w, SDL_Color c, const char *text);
+
+// Ảnh (id NanoVG, 0 = không có). smooth: lọc tuyến tính khi phóng, không thì giữ điểm ảnh
+int gfx_image_create(int w, int h, bool smooth);
+// Ghi cả ảnh từ điểm ảnh ARGB8888 (w x h đúng như lúc tạo)
+void gfx_image_update(int img, const uint32_t *argb);
+int gfx_image_argb(const uint32_t *argb, int w, int h, bool smooth);
+void gfx_image_free(int img);
+void gfx_draw_image(int img, int x, int y, int w, int h);
+void gfx_draw_image_alpha(int img, int x, int y, int w, int h, float alpha);
+// Chép src vào dst (lớn gấp nguyên lần) không lọc: dùng cho sharp-bilinear
+bool gfx_image_upscale(int src, int dst);
+
+#ifdef __cplusplus
+}
+#endif

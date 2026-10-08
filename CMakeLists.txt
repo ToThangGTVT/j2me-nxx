@@ -8,6 +8,8 @@
 #   cần: brew install sdl2 sdl2_ttf libpng pkgconf
 #
 # Cả hai đều cần JDK (javac, jar) để biên dịch thư viện Java trong javalib/.
+# Giao diện dùng borealis (submodule library/borealis: git submodule update --init),
+# chạy trên SDL2 + OpenGL ở cả Switch và desktop.
 cmake_minimum_required(VERSION 3.13)
 
 option(J2ME_NX_DESKTOP "Build ban desktop thay vi Switch" OFF)
@@ -24,6 +26,8 @@ project(j2me-nxx VERSION 0.7.1 LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(APP_TITLE  "J2ME-NXX")
 set(APP_AUTHOR "toquangthang")
@@ -64,6 +68,41 @@ add_custom_command(
     COMMENT "Nhung classlib.jar"
     VERBATIM)
 
+# ---------------------------------------------------------------------------
+# borealis: khung giao diện. Switch và desktop đều dùng SDL2 (cửa sổ, OpenGL) + NanoVG.
+# Tài nguyên (i18n, icon) ở resources/: Switch nhúng vào romfs của .nro, desktop chép cạnh file chạy.
+
+set(BOREALIS_DIR "${CMAKE_SOURCE_DIR}/library/borealis/library")
+if(NOT EXISTS "${BOREALIS_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "Thieu borealis. Chay: git submodule update --init library/borealis")
+endif()
+if(NINTENDO_SWITCH)
+    set(PLATFORM_SWITCH ON)
+else()
+    set(PLATFORM_DESKTOP ON)
+    set(USE_SYSTEM_SDL2 ON)
+    if(APPLE)
+        # borealis đặt mục tiêu macOS 10.15 khi build cả gói; ở đây theo máy đang build
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "" FORCE)
+    endif()
+endif()
+set(USE_SDL2 ON)
+set(BRLS_RESOURCES_DIR "${CMAKE_BINARY_DIR}")
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+include("${BOREALIS_DIR}/cmake/commonOption.cmake")
+add_subdirectory("${BOREALIS_DIR}" borealis EXCLUDE_FROM_ALL)
+if(PLATFORM_SWITCH)
+    # Bản Switch của borealis chọn SDLVideoContext theo __SDL2__ (CMake của borealis chưa tự thêm)
+    target_compile_definitions(borealis PUBLIC __SDL2__)
+    # borealis include <SDL2/SDL.h>; CMake của nó trông vào cờ của toolchain riêng (không dùng ở đây)
+    target_include_directories(borealis PUBLIC "${DEVKITPRO}/portlibs/switch/include")
+endif()
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(borealis PRIVATE -O2)
+endif()
+
+set(RESOURCES_DIR "${CMAKE_SOURCE_DIR}/resources")
+
 # Font giao diện (Google Sans, OFL) nhúng vào binary
 set(UI_FONT   "${CMAKE_SOURCE_DIR}/source/third_party/fonts/GoogleSans-Regular.ttf")
 set(UI_FONT_C "${CMAKE_BINARY_DIR}/ui_font_data.c")
@@ -85,12 +124,19 @@ set_source_files_properties("${SOUNDFONT_C}" PROPERTIES
 # ---------------------------------------------------------------------------
 
 add_executable(j2me-nxx
-    source/main.c
+    source/ui/app.cpp
+    source/ui/common.cpp
+    source/ui/screen_activity.cpp
+    source/ui/main_activity.cpp
+    source/ui/settings_activity.cpp
+    source/ui/keybind_activity.cpp
+    source/ui/lang_activity.cpp
+    source/ui/update_activity.cpp
+    source/ui/upload_activity.cpp
     source/platform.c
     source/gfx.c
     source/input.c
     source/game_list.c
-    source/menu.c
     source/emu.c
     source/manifest.c
     source/lang.c
@@ -98,13 +144,9 @@ add_executable(j2me-nxx
     source/lang_en.c
     source/keymap.c
     source/keybind.c
-    source/keybind_screen.c
     source/settings.c
-    source/settings_screen.c
-    source/lang_screen.c
     source/qr.c
     source/upload.c
-    source/upload_screen.c
     source/video_dec.c
     source/video_screen.c
     source/vkb.c
@@ -113,7 +155,6 @@ add_executable(j2me-nxx
     source/http.c
     source/crash.c
     source/update.c
-    source/update_screen.c
     source/vm/aot_arm64.c
     source/vm/aot_mem.c
     source/vm/class.c
@@ -133,7 +174,6 @@ add_executable(j2me-nxx
     source/midp/fileio.c
     source/midp/m3g.c
     source/midp/video.c
-    source/third_party/stb_image.c
     source/third_party/dr_mp3.c
     "${SOUNDFONT_C}"
     "${CLASSLIB_C}"
@@ -141,6 +181,8 @@ add_executable(j2me-nxx
 )
 
 target_compile_options(j2me-nxx PRIVATE -Wall)
+target_include_directories(j2me-nxx PRIVATE source)
+target_link_libraries(j2me-nxx PRIVATE borealis)
 target_compile_definitions(j2me-nxx PRIVATE APP_VERSION_STR="${PROJECT_VERSION}")
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Interpreter rất chậm khi không tối ưu
@@ -211,9 +253,14 @@ if(NINTENDO_SWITCH)
 
     nx_create_nro(j2me-nxx
         NACP j2me-nxx.nacp
+        ROMFS "${RESOURCES_DIR}"
     )
 else()
     target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LINK_LIBRARIES} m)
+    # Tài nguyên của borealis cạnh file chạy (BRLS_RESOURCES = <thư mục build>/resources/)
+    add_custom_command(TARGET j2me-nxx POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory "${RESOURCES_DIR}" "${CMAKE_BINARY_DIR}/resources"
+        COMMENT "Chep tai nguyen giao dien")
 endif()
 
 # ---------------------------------------------------------------------------

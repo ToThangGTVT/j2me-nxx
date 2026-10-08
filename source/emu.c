@@ -40,12 +40,12 @@ static char files_dir[512];
 static char exit_msg[256];
 static FILE *log_file;
 
-static SDL_Texture *screen_tex;
-// Sharp-bilinear: phóng nguyên lần (giữ điểm ảnh) vào texture trung gian rồi thu mịn xuống màn hình
-static SDL_Texture *sharp_tex;
+static int screen_img;
+// Sharp-bilinear: phóng nguyên lần (giữ điểm ảnh) vào ảnh trung gian rồi thu mịn xuống màn hình
+static int sharp_img;
 static bool sharp_dirty;
 // Chữ mịn nét cao: khung hình gấp hires_k lần (chỉ khi game có chữ vẽ bằng font hệ thống)
-static SDL_Texture *hires_tex;
+static int hires_img;
 static int hires_k;
 static bool show_hires;
 // Đo hiệu năng. Cài đặt -> Hiện FPS: hiện ở góc màn hình và ghi log ra <data>/log.txt
@@ -597,25 +597,17 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         return false;
     }
 
-    screen_tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, scr_w, scr_h);
-    SDL_SetTextureScaleMode(screen_tex, SDL_ScaleModeNearest);
-    // Hệ số nguyên nhỏ nhất >= tỉ lệ phóng; tỉ lệ đã là số nguyên thì không cần texture trung gian
+    screen_img = gfx_image_create(scr_w, scr_h, false);
+    // Hệ số nguyên nhỏ nhất >= tỉ lệ phóng; tỉ lệ đã là số nguyên thì không cần ảnh trung gian
     int k = (dst.h + scr_h - 1) / scr_h;
     if (settings()->scale_mode == 0 && dst.h % scr_h != 0 && k >= 2) {
         if (k > 4)
             k = 4;
-        sharp_tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, scr_w * k,
-                                      scr_h * k);
-        if (sharp_tex)
-            SDL_SetTextureScaleMode(sharp_tex, SDL_ScaleModeLinear);
+        sharp_img = gfx_image_create(scr_w * k, scr_h * k, true);
         sharp_dirty = true;
     }
-    if (hires_k) {
-        hires_tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                      scr_w * hires_k, scr_h * hires_k);
-        if (hires_tex)
-            SDL_SetTextureScaleMode(hires_tex, SDL_ScaleModeLinear);
-    }
+    if (hires_k)
+        hires_img = gfx_image_create(scr_w * hires_k, scr_h * hires_k, true);
     stat_vm_max = 0;
     stat_vm_sum = 0;
     stat_last_frame = 0;
@@ -656,15 +648,10 @@ void emu_stop(void) {
     }
     running = false;
     prof_stop();
-    if (screen_tex)
-        SDL_DestroyTexture(screen_tex);
-    screen_tex = NULL;
-    if (sharp_tex)
-        SDL_DestroyTexture(sharp_tex);
-    sharp_tex = NULL;
-    if (hires_tex)
-        SDL_DestroyTexture(hires_tex);
-    hires_tex = NULL;
+    gfx_image_free(screen_img);
+    gfx_image_free(sharp_img);
+    gfx_image_free(hires_img);
+    screen_img = sharp_img = hires_img = 0;
     zip_close(syslib);
     zip_close(game);
     syslib = game = NULL;
@@ -851,7 +838,9 @@ static void handle_event(const SDL_Event *e) {
     case SDL_FINGERDOWN:
     case SDL_FINGERUP:
     case SDL_FINGERMOTION: {
-        int lx = (int)(e->tfinger.x * SCREEN_W), ly = (int)(e->tfinger.y * SCREEN_H);
+        int ww, wh, lx, ly;
+        gfx_window_size(&ww, &wh);
+        gfx_window_to_screen(e->tfinger.x * ww, e->tfinger.y * wh, &lx, &ly);
         VkbPointer pt = e->type == SDL_FINGERDOWN ? VKB_DOWN : e->type == SDL_FINGERUP ? VKB_UP : VKB_MOVE;
         if (vkb_pointer(e->tfinger.fingerId, pt, lx, ly) || vpad_pointer(e->tfinger.fingerId, pt, lx, ly))
             break;
@@ -865,16 +854,21 @@ static void handle_event(const SDL_Event *e) {
         if (e->button.which == SDL_TOUCH_MOUSEID || e->button.button != SDL_BUTTON_LEFT)
             break;
         VkbPointer pt = e->type == SDL_MOUSEBUTTONDOWN ? VKB_DOWN : VKB_UP;
-        if (vkb_pointer(-1, pt, e->button.x, e->button.y) || vpad_pointer(-1, pt, e->button.x, e->button.y))
+        int mx, my;
+        gfx_window_to_screen(e->button.x, e->button.y, &mx, &my);
+        if (vkb_pointer(-1, pt, mx, my) || vpad_pointer(-1, pt, mx, my))
             break;
-        pointer(e->type == SDL_MOUSEBUTTONDOWN ? MIDP_EV_POINTER_PRESSED : MIDP_EV_POINTER_RELEASED,
-                e->button.x, e->button.y);
+        pointer(e->type == SDL_MOUSEBUTTONDOWN ? MIDP_EV_POINTER_PRESSED : MIDP_EV_POINTER_RELEASED, mx, my);
         break;
-    case SDL_MOUSEMOTION:
-        if (e->motion.which != SDL_TOUCH_MOUSEID && (e->motion.state & SDL_BUTTON_LMASK) &&
-            !vkb_pointer(-1, VKB_MOVE, e->motion.x, e->motion.y) && !vpad_pointer(-1, VKB_MOVE, e->motion.x, e->motion.y))
-            pointer(MIDP_EV_POINTER_DRAGGED, e->motion.x, e->motion.y);
+    case SDL_MOUSEMOTION: {
+        if (e->motion.which == SDL_TOUCH_MOUSEID || !(e->motion.state & SDL_BUTTON_LMASK))
+            break;
+        int mx, my;
+        gfx_window_to_screen(e->motion.x, e->motion.y, &mx, &my);
+        if (!vkb_pointer(-1, VKB_MOVE, mx, my) && !vpad_pointer(-1, VKB_MOVE, mx, my))
+            pointer(MIDP_EV_POINTER_DRAGGED, mx, my);
         break;
+    }
     default:
         break;
     }
@@ -1126,31 +1120,28 @@ static void draw_game(void) {
     Uint64 tl1 = SDL_GetPerformanceCounter();
     if (fb && dirty) {
         int k = 0;
-        const uint32_t *hi = hires_tex ? midp_framebuffer_hires(&k) : NULL;
+        const uint32_t *hi = hires_img ? midp_framebuffer_hires(&k) : NULL;
         show_hires = hi && k == hires_k;
         if (show_hires)
-            SDL_UpdateTexture(hires_tex, NULL, hi, w * k * 4);
+            gfx_image_update(hires_img, hi);
         else
-            SDL_UpdateTexture(screen_tex, NULL, fb, w * 4);
+            gfx_image_update(screen_img, fb);
     }
     midp_framebuffer_unlock();
     Uint64 tl2 = SDL_GetPerformanceCounter();
     double f = 1000.0 / SDL_GetPerformanceFrequency();
     if ((tl2 - tl0) * f > 5)
         vm_prof_log("fb chờ khoá %.1f ms, upload %.1f ms", (tl1 - tl0) * f, (tl2 - tl1) * f);
+    // Nền đen dưới khung hình (điểm ảnh của game có thể chưa đặt alpha)
+    gfx_fill_rect(dst.x, dst.y, dst.w, dst.h, RGB(0, 0, 0));
     if (show_hires) {
-        SDL_RenderCopy(gfx_renderer(), hires_tex, NULL, &dst);
-    } else if (sharp_tex) {
-        SDL_Renderer *r = gfx_renderer();
-        if (dirty || sharp_dirty) {
-            SDL_SetRenderTarget(r, sharp_tex);
-            SDL_RenderCopy(r, screen_tex, NULL, NULL);
-            SDL_SetRenderTarget(r, NULL);
+        gfx_draw_image(hires_img, dst.x, dst.y, dst.w, dst.h);
+    } else if (sharp_img) {
+        if ((dirty || sharp_dirty) && gfx_image_upscale(screen_img, sharp_img))
             sharp_dirty = false;
-        }
-        SDL_RenderCopy(r, sharp_tex, NULL, &dst);
+        gfx_draw_image(sharp_dirty ? screen_img : sharp_img, dst.x, dst.y, dst.w, dst.h);
     } else {
-        SDL_RenderCopy(gfx_renderer(), screen_tex, NULL, &dst);
+        gfx_draw_image(screen_img, dst.x, dst.y, dst.w, dst.h);
     }
     // Bảng phím nằm cùng chỗ với phím ảo bên trái
     if (settings()->show_help && !vpad_enabled())

@@ -21,7 +21,7 @@ typedef struct {
     char midlets[8][64];    // tên hiển thị của từng MIDlet
     uint32_t *icon;         // ARGB, NULL nếu không có
     int icon_w, icon_h;
-    void *icon_tex;         // texture SDL do menu tạo (menu_free_textures giải phóng)
+    int icon_img;           // ảnh NanoVG do giao diện tạo (0 = chưa có)
 } GameEntry;
 
 typedef struct {

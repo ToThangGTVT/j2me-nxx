@@ -25,19 +25,43 @@
 #include <switch.h>
 
 bool platform_init(void) {
-    // Mạng cho game online (socket:// và http://); lỗi thì game chỉ không kết nối được
-    socketInitializeDefault();
+    // Nhận yêu cầu thoát từ HOME để borealis dọn dẹp trước
+    appletLockExit();
+    // Mạng cho game online (socket:// và http://); lỗi thì game chỉ không kết nối được.
+    // Chạy dạng Application (full RAM) thì cho nhiều phiên socket hơn
+    SocketInitConfig cfg = *socketGetDefaultInitConfig();
+    AppletType at = appletGetAppletType();
+    if (at == AppletType_Application || at == AppletType_SystemApplication) {
+        cfg.num_bsd_sessions = 12;
+        cfg.sb_efficiency = 8;
+    }
+    socketInitialize(&cfg);
+    // Tài nguyên giao diện (i18n, icon) của borealis nằm trong romfs của .nro
+    romfsInit();
     Result rc = plInitialize(PlServiceType_User);
     if (R_FAILED(rc)) {
         printf("plInitialize failed: 0x%x\n", rc);
         return false;
     }
+    // borealis dùng: theme / ngôn ngữ hệ thống, pin, mạng, độ sáng
+    setsysInitialize();
+    setInitialize();
+    psmInitialize();
+    nifmInitialize(NifmServiceType_User);
+    lblInitialize();
     return true;
 }
 
 void platform_exit(void) {
+    lblExit();
+    nifmExit();
+    psmExit();
+    setExit();
+    setsysExit();
     plExit();
+    romfsExit();
     socketExit();
+    appletUnlockExit();
 }
 
 OpenUrlResult platform_open_url(const char *url) {

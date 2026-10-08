@@ -20,7 +20,9 @@ Chạy file `.jar` của ứng dụng, game điện thoại Java cũ trực ti�
 | `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, API Nokia (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; `tsf.h` (TinySoundFont, MIT); SoundFont `TimGM6mb.sf2` (GPL v2, nhúng vào binary); font Google Sans (OFL) có đủ chữ tiếng Việt |
-| `source/` | App: danh sách ứng dụng, cài đặt, phiên chạy ứng dụng (`emu.c`), giải mã video qua FFmpeg (`video_dec.c`), trình xem video (`video_screen.c`), lớp nền tảng Switch/desktop |
+| `source/ui/` | Giao diện dựng bằng [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): danh sách ứng dụng, cài đặt, ánh xạ phím, cập nhật, gửi game từ điện thoại |
+| `source/` | Phiên chạy ứng dụng (`emu.c`), lớp vẽ `gfx.c` trên NanoVG cho màn hình chạy game / phím ảo / trình xem video, giải mã video qua FFmpeg (`video_dec.c`), lớp nền tảng Switch/desktop |
+| `resources/` | Tài nguyên của borealis (chữ gợi ý nút vi/en, icon): nằm trong romfs của `.nro` |
 | `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video trên Canvas, trong Form, `platformRequest`) |
 
 Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng vào binary dưới dạng `classlib.jar`.
@@ -30,7 +32,8 @@ Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng v�
 Cần: [devkitPro](https://devkitpro.org/wiki/Getting_Started) (gói `switch-dev`), JDK (`javac`, `jar`), CMake.
 
 ```bash
-sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg
+git submodule update --init library/borealis
+sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg switch-mesa switch-libdrm_nouveau
 export DEVKITPRO=/opt/devkitpro
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
@@ -77,7 +80,7 @@ GitHub Actions tự build mỗi lần push; push tag `v*` (vd `git tag v0.1.0 &&
 | Bấm stick trái / phải | 5 / 0 |
 | − (2 lần) | Thoát ứng dụng |
 
-Đây là ánh xạ mặc định. Đổi được ở **Cài đặt > Ánh xạ phím** (cho mọi ứng dụng) hoặc **Tùy chọn ứng dụng > Ánh xạ phím** (riêng ứng dụng đó, nút để "Mặc định" thì theo cài đặt chung): chọn nút Switch ở danh sách bên trái rồi chọn phím điện thoại bằng **trái / phải**, hoặc chạm vào dòng rồi chạm phím trên bàn phím điện thoại bên phải. **Y** đưa nút đang chọn về mặc định, **X** đưa tất cả về mặc định. Bảng phím khi chạy hiện đúng theo ánh xạ đang dùng.
+Đây là ánh xạ mặc định. Đổi được ở **Cài đặt > Ánh xạ phím** (cho mọi ứng dụng) hoặc **Tùy chọn ứng dụng > Ánh xạ phím** (riêng ứng dụng đó, nút để "Mặc định" thì theo cài đặt chung): chọn nút Switch trong danh sách, bấm **A** (hoặc chạm) rồi chọn phím điện thoại. **Y** đưa nút đang chọn về mặc định, **X** đưa tất cả về mặc định. Bảng phím khi chạy hiện đúng theo ánh xạ đang dùng.
 
 Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
@@ -85,7 +88,7 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
 **Bàn phím ảo QWERTY**: bật **Cài đặt > Bong bóng bàn phím ảo** thì khi chạy có bong bóng nhỏ ở góc phải (kéo để di chuyển). Chạm vào bong bóng để mở bàn phím nổi có hàng số, chữ cái, `* # , . `, phím cách, Shift (chạm 2 lần = khoá chữ hoa; Shift + hàng số ra `! @ # $ ...`), Del (phím xoá `-8`) và Enter (phím Fire). Chữ và ký hiệu gửi đúng mã ký tự như máy có bàn phím QWERTY. Kéo thanh trên cùng để dời bàn phím, nút **×** thu về bong bóng.
 
-**Báo cáo crash**: mỗi lần app bị sập hoặc ứng dụng Java lỗi (exception không ai bắt), J2ME-NXX ghi 1 file `sdmc:/switch/j2me-nxx/crash/crash-<ngày>-<giờ>.txt` gồm phiên bản, ứng dụng đang chạy, lý do, stack trace Java, thanh ghi CPU + backtrace (khi app sập) và log gần nhất. Lần mở app sau sẽ báo tên file ở thanh dưới. Gửi file này kèm khi báo lỗi; địa chỉ dạng `j2me-nxx.elf + 0x...` đổi ra tên hàm bằng `aarch64-none-elf-addr2line -f -C -e j2me-nxx.elf <offset>` với file `.elf` đính kèm trong bản phát hành tương ứng.
+**Báo cáo crash**: mỗi lần app bị sập hoặc ứng dụng Java lỗi (exception không ai bắt), J2ME-NXX ghi 1 file `sdmc:/switch/j2me-nxx/crash/crash-<ngày>-<giờ>.txt` gồm phiên bản, ứng dụng đang chạy, lý do, stack trace Java, thanh ghi CPU + backtrace (khi app sập) và log gần nhất. Lần mở app sau sẽ báo tên file ở góc màn hình. Gửi file này kèm khi báo lỗi; địa chỉ dạng `j2me-nxx.elf + 0x...` đổi ra tên hàm bằng `aarch64-none-elf-addr2line -f -C -e j2me-nxx.elf <offset>` với file `.elf` đính kèm trong bản phát hành tương ứng.
 
 **Cập nhật**: mỗi lần mở app, J2ME-NXX hỏi GitHub Releases xem có bản mới không (tắt ở **Cài đặt > Tự kiểm tra bản mới**). Có bản mới thì hiện hộp thoại kèm ghi chú phát hành: **A** tải `j2me-nxx.nro` về (có thanh tiến trình, tốc độ, thời gian còn lại; **B** để huỷ), file cũ chỉ bị thay khi đã tải đủ và kiểm tra đúng là file `.nro`, xong bấm **A** để khởi động lại vào bản mới. Chọn "Để sau" thì danh sách ứng dụng có nhãn "Bản mới", bấm **B** để cập nhật lúc khác.
 
@@ -100,7 +103,7 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 Danh sách ứng dụng hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng ứng dụng (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
 Trong danh sách ứng dụng (**A** mở):
-- **X**: Cài đặt chung: giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chạy, ánh xạ phím, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English).
+- **X**: Cài đặt chung (chia thẻ Màn hình ứng dụng / Điều khiển / Chữ và âm thanh / Hệ thống): giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chạy, ánh xạ phím, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English).
 - **−**: Tùy chọn riêng cho ứng dụng đang chọn (FPS, kích thước màn hình, kiểu phím, ánh xạ phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nxx/options/<tên>.ini`.
 
 Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng của ứng dụng > `Nokia-MIDlet-Original-Display-Size` trong MANIFEST/JAD > cài đặt chung (mặc định 240x320).
@@ -127,7 +130,7 @@ Bản desktop đọc vài biến môi trường để chạy kịch bản (tính
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
-`J2ME_NX_TAPS="1000:640:500"` chạm chuột tại (x, y) trên màn hình app 1280x720, `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách ứng dụng) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 48000Hz) ra file, `J2ME_NX_SCREEN=settings` / `lang` mở thẳng màn hình cài đặt / chọn ngôn ngữ, `J2ME_NX_FAKE_VERSION=0.1.0` giả làm bản cũ để thử cập nhật (bản desktop chỉ tải `.nro` về thư mục dữ liệu, hoặc `J2ME_NX_UPDATE_PATH`).
+`J2ME_NX_TAPS="1000:640:500"` chạm chuột tại (x, y) trên màn hình app 1280x720, `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách ứng dụng) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 48000Hz) ra file, `J2ME_NX_SCREEN=settings` / `lang` / `keybind` mở thẳng màn hình cài đặt / chọn ngôn ngữ / ánh xạ phím, `J2ME_NX_PRESS="1500:Return,2000:Down"` bấm phím bàn phím (Enter = A, Esc = B, mũi tên; S = X, A = Y, Q = L, W = R, Tab = −, `=` là +), `J2ME_NX_FAKE_VERSION=0.1.0` giả làm bản cũ để thử cập nhật (bản desktop chỉ tải `.nro` về thư mục dữ liệu, hoặc `J2ME_NX_UPDATE_PATH`).
 
 ---
 
@@ -145,7 +148,9 @@ It runs `.jar` files of old Java phone apps and games directly on the Switch (ho
 | `javalib/src/` | CLDC 1.1 / MIDP 2.0 library written in Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, Nokia API (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; `tsf.h` (TinySoundFont, MIT); `TimGM6mb.sf2` SoundFont (GPL v2, embedded in the binary); Google Sans font (OFL) with full Vietnamese coverage |
-| `source/` | App: app list, settings, app session (`emu.c`), FFmpeg video decoding (`video_dec.c`), video player (`video_screen.c`), Switch/desktop platform layer |
+| `source/ui/` | UI built with [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): app list, settings, button mapping, updates, sending apps from a phone |
+| `source/` | App session (`emu.c`), `gfx.c` drawing layer on NanoVG for the running app / on-screen keypad / video player, FFmpeg video decoding (`video_dec.c`), Switch/desktop platform layer |
+| `resources/` | borealis resources (vi/en button hint strings, icons): packed into the `.nro` romfs |
 | `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video on a Canvas, in a Form, `platformRequest`) |
 
 The Java library is compiled with `javac` at build time and embedded in the binary as `classlib.jar`.
@@ -155,7 +160,8 @@ The Java library is compiled with `javac` at build time and embedded in the bina
 Requirements: [devkitPro](https://devkitpro.org/wiki/Getting_Started) (`switch-dev` package), a JDK (`javac`, `jar`), CMake.
 
 ```bash
-sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg
+git submodule update --init library/borealis
+sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg switch-mesa switch-libdrm_nouveau
 export DEVKITPRO=/opt/devkitpro
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
@@ -202,7 +208,7 @@ GitHub Actions builds on every push; pushing a `v*` tag (e.g. `git tag v0.1.0 &&
 | Left / right stick click | 5 / 0 |
 | − (twice) | Exit app |
 
-This is the default mapping. Change it in **Settings > Button mapping** (all apps) or **App options > Button mapping** (that app only; buttons left on "Default" follow the global settings): pick a Switch button in the list on the left and choose the phone key with **left / right**, or tap the row and then tap a key on the phone keypad on the right. **Y** resets the selected button, **X** resets them all. The in-app key panel follows the active mapping.
+This is the default mapping. Change it in **Settings > Button mapping** (all apps) or **App options > Button mapping** (that app only; buttons left on "Default" follow the global settings): pick a Switch button in the list, press **A** (or tap it) and choose the phone key. **Y** resets the selected button, **X** resets them all. The in-app key panel follows the active mapping.
 
 The touch screen is mapped to pointer events.
 
@@ -210,7 +216,7 @@ The touch screen is mapped to pointer events.
 
 **QWERTY virtual keyboard**: enable **Settings > Virtual keyboard bubble** to get a small bubble in the bottom-right corner while running (drag to move). Tap it to open a floating keyboard with a number row, letters, `* # , .`, space, Shift (double-tap = caps lock; Shift + number row gives `! @ # $ ...`), Del (clear key `-8`) and Enter (Fire). Letters and symbols are sent as character codes like on QWERTY phones. Drag the top bar to move the keyboard; **×** collapses it back to the bubble.
 
-**Crash reports**: whenever the emulator crashes or a Java app fails (uncaught exception), J2ME-NXX writes one file `sdmc:/switch/j2me-nxx/crash/crash-<date>-<time>.txt` with the version, running app, reason, Java stack trace, CPU registers + backtrace (for app crashes) and the latest log lines. The next launch shows the file name in the bottom bar. Attach it when reporting a bug; addresses like `j2me-nxx.elf + 0x...` can be turned into function names with `aarch64-none-elf-addr2line -f -C -e j2me-nxx.elf <offset>` using the `.elf` attached to the matching release.
+**Crash reports**: whenever the emulator crashes or a Java app fails (uncaught exception), J2ME-NXX writes one file `sdmc:/switch/j2me-nxx/crash/crash-<date>-<time>.txt` with the version, running app, reason, Java stack trace, CPU registers + backtrace (for app crashes) and the latest log lines. The next launch shows the file name in a notification. Attach it when reporting a bug; addresses like `j2me-nxx.elf + 0x...` can be turned into function names with `aarch64-none-elf-addr2line -f -C -e j2me-nxx.elf <offset>` using the `.elf` attached to the matching release.
 
 **Updates**: each time the app starts, J2ME-NXX asks GitHub Releases whether a newer version exists (turn off in **Settings > Check for updates**). If there is one, a dialog shows the release notes: **A** downloads `j2me-nxx.nro` (with a progress bar, speed and time left; **B** cancels), the old file is only replaced once the download is complete and verified to be an `.nro`, then **A** restarts into the new version. Choosing "Later" leaves a "New version" badge in the app list; press **B** there to update later.
 
@@ -225,7 +231,7 @@ The touch screen is mapped to pointer events.
 The app list shows the name, vendor, version and icon read from each app's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
 
 In the app list (**A** opens):
-- **X**: Global settings: FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while running, button mapping, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English).
+- **X**: Global settings (tabs App screen / Controls / Text and sound / System): FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while running, button mapping, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English).
 - **−**: Options for the selected app (FPS, screen size, key layout, button mapping, font size, smooth text), saved to `sdmc:/switch/j2me-nxx/options/<name>.ini`.
 
 Screen size is chosen in this order: the app's own options > `Nokia-MIDlet-Original-Display-Size` in MANIFEST/JAD > global settings (default 240x320).
@@ -252,4 +258,4 @@ The desktop build reads a few environment variables to run a script (times in ms
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
-`J2ME_NX_TAPS="1000:640:500"` clicks at (x, y) on the 1280x720 app screen, `J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (app list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 48000 Hz) to a file, `J2ME_NX_SCREEN=settings` / `lang` opens the settings / language screen directly, `J2ME_NX_FAKE_VERSION=0.1.0` pretends to be an older version to test updating (the desktop build only downloads the `.nro` into the data folder, or `J2ME_NX_UPDATE_PATH`).
+`J2ME_NX_TAPS="1000:640:500"` clicks at (x, y) on the 1280x720 app screen, `J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (app list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 48000 Hz) to a file, `J2ME_NX_SCREEN=settings` / `lang` / `keybind` opens the settings / language / button mapping screen directly, `J2ME_NX_PRESS="1500:Return,2000:Down"` presses keyboard keys (Enter = A, Esc = B, arrows; S = X, A = Y, Q = L, W = R, Tab = −, `=` is +), `J2ME_NX_FAKE_VERSION=0.1.0` pretends to be an older version to test updating (the desktop build only downloads the `.nro` into the data folder, or `J2ME_NX_UPDATE_PATH`).

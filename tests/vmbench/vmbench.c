@@ -1,5 +1,6 @@
 // Đo tốc độ trình thông dịch trên desktop, không cần cửa sổ.
 //   vmbench <bench.jar> [số lần lặp lại] [hệ số tải]
+// Đặt J2ME_NX_AOT=1 để chạy ở chế độ AOT.
 // Mỗi bài in thời gian tốt nhất và checksum. Tối ưu xong checksum phải giữ nguyên.
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +53,8 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Khong mo duoc jar\n");
         return 1;
     }
-    VMHost host = { .read_file = read_file, .read_resource = read_resource, .exit_request = exit_request };
+    VMHost host = { .read_file = read_file, .read_resource = read_resource, .exit_request = exit_request,
+                    .aot = getenv("J2ME_NX_AOT") != NULL };
     if (!vm_init(&host)) {
         fprintf(stderr, "vm_init: %s\n", vm_last_error());
         return 1;

@@ -7,6 +7,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "aot.h"
+
 static VMHost host;
 static char last_error[512];
 
@@ -111,6 +113,12 @@ void field_slots_init(void) {
 
 bool vm_init(const VMHost *h) {
     host = *h;
+    if (host.aot) {
+        if (aot_start())
+            vm_log("AOT: bat (thu nghiem)");
+        else
+            vm_log("AOT: khong ho tro tren may nay, dung trinh thong dich");
+    }
     last_error[0] = '\0';
     vm_uncaught_text[0] = '\0';
     natives_lang_init();
@@ -148,6 +156,7 @@ void vm_shutdown(void) {
     heap_free_all();
     jstring_free_all();
     class_free_all();
+    aot_stop();
 }
 
 VMThread *vm_spawn_static(const char *cls, const char *name, const char *desc, const Value *args, int nargs) {

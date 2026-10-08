@@ -135,6 +135,11 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_VPAD_HINT]      = "Bàn phím điện thoại trên màn hình cảm ứng khi chạy: cần điều khiển (theo stick trái), phím "
                          "mềm, Fire, phím số. Bật / tắt riêng từng ứng dụng trong Tuỳ chọn ứng dụng.",
     [S_VPAD_HINT_APP]  = "Bàn phím điện thoại trên màn hình cảm ứng khi chạy ứng dụng này. Bố cục chỉnh trong Cài đặt chung.",
+    [S_AOT]            = "AOT (thử nghiệm)",
+    [S_AOT_HINT]       = "Dịch code Java sang mã máy khi nạp, chạy chung với trình thông dịch: code tính toán nhanh hơn "
+                         "nhiều. Đang thử nghiệm, ứng dụng lỗi thì tắt đi. Bật / tắt riêng trong Tuỳ chọn ứng dụng.",
+    [S_AOT_HINT_APP]   = "Dịch code Java của ứng dụng này sang mã máy khi nạp. Đang thử nghiệm, lỗi thì tắt đi.",
+    [S_AOT_UNSUPPORTED] = "Không hỗ trợ",
     [S_VPAD_LAYOUT]    = "Bố cục phím ảo",
     [S_VPAD_LAYOUT_HINT] = "Phím đặt theo màn hình Switch, dùng chung cho mọi ứng dụng. Kéo từng phím để đổi vị trí, kéo chấm ở góc để đổi kích thước; chỉnh bo góc, độ rõ, ẩn phím "
                            "không dùng. Phím để sát nhau thì tự hít vào nhau. Nhấn " ICON_A " để mở.",

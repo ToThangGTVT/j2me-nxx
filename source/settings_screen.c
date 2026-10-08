@@ -11,6 +11,7 @@
 #include "lang.h"
 #include "platform.h"
 #include "settings.h"
+#include "vm/aot.h"
 #include "vpad_screen.h"
 
 #define HEADER_H    80
@@ -49,6 +50,7 @@ typedef enum {
     ITEM_FONT_SCALE,
     ITEM_SOUNDFONT,
     ITEM_VKB_BUBBLE,
+    ITEM_AOT,
     ITEM_CHECK_UPDATE,
 } ItemId;
 #define ITEM_COUNT (ITEM_CHECK_UPDATE + 1)
@@ -132,6 +134,7 @@ static int visible_items(ItemId *out) {
     bool sys = game_mode && game.system_font >= 0 ? game.system_font == 1 : settings()->system_font;
     if (!sys)
         out[n++] = ITEM_SMOOTH_TEXT;
+    out[n++] = ITEM_AOT;
     if (!game_mode) {
         out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;
@@ -385,6 +388,14 @@ bool settings_screen_update(void) {
                 settings()->vpad = !settings()->vpad;
         }
         break;
+    case ITEM_AOT:
+        if ((dir || a) && aot_available()) {
+            if (game_mode)      // Mặc định -> Bật -> Tắt
+                game.aot = game.aot < 0 ? 1 : game.aot == 1 ? 0 : -1;
+            else
+                settings()->aot = !settings()->aot;
+        }
+        break;
     case ITEM_VPAD_LAYOUT:
         if (dir > 0 || a) {
             vpad_screen_open(&settings()->vpad_layout);
@@ -483,6 +494,16 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
             snprintf(value, size, tr(S_DEFAULT_FMT), tr(s->vpad ? S_ON : S_OFF));
         else
             snprintf(value, size, "%s", tr((game_mode ? game.vpad == 1 : s->vpad) ? S_ON : S_OFF));
+        break;
+    case ITEM_AOT:
+        *label = tr(S_AOT);
+        *hint = tr(game_mode ? S_AOT_HINT_APP : S_AOT_HINT);
+        if (!aot_available())
+            snprintf(value, size, "%s", tr(S_AOT_UNSUPPORTED));
+        else if (game_mode && game.aot < 0)
+            snprintf(value, size, tr(S_DEFAULT_FMT), tr(s->aot ? S_ON : S_OFF));
+        else
+            snprintf(value, size, "%s", tr((game_mode ? game.aot == 1 : s->aot) ? S_ON : S_OFF));
         break;
     case ITEM_VPAD_LAYOUT:
         *label = tr(S_VPAD_LAYOUT);

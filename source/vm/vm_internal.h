@@ -32,6 +32,8 @@ VMThread *thread_main(void);
 // interp.c
 // Kiểm tra exception t->exception với frame hiện tại; trả về true nếu tìm được handler
 bool interp_handle_exception(VMThread *t);
+// Method sẽ chạy khi gọi rm qua interface trên object lớp cls (cache trong e), NULL nếu không có
+Method *interp_find_virtual(CPEntry *e, Class *cls, Method *rm);
 void throwable_fill_trace(VMThread *t, Object *ex);
 void interp_reset(void);
 void format_trace(Object *trace, char *out, size_t size);

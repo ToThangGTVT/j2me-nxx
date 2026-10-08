@@ -16,6 +16,7 @@ Chạy file `.jar` của ứng dụng, game điện thoại Java cũ trực ti�
 | Thư mục | Nội dung |
 |---|---|
 | `source/vm/` | Máy ảo Java tự viết: đọc class file, trình thông dịch bytecode (đủ ~200 opcode, kể cả `jsr/ret`), green thread + monitor, GC mark-sweep, đọc JAR (zip + zlib) |
+| `source/vm/aot*` | Chế độ AOT thử nghiệm (bật trong Cài đặt): dịch bytecode sang mã máy ARM64 khi nạp lớp, chạy chung với trình thông dịch |
 | `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, API Nokia (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; `tsf.h` (TinySoundFont, MIT); SoundFont `TimGM6mb.sf2` (GPL v2, nhúng vào binary); font Google Sans (OFL) có đủ chữ tiếng Việt |
@@ -140,6 +141,7 @@ It runs `.jar` files of old Java phone apps and games directly on the Switch (ho
 | Folder | Contents |
 |---|---|
 | `source/vm/` | Custom Java VM: class file loader, bytecode interpreter (all ~200 opcodes, including `jsr/ret`), green threads + monitors, mark-sweep GC, JAR reader (zip + zlib) |
+| `source/vm/aot*` | Experimental AOT mode (enable in Settings): compiles bytecode to ARM64 machine code at class load, running alongside the interpreter |
 | `javalib/src/` | CLDC 1.1 / MIDP 2.0 library written in Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, Nokia API (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; `tsf.h` (TinySoundFont, MIT); `TimGM6mb.sf2` SoundFont (GPL v2, embedded in the binary); Google Sans font (OFL) with full Vietnamese coverage |

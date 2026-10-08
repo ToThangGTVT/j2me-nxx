@@ -60,7 +60,7 @@ public class List extends Screen implements Choice {
     String softLeftLabel() {
         String l = leftLabel();
         if (l == null && model.type == IMPLICIT && model.size() > 0) {
-            return j2menx.Lang.t("Chọn", "Select");
+            return j2menx.Lang.t(j2menx.Lang.SELECT);
         }
         return l;
     }

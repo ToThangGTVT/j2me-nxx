@@ -15,7 +15,7 @@ final class Launcher {
         } catch (Throwable e) {
             System.out.println("Khong tao duoc MIDlet " + className + ": " + e);
             e.printStackTrace();
-            DisplayAccess.fatalError(j2menx.Lang.t("Không tạo được MIDlet: ", "Cannot create MIDlet: ") + e);
+            DisplayAccess.fatalError(j2menx.Lang.t(j2menx.Lang.CREATE_MIDLET_FAILED) + e);
             return;
         }
         try {
@@ -23,7 +23,7 @@ final class Launcher {
         } catch (Throwable e) {
             System.out.println("startApp loi: " + e);
             e.printStackTrace();
-            DisplayAccess.fatalError(j2menx.Lang.t("Lỗi trong startApp: ", "startApp failed: ") + e);
+            DisplayAccess.fatalError(j2menx.Lang.t(j2menx.Lang.START_APP_FAILED) + e);
         }
     }
 

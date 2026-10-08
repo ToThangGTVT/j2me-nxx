@@ -1,0 +1,102 @@
+// Chuỗi giao diện English
+#include "lang.h"
+
+const char *const lang_strings_en[S_COUNT] = {
+    [S_APP_SUBTITLE]   = "J2ME emulator for Nintendo Switch",
+    [S_GAME_COUNT]     = "%d games",
+    [S_FOLDER]         = "Folder: %s",
+    [S_NO_MIDLET]      = "No MIDlet-1 in MANIFEST: may not run",
+    [S_MENU_HINTS]     = "(A) Play   (-) Game options   (X) Settings   (Y) Rescan   (+) Exit",
+
+    [S_PICK_MIDLET]    = "Choose MIDlet:  (A) Run   (B) Back",
+
+    [S_EMPTY_TITLE]    = "No games yet",
+    [S_EMPTY_COPY]     = "Copy your .jar games (and the matching .jad if any) to:",
+    [S_EMPTY_SUBDIR]   = "Subfolders are supported, e.g. games/RPG/game.jar",
+    [S_EMPTY_VIDEO]    = "Video files (.mp4, .3gp...) placed there can be played too",
+    [S_EMPTY_RESCAN]   = "Then press (Y) to rescan",
+
+    [S_ERROR_FMT]      = "Error: %s",
+    [S_RESCANNED]      = "Rescanned: %d files",
+    [S_SETTINGS_SAVED] = "Settings saved",
+    [S_GAME_EXITED]    = "Game closed",
+
+    [S_ERR_SYSLIB]     = "System library is corrupted",
+    [S_ERR_OPEN_JAR]   = "Cannot open the JAR file",
+    [S_ERR_NO_MIDLET]  = "JAR has no MIDlet-1 in MANIFEST",
+    [S_ERR_VM]         = "VM startup error: %s",
+    [S_ERR_MIDLET]     = "Cannot start MIDlet: %s",
+    [S_GAME_ENDED]     = "Game ended (no threads left)",
+
+    [S_EXIT_CONFIRM]   = "Press - (or Esc) again to exit the game",
+    [S_SCREEN_INFO_FPS] = "%dx%d  -  %d FPS limit",
+    [S_HELP_DPAD]      = "Directions",
+    [S_HELP_SOFT_RIGHT] = "Right soft key",
+    [S_HELP_SOFT_LEFT] = "Left soft key",
+    [S_HELP_STICK_CLICK] = "Click L / R stick",
+    [S_HELP_EXIT]      = "Exit game",
+
+    [S_SETTINGS]       = "Settings",
+    [S_GAME_OPTIONS]   = "Game options",
+    [S_FPS_LIMIT]      = "FPS limit",
+    [S_FPS_HINT]       = "Maximum frames per second of the game. Keeps games at the right speed and saves battery.",
+    [S_UNLIMITED]      = "Unlimited",
+    [S_DEFAULT_FMT]    = "Default (%s)",
+    [S_SCREEN_SIZE]    = "Screen size",
+    [S_SCREEN_SIZE_DEFAULT] = "Default screen size",
+    [S_SCREEN_SIZE_HINT_GAME] = "Auto: taken from the game's MANIFEST, otherwise the default size. "
+                                "Choose 'Custom' to enter any size.",
+    [S_SCREEN_SIZE_HINT] = "Used for games that do not declare a size. The most common is 240x320. "
+                           "Choose 'Custom' to enter any size.",
+    [S_AUTO]           = "Auto",
+    [S_CUSTOM]         = "Custom",
+    [S_ORIENTATION]    = "Orientation",
+    [S_ORIENT_HINT]    = "Portrait: taller than wide (common phones). Landscape: wider than tall (e.g. 320x240).",
+    [S_PORTRAIT]       = "Portrait",
+    [S_LANDSCAPE]      = "Landscape",
+    [S_SQUARE]         = "Square",
+    [S_WIDTH]          = "Width",
+    [S_HEIGHT]         = "Height",
+    [S_SIZE_EDIT_HINT] = "Left/Right: +-1, L/R: +-10, A: type a number. Range 64 - 1280.",
+    [S_KB_WIDTH]       = "Screen width",
+    [S_KB_HEIGHT]      = "Screen height",
+    [S_LANGUAGE]       = "Language / Ngôn ngữ",
+    [S_LANGUAGE_HINT]  = "Interface language. Games also receive the matching microedition.locale.",
+    [S_KEYMAP]         = "Key layout",
+    [S_KEYMAP_HINT]    = "Soft key / navigation codes of the phone brand the game was made for. "
+                         "Use it when soft keys or Fire do not work.",
+    [S_SCALE_MODE]     = "Scaling",
+    [S_SCALE_HINT]     = "The game screen is upscaled by the GPU. Sharp: crisp, even pixels (recommended). "
+                         "Pixel: crispest but pixels may be uneven. Integer: exact 2x/3x with borders.",
+    [S_SCALE_SMOOTH]   = "Sharp",
+    [S_SCALE_SHARP]    = "Pixel",
+    [S_SCALE_INTEGER]  = "Pixel (integer)",
+    [S_SHOW_HELP]      = "Show key help while playing",
+    [S_SHOW_HELP_HINT] = "Key map shown left of the game screen.",
+    [S_SHOW_FPS]       = "Show FPS",
+    [S_SHOW_FPS_HINT]  = "Top left: frames the game draws per second, CPU % spent running the game, Java memory and the app's total RAM.",
+    [S_FONT_SCALE]     = "Font size",
+    [S_FONT_SCALE_HINT] = "Scale in-game text relative to the original size. Useful for Opera Mini, especially with a "
+                          "larger screen size (e.g. 480x800 + 200%). Apps lay out text using the new size.",
+    [S_SMOOTH_TEXT]    = "Smooth text",
+    [S_SMOOTH_TEXT_HINT] = "Anti-aliased in-game text. Recommended for text-heavy apps like Opera Mini; "
+                           "when off, text is drawn as pixels like on real phones.",
+    [S_SYSTEM_FONT]    = "System font",
+    [S_SYSTEM_FONT_HINT] = "In-game text uses the device font (Switch: system fonts with Japanese, Chinese, Korean), "
+                           "always smooth and drawn sharp at screen resolution. When off, the app font is used; "
+                           "characters missing from either font are taken from the other.",
+    [S_ON]             = "On",
+    [S_OFF]            = "Off",
+    [S_SETTINGS_HINTS] = "(<>) Change   (A) Select / enter number   (B) Save and back",
+    [S_VIDEO_TAG]      = "Video",
+    [S_VIDEO_HINTS]    = "(A) Play / pause   (<>) Seek 10 s   (L/R) Seek 1 min   (^v) Volume   (B) Exit",
+    [S_VIDEO_PAUSED]   = "Paused",
+    [S_VIDEO_ENDED]    = "Ended",
+    [S_VOLUME_FMT]     = "Volume %d%%",
+    [S_ERR_VIDEO]      = "Cannot open video",
+    [S_ERR_NO_VIDEO_BUILD] = "This build has no FFmpeg: video is not supported",
+    [S_VIDEO_NO_OPTIONS] = "Videos have no options",
+    [S_LINK_OPENING]   = "Opening link...   (B) Cancel",
+    [S_LINK_FAILED]    = "Cannot open link",
+    [S_BROWSER_NEEDS_APP] = "To open the browser, run hbmenu in full RAM mode (hold R while launching a game)",
+};

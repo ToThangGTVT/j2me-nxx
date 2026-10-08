@@ -87,6 +87,8 @@ add_executable(j2me-nxx
     source/emu.c
     source/manifest.c
     source/lang.c
+    source/lang_vi.c
+    source/lang_en.c
     source/keymap.c
     source/settings.c
     source/settings_screen.c

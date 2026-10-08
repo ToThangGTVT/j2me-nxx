@@ -125,7 +125,7 @@ public class Form extends Screen {
                 return it.defaultCommand.getLabel();
             }
             if (it instanceof TextField) {
-                return j2menx.Lang.t("Sửa", "Edit");
+                return j2menx.Lang.t(j2menx.Lang.EDIT);
             }
         }
         return l;

@@ -1,0 +1,102 @@
+// Chuỗi giao diện Tiếng Việt
+#include "lang.h"
+
+const char *const lang_strings_vi[S_COUNT] = {
+    [S_APP_SUBTITLE]   = "Trình giả lập J2ME cho Nintendo Switch",
+    [S_GAME_COUNT]     = "%d game",
+    [S_FOLDER]         = "Thư mục: %s",
+    [S_NO_MIDLET]      = "Không có MIDlet-1 trong MANIFEST: có thể không chạy được",
+    [S_MENU_HINTS]     = "(A) Chơi   (-) Tùy chọn game   (X) Cài đặt   (Y) Quét lại   (+) Thoát",
+
+    [S_PICK_MIDLET]    = "Chọn MIDlet:  (A) Chạy   (B) Quay lại",
+
+    [S_EMPTY_TITLE]    = "Chưa có game nào",
+    [S_EMPTY_COPY]     = "Chép file game .jar (và .jad cùng tên nếu có) vào thư mục:",
+    [S_EMPTY_SUBDIR]   = "Có thể chia thư mục con, ví dụ: games/RPG/game.jar",
+    [S_EMPTY_VIDEO]    = "File video (.mp4, .3gp...) để cùng chỗ cũng mở được",
+    [S_EMPTY_RESCAN]   = "Chép xong nhấn (Y) để quét lại",
+
+    [S_ERROR_FMT]      = "Lỗi: %s",
+    [S_RESCANNED]      = "Đã quét lại: %d file",
+    [S_SETTINGS_SAVED] = "Đã lưu cài đặt",
+    [S_GAME_EXITED]    = "Đã thoát game",
+
+    [S_ERR_SYSLIB]     = "Thư viện hệ thống bị hỏng",
+    [S_ERR_OPEN_JAR]   = "Không mở được file JAR",
+    [S_ERR_NO_MIDLET]  = "JAR không có MIDlet-1 trong MANIFEST",
+    [S_ERR_VM]         = "Lỗi khởi động VM: %s",
+    [S_ERR_MIDLET]     = "Không chạy được MIDlet: %s",
+    [S_GAME_ENDED]     = "Game đã kết thúc (không còn thread nào chạy)",
+
+    [S_EXIT_CONFIRM]   = "Nhấn - (hoặc Esc) lần nữa để thoát game",
+    [S_SCREEN_INFO_FPS] = "%dx%d  -  giới hạn %d FPS",
+    [S_HELP_DPAD]      = "Điều hướng",
+    [S_HELP_SOFT_RIGHT] = "Phím mềm phải",
+    [S_HELP_SOFT_LEFT] = "Phím mềm trái",
+    [S_HELP_STICK_CLICK] = "Bấm L / R stick",
+    [S_HELP_EXIT]      = "Thoát game",
+
+    [S_SETTINGS]       = "Cài đặt",
+    [S_GAME_OPTIONS]   = "Tùy chọn game",
+    [S_FPS_LIMIT]      = "Giới hạn FPS",
+    [S_FPS_HINT]       = "Số khung hình tối đa mỗi giây của game. Giúp game chạy đúng tốc độ và đỡ tốn pin.",
+    [S_UNLIMITED]      = "Không giới hạn",
+    [S_DEFAULT_FMT]    = "Mặc định (%s)",
+    [S_SCREEN_SIZE]    = "Kích thước màn hình",
+    [S_SCREEN_SIZE_DEFAULT] = "Kích thước màn hình mặc định",
+    [S_SCREEN_SIZE_HINT_GAME] = "Tự động: lấy từ MANIFEST của game, nếu không có thì dùng kích thước mặc định. "
+                                "Chọn 'Tùy chỉnh' để nhập kích thước bất kỳ.",
+    [S_SCREEN_SIZE_HINT] = "Dùng cho game không khai báo kích thước. Phổ biến nhất là 240x320. "
+                           "Chọn 'Tùy chỉnh' để nhập kích thước bất kỳ.",
+    [S_AUTO]           = "Tự động",
+    [S_CUSTOM]         = "Tùy chỉnh",
+    [S_ORIENTATION]    = "Hướng màn hình",
+    [S_ORIENT_HINT]    = "Dọc: cao hơn rộng (điện thoại thường). Ngang: rộng hơn cao (vd 320x240, 640x360).",
+    [S_PORTRAIT]       = "Dọc",
+    [S_LANDSCAPE]      = "Ngang",
+    [S_SQUARE]         = "Vuông",
+    [S_WIDTH]          = "Chiều rộng",
+    [S_HEIGHT]         = "Chiều cao",
+    [S_SIZE_EDIT_HINT] = "Trái/Phải: +-1, L/R: +-10, A: nhập số. Giới hạn 64 - 1280.",
+    [S_KB_WIDTH]       = "Chiều rộng màn hình",
+    [S_KB_HEIGHT]      = "Chiều cao màn hình",
+    [S_LANGUAGE]       = "Ngôn ngữ / Language",
+    [S_LANGUAGE_HINT]  = "Ngôn ngữ của giao diện. Game cũng nhận microedition.locale tương ứng.",
+    [S_KEYMAP]         = "Kiểu phím",
+    [S_KEYMAP_HINT]    = "Mã phím mềm / điều hướng theo hãng điện thoại mà game được làm cho. "
+                         "Dùng khi phím mềm hoặc phím Fire không ăn.",
+    [S_SCALE_MODE]     = "Kiểu phóng to",
+    [S_SCALE_HINT]     = "Phóng màn hình game bằng GPU. Sắc nét: giữ điểm ảnh rõ mà vẫn đều (khuyên dùng). "
+                         "Điểm ảnh: nét nhất nhưng điểm ảnh có thể to nhỏ không đều. Số nguyên: đúng 2x/3x, có viền.",
+    [S_SCALE_SMOOTH]   = "Sắc nét",
+    [S_SCALE_SHARP]    = "Điểm ảnh",
+    [S_SCALE_INTEGER]  = "Điểm ảnh (số nguyên)",
+    [S_SHOW_HELP]      = "Hiện chú thích phím khi chơi",
+    [S_SHOW_HELP_HINT] = "Bảng phím ở bên trái màn hình game.",
+    [S_SHOW_FPS]       = "Hiện FPS",
+    [S_SHOW_FPS_HINT]  = "Góc trên trái: số khung hình game vẽ mỗi giây, % CPU dùng để chạy game, bộ nhớ Java và RAM của cả app.",
+    [S_FONT_SCALE]     = "Cỡ chữ",
+    [S_FONT_SCALE_HINT] = "Phóng to / thu nhỏ chữ trong game so với cỡ gốc. Hợp với Opera Mini, nhất là khi tăng "
+                          "kích thước màn hình (vd 480x800 + 200%). Game tự tính bố cục theo cỡ chữ mới.",
+    [S_SMOOTH_TEXT]    = "Chữ mịn",
+    [S_SMOOTH_TEXT_HINT] = "Khử răng cưa chữ trong game. Nên bật cho ứng dụng nhiều chữ như Opera Mini; "
+                           "tắt thì chữ vẽ điểm ảnh như điện thoại thật.",
+    [S_SYSTEM_FONT]    = "Font hệ thống",
+    [S_SYSTEM_FONT_HINT] = "Chữ trong game dùng font của máy (Switch: font hệ thống có chữ Nhật, Trung, Hàn), "
+                           "tự mịn và vẽ nét theo độ phân giải màn hình. Tắt thì dùng font của app; ký tự font "
+                           "đang dùng không có luôn được lấy từ font kia.",
+    [S_ON]             = "Bật",
+    [S_OFF]            = "Tắt",
+    [S_SETTINGS_HINTS] = "(<>) Đổi giá trị   (A) Chọn / nhập số   (B) Lưu và quay lại",
+    [S_VIDEO_TAG]      = "Video",
+    [S_VIDEO_HINTS]    = "(A) Phát / dừng   (<>) Tua 10 giây   (L/R) Tua 1 phút   (^v) Âm lượng   (B) Thoát",
+    [S_VIDEO_PAUSED]   = "Tạm dừng",
+    [S_VIDEO_ENDED]    = "Hết",
+    [S_VOLUME_FMT]     = "Âm lượng %d%%",
+    [S_ERR_VIDEO]      = "Không mở được video",
+    [S_ERR_NO_VIDEO_BUILD] = "Bản build này không có FFmpeg: không xem được video",
+    [S_VIDEO_NO_OPTIONS] = "Video không có tuỳ chọn riêng",
+    [S_LINK_OPENING]   = "Đang mở liên kết...   (B) Huỷ",
+    [S_LINK_FAILED]    = "Không mở được liên kết",
+    [S_BROWSER_NEEDS_APP] = "Muốn mở trình duyệt, hãy chạy hbmenu ở chế độ full RAM (giữ R khi mở một game)",
+};

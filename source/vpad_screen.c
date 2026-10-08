@@ -366,20 +366,29 @@ static void pointer(SDL_FingerID id, int type, int x, int y) {
 }
 
 void vpad_screen_handle_event(const SDL_Event *e) {
+    int x, y;
     switch (e->type) {
     case SDL_FINGERDOWN:
     case SDL_FINGERUP:
-    case SDL_FINGERMOTION:
-        pointer(e->tfinger.fingerId, e->type, (int)(e->tfinger.x * SCREEN_W), (int)(e->tfinger.y * SCREEN_H));
+    case SDL_FINGERMOTION: {
+        int ww, wh;
+        gfx_window_size(&ww, &wh);
+        gfx_window_to_screen(e->tfinger.x * ww, e->tfinger.y * wh, &x, &y);
+        pointer(e->tfinger.fingerId, e->type, x, y);
         break;
+    }
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:
-        if (e->button.which != SDL_TOUCH_MOUSEID && e->button.button == SDL_BUTTON_LEFT)
-            pointer(-1, e->type == SDL_MOUSEBUTTONDOWN ? SDL_FINGERDOWN : SDL_FINGERUP, e->button.x, e->button.y);
+        if (e->button.which != SDL_TOUCH_MOUSEID && e->button.button == SDL_BUTTON_LEFT) {
+            gfx_window_to_screen(e->button.x, e->button.y, &x, &y);
+            pointer(-1, e->type == SDL_MOUSEBUTTONDOWN ? SDL_FINGERDOWN : SDL_FINGERUP, x, y);
+        }
         break;
     case SDL_MOUSEMOTION:
-        if (e->motion.which != SDL_TOUCH_MOUSEID && (e->motion.state & SDL_BUTTON_LMASK))
-            pointer(-1, SDL_FINGERMOTION, e->motion.x, e->motion.y);
+        if (e->motion.which != SDL_TOUCH_MOUSEID && (e->motion.state & SDL_BUTTON_LMASK)) {
+            gfx_window_to_screen(e->motion.x, e->motion.y, &x, &y);
+            pointer(-1, SDL_FINGERMOTION, x, y);
+        }
         break;
     default:
         break;

@@ -135,3 +135,11 @@ bool input_pressed(Button b) {
 bool input_held(Button b) {
     return held[b];
 }
+
+bool input_any_held(void) {
+    for (int b = 0; b < BTN_COUNT; b++) {
+        if (sources_down[b] > 0)
+            return true;
+    }
+    return false;
+}

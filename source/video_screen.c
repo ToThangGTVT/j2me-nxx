@@ -1,6 +1,7 @@
 #include "video_screen.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "gfx.h"
@@ -23,7 +24,9 @@
 #define COL_TRACK   RGB(0x50, 0x54, 0x5c)
 
 static VideoDec *dec;
-static SDL_Texture *tex;
+static int img;                 // ảnh NanoVG của khung hình
+static uint32_t *frame;         // khung hình ARGB để đưa lên ảnh
+static int frame_w, frame_h;
 static SDL_AudioDeviceID adev;
 static char title[256];
 static bool has_video, has_audio;
@@ -103,9 +106,8 @@ static void update_video(void) {
         }
         if (pending_ms > now && shown_any)
             return;
-        VDecYUV y;
-        if (vdec_frame_yuv(dec, &y))
-            SDL_UpdateYUVTexture(tex, NULL, y.y, y.y_pitch, y.u, y.u_pitch, y.v, y.v_pitch);
+        if (vdec_frame_argb(dec, frame, frame_w, frame_h))
+            gfx_image_update(img, frame);
         shown_any = true;
         pending = false;
     }
@@ -169,14 +171,15 @@ bool video_screen_open_dec(VideoDec *d, const char *name, char *err, size_t err_
     duration = vdec_duration_ms(dec);
     aspect = vdec_aspect(dec);
     if (has_video) {
-        tex = SDL_CreateTexture(gfx_renderer(), SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, vdec_width(dec),
-                                vdec_height(dec));
-        if (!tex) {
+        frame_w = vdec_width(dec);
+        frame_h = vdec_height(dec);
+        frame = malloc((size_t)frame_w * frame_h * 4);
+        img = frame ? gfx_image_create(frame_w, frame_h, true) : 0;
+        if (!img) {
             snprintf(err, err_size, "%s", tr(S_ERR_VIDEO));
             video_screen_close();
             return false;
         }
-        SDL_SetTextureScaleMode(tex, SDL_ScaleModeLinear);
     }
     if (has_audio) {
         if (!SDL_WasInit(SDL_INIT_AUDIO))
@@ -207,10 +210,10 @@ void video_screen_close(void) {
         SDL_CloseAudioDevice(adev);
         adev = 0;
     }
-    if (tex) {
-        SDL_DestroyTexture(tex);
-        tex = NULL;
-    }
+    gfx_image_free(img);
+    img = 0;
+    free(frame);
+    frame = NULL;
     vdec_close(dec);
     dec = NULL;
 }
@@ -262,14 +265,13 @@ static void format_time(int64_t ms, char *out, size_t size) {
 
 void video_screen_draw(void) {
     gfx_clear(RGB(0, 0, 0));
-    if (tex && shown_any) {
+    if (img && shown_any) {
         int w = SCREEN_W, h = (int)(SCREEN_W / aspect);
         if (h > SCREEN_H) {
             h = SCREEN_H;
             w = (int)(SCREEN_H * aspect);
         }
-        SDL_Rect dst = { (SCREEN_W - w) / 2, (SCREEN_H - h) / 2, w, h };
-        SDL_RenderCopy(gfx_renderer(), tex, NULL, &dst);
+        gfx_draw_image(img, (SCREEN_W - w) / 2, (SCREEN_H - h) / 2, w, h);
     } else if (!has_video) {
         gfx_text(FONT_LARGE, SCREEN_W / 2, SCREEN_H / 2 - 60, SCREEN_W - 160, ALIGN_CENTER, COL_TEXT, title);
     }

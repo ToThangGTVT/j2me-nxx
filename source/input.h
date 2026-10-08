@@ -32,3 +32,5 @@ void input_update(void);
 // Vừa bấm frame này (nút hướng có auto-repeat khi giữ)
 bool input_pressed(Button b);
 bool input_held(Button b);
+// Còn nút nào đang giữ (để chờ nhả hết rồi mới trả phím cho giao diện)
+bool input_any_held(void);

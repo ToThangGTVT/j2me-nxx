@@ -15,9 +15,67 @@
 static const char *S_init_name;
 static Object *oom_error;
 
+// Cache gọi qua interface: (lớp thật của object, method đã resolve) -> method sẽ chạy.
+// Bổ sung cho cache 1 lớp trong constant pool: chỗ gọi gặp xen kẽ nhiều lớp không phải tìm
+// lại method theo tên mỗi lần đổi lớp. Bảng băm địa chỉ mở, chỉ thêm, xoá khi tắt VM.
+typedef struct {
+    Class *cls;
+    Method *rm;
+    Method *target;
+} IfaceEntry;
+
+static IfaceEntry *iface_tab;
+static uint32_t iface_cap, iface_used;
+
+static uint32_t iface_hash(const Class *c, const Method *rm) {
+    uint64_t h = (uint64_t)(uintptr_t)c * 0x9E3779B97F4A7C15ull ^ (uint64_t)(uintptr_t)rm * 0xC2B2AE3D27D4EB4Full;
+    return (uint32_t)(h >> 32);
+}
+
+static Method *iface_find(const Class *c, const Method *rm) {
+    if (!iface_tab)
+        return NULL;
+    for (uint32_t i = iface_hash(c, rm) & (iface_cap - 1);; i = (i + 1) & (iface_cap - 1)) {
+        IfaceEntry *e = &iface_tab[i];
+        if (!e->cls)
+            return NULL;
+        if (e->cls == c && e->rm == rm)
+            return e->target;
+    }
+}
+
+static void iface_put(Class *c, Method *rm, Method *target) {
+    if ((iface_used + 1) * 2 > iface_cap) {
+        uint32_t cap = iface_cap ? iface_cap * 2 : 256;
+        IfaceEntry *tab = calloc(cap, sizeof(IfaceEntry));
+        if (!tab)
+            return;     // hết bộ nhớ: lần sau tìm theo tên như cũ
+        for (uint32_t k = 0; k < iface_cap; k++) {
+            IfaceEntry *o = &iface_tab[k];
+            if (!o->cls)
+                continue;
+            uint32_t i = iface_hash(o->cls, o->rm) & (cap - 1);
+            while (tab[i].cls)
+                i = (i + 1) & (cap - 1);
+            tab[i] = *o;
+        }
+        free(iface_tab);
+        iface_tab = tab;
+        iface_cap = cap;
+    }
+    uint32_t i = iface_hash(c, rm) & (iface_cap - 1);
+    while (iface_tab[i].cls)
+        i = (i + 1) & (iface_cap - 1);
+    iface_tab[i] = (IfaceEntry){ c, rm, target };
+    iface_used++;
+}
+
 void interp_reset(void) {
     S_init_name = NULL;
     oom_error = NULL;
+    free(iface_tab);
+    iface_tab = NULL;
+    iface_cap = iface_used = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -355,12 +413,16 @@ static Object *new_multi_array(VMThread *t, Class *c, int dims, const jint *coun
 static Method *lookup_virtual(VMThread *t, CPEntry *e, Class *cls, Method *rm) {
     if (e->cache_cls == cls)
         return e->cache_method;
-    Method *m = class_find_interface_method(cls, rm->name, rm->desc);
+    Method *m = iface_find(cls, rm);
     if (!m) {
-        char msg[300];
-        snprintf(msg, sizeof(msg), "%s.%s%s", cls->name, rm->name, rm->desc);
-        throw_new(t, "java/lang/AbstractMethodError", msg);
-        return NULL;
+        m = class_find_interface_method(cls, rm->name, rm->desc);
+        if (!m) {
+            char msg[300];
+            snprintf(msg, sizeof(msg), "%s.%s%s", cls->name, rm->name, rm->desc);
+            throw_new(t, "java/lang/AbstractMethodError", msg);
+            return NULL;
+        }
+        iface_put(cls, rm, m);
     }
     e->cache_cls = cls;
     e->cache_method = m;
@@ -514,7 +576,7 @@ void interp_run(VMThread *t, int budget) {
         SET(OP_GETFIELD_Q) SET(OP_GETFIELD2_Q) SET(OP_PUTFIELD_Q) SET(OP_PUTFIELD2_Q)
         SET(OP_GETSTATIC_Q) SET(OP_GETSTATIC2_Q) SET(OP_PUTSTATIC_Q) SET(OP_PUTSTATIC2_Q)
         SET(OP_INVOKEVIRTUAL_Q) SET(OP_INVOKESPECIAL_Q) SET(OP_INVOKESTATIC_Q)
-        SET(OP_NEW_Q) SET(OP_CHECKCAST_Q) SET(OP_INSTANCEOF_Q)
+        SET(OP_NEW_Q) SET(OP_CHECKCAST_Q) SET(OP_INSTANCEOF_Q) SET(OP_LDC_STR_Q) SET(OP_LDC_W_STR_Q)
 #undef SET
     }
 
@@ -555,6 +617,7 @@ next:
                 Object *s = resolve_string(t, m->owner, idx);
                 if (!s)
                     goto exception;
+                *insn = op == OP_LDC ? OP_LDC_STR_Q : OP_LDC_W_STR_Q;
                 PUSHL(s);
                 break;
             }
@@ -572,6 +635,8 @@ next:
             pc += op == OP_LDC ? 2 : 3;
             break;
         }
+        CASE(OP_LDC_STR_Q) PUSHL(cp[pc[1]].str); pc += 2; break;
+        CASE(OP_LDC_W_STR_Q) PUSHL(cp[U2(pc + 1)].str); pc += 3; break;
         CASE(OP_LDC2_W) {
             CPEntry *e = &cp[U2(pc + 1)];
             if (e->tag == CONST_Long)

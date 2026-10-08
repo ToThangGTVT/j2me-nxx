@@ -221,4 +221,6 @@ enum {
     OP_NEW_Q,                   // lớp đã khởi tạo
     OP_CHECKCAST_Q,
     OP_INSTANCEOF_Q,
+    OP_LDC_STR_Q,               // ldc / ldc_w chuỗi đã intern
+    OP_LDC_W_STR_Q,
 };

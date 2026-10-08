@@ -132,11 +132,11 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_VKB_BUBBLE_HINT] = "Khi chạy có bong bóng nhỏ trên màn hình cảm ứng (kéo để di chuyển). Chạm vào để mở bàn phím "
                           "QWERTY nổi có hàng số, gõ chữ cho ứng dụng; nút × thu bàn phím về bong bóng.",
     [S_VPAD]           = "Phím ảo trên màn hình",
-    [S_VPAD_HINT]      = "Khi chạy hiện bàn phím điện thoại trên màn hình cảm ứng: cần điều khiển (đi theo ánh xạ của "
-                         "stick trái), phím mềm, Fire, phím số. Mỗi ứng dụng bật / tắt riêng được trong Tuỳ chọn ứng dụng.",
+    [S_VPAD_HINT]      = "Bàn phím điện thoại trên màn hình cảm ứng khi chạy: cần điều khiển (theo stick trái), phím "
+                         "mềm, Fire, phím số. Bật / tắt riêng từng ứng dụng trong Tuỳ chọn ứng dụng.",
     [S_VPAD_HINT_APP]  = "Bàn phím điện thoại trên màn hình cảm ứng khi chạy ứng dụng này. Bố cục chỉnh trong Cài đặt chung.",
     [S_VPAD_LAYOUT]    = "Bố cục phím ảo",
-    [S_VPAD_LAYOUT_HINT] = "Kéo từng phím để đổi vị trí, kéo chấm ở góc để đổi kích thước; chỉnh bo góc, độ rõ, ẩn phím "
+    [S_VPAD_LAYOUT_HINT] = "Phím đặt theo màn hình Switch, dùng chung cho mọi ứng dụng. Kéo từng phím để đổi vị trí, kéo chấm ở góc để đổi kích thước; chỉnh bo góc, độ rõ, ẩn phím "
                            "không dùng. Phím để sát nhau thì tự hít vào nhau. Nhấn " ICON_A " để mở.",
     [S_VPAD_CUSTOMIZED] = "%s, đã chỉnh",
     [S_VPAD_STICK]     = "Cần điều khiển",
@@ -150,7 +150,6 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_VPAD_RESET]     = "Mặc định",
     [S_VPAD_RESET_CONFIRM] = "Chạm Mặc định lần nữa để đặt lại toàn bộ bố cục",
     [S_VPAD_DONE]      = "Xong",
-    [S_VPAD_GAME_AREA] = "Màn hình ứng dụng %dx%d",
     [S_VPAD_EDIT_HELP] = "Kéo phím để di chuyển, kéo chấm ở góc để đổi kích thước. Tay cầm: " ICON_L "/" ICON_R
                          " chọn phím, D-pad di chuyển, " ICON_X "/" ICON_Y " to / nhỏ, " ICON_A " ẩn / hiện, " ICON_B
                          " xong.",

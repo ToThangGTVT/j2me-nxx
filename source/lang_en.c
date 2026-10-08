@@ -132,11 +132,11 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_VKB_BUBBLE_HINT] = "Shows a small bubble on the touch screen while running (drag to move). Tap it to open a "
                           "floating QWERTY keyboard with a number row for typing in apps; × collapses it back.",
     [S_VPAD]           = "On-screen keypad",
-    [S_VPAD_HINT]      = "Shows a phone keypad on the touch screen while running: a joystick (follows the left stick "
-                         "mapping), soft keys, Fire and number keys. Each app can turn it on or off in App options.",
+    [S_VPAD_HINT]      = "Phone keypad on the touch screen while running: joystick (follows the left stick), soft keys, "
+                         "Fire, number keys. Turn it on or off per app in App options.",
     [S_VPAD_HINT_APP]  = "Phone keypad on the touch screen while this app runs. The layout is set in the global settings.",
     [S_VPAD_LAYOUT]    = "On-screen keypad layout",
-    [S_VPAD_LAYOUT_HINT] = "Drag each key to move it, drag the corner dot to resize; set rounded corners, opacity and hide "
+    [S_VPAD_LAYOUT_HINT] = "Keys are placed on the Switch screen, shared by all apps. Drag each key to move it, drag the corner dot to resize; set rounded corners, opacity and hide "
                            "keys you don't need. Keys placed next to each other snap together. Press " ICON_A " to open.",
     [S_VPAD_CUSTOMIZED] = "%s, customized",
     [S_VPAD_STICK]     = "Joystick",
@@ -150,7 +150,6 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_VPAD_RESET]     = "Default",
     [S_VPAD_RESET_CONFIRM] = "Tap Default again to reset the whole layout",
     [S_VPAD_DONE]      = "Done",
-    [S_VPAD_GAME_AREA] = "App screen %dx%d",
     [S_VPAD_EDIT_HELP] = "Drag a key to move it, drag the corner dot to resize. Controller: " ICON_L "/" ICON_R
                          " pick key, D-pad move, " ICON_X "/" ICON_Y " bigger / smaller, " ICON_A " hide / show, " ICON_B
                          " done.",

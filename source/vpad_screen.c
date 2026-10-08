@@ -7,7 +7,6 @@
 #include "gfx.h"
 #include "input.h"
 #include "lang.h"
-#include "settings.h"
 
 #define BAR_H           76
 #define BTN_H           56
@@ -21,7 +20,6 @@
 #define RESET_CONFIRM_MS 2500
 
 #define COL_BG       RGB(0x10, 0x11, 0x14)
-#define COL_GAME     RGB(0x2a, 0x2d, 0x33)
 #define COL_BAR      ((SDL_Color){ 0x18, 0x19, 0x1d, 240 })
 #define COL_BTN      RGB(0x33, 0x3a, 0x48)
 #define COL_ACCENT   RGB(0x00, 0xb4, 0xe6)
@@ -72,7 +70,6 @@ static VpadLayout *lay;
 static int sel;                 // phím đang chọn, -1 = chưa chọn
 static bool done;
 static Uint32 reset_until;      // đã chạm "Mặc định" 1 lần: chạm lần nữa trước mốc này thì đặt lại
-static SDL_Rect game_area;
 
 static Drag drag;
 static SDL_FingerID drag_id;
@@ -87,27 +84,12 @@ static bool in_rect(const SDL_Rect *r, int x, int y) {
     return x >= r->x && y >= r->y && x < r->x + r->w && y < r->y + r->h;
 }
 
-// Khung màn hình ứng dụng theo cỡ màn hình mặc định (giống lúc chạy)
-static void compute_game_area(void) {
-    int w = settings()->screen_w, h = settings()->screen_h;
-    float s = (float)SCREEN_W / w;
-    if ((float)SCREEN_H / h < s)
-        s = (float)SCREEN_H / h;
-    if (settings()->scale_mode == 2 && s >= 1.0f)
-        s = (float)(int)s;
-    game_area.w = (int)(w * s);
-    game_area.h = (int)(h * s);
-    game_area.x = (SCREEN_W - game_area.w) / 2;
-    game_area.y = (SCREEN_H - game_area.h) / 2;
-}
-
 void vpad_screen_open(VpadLayout *l) {
     lay = l;
     sel = -1;
     done = false;
     reset_until = 0;
     drag = DRAG_NONE;
-    compute_game_area();
 }
 
 // ---------------------------------------------------------------------------
@@ -499,16 +481,10 @@ static void draw_bar(void) {
 void vpad_screen_draw(void) {
     gfx_clear(COL_BG);
 
-    // Khung màn hình ứng dụng, chú thích ở giữa
-    SDL_Rect g = game_area;
-    gfx_fill_rect(g.x, g.y, g.w, g.h, COL_GAME);
+    // Cả màn hình Switch là chỗ đặt phím (không phụ thuộc cỡ màn hình của ứng dụng); hướng dẫn mờ ở giữa
     char buf[96];
-    snprintf(buf, sizeof(buf), tr(S_VPAD_GAME_AREA), settings()->screen_w, settings()->screen_h);
-    int y = g.y + g.h / 2 - 90;
-    gfx_text(FONT_NORMAL, g.x + g.w / 2, y, g.w - 24, ALIGN_CENTER, COL_DIM, buf);
-    y += gfx_font_height(FONT_NORMAL) + 12;
-    int hint_w = g.w - 48 < 420 ? g.w - 48 : 420;
-    gfx_text_wrapped(FONT_SMALL, g.x + (g.w - hint_w) / 2, y, hint_w, COL_OFF, tr(S_VPAD_EDIT_HELP));
+    int hint_w = 420;
+    gfx_text_wrapped(FONT_SMALL, (SCREEN_W - hint_w) / 2, SCREEN_H / 2 - 60, hint_w, COL_OFF, tr(S_VPAD_EDIT_HELP));
 
     for (int i = 0; i < VP_COUNT; i++)
         vpad_draw_item(lay, i, false, 0, 0, lay->keys[i].hidden ? 70 : 255);

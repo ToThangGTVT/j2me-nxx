@@ -142,7 +142,6 @@ typedef enum {
     S_VPAD_RESET,
     S_VPAD_RESET_CONFIRM,
     S_VPAD_DONE,
-    S_VPAD_GAME_AREA,       // %d %d
     S_VPAD_EDIT_HELP,
     S_SOUNDFONT,
     S_SOUNDFONT_HINT,

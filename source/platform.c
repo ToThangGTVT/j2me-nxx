@@ -21,6 +21,7 @@
 #ifdef __SWITCH__
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <malloc.h>
 #include <switch.h>
 
 bool platform_init(void) {
@@ -58,11 +59,19 @@ OpenUrlResult platform_open_url(const char *url) {
     return OPEN_URL_OK;
 }
 
+// libnx xin trước gần hết RAM trống làm heap cho malloc (fake_heap_start..fake_heap_end), nên
+// UsedMemorySize luôn gần bằng tổng (chế độ chiếm game ~3 GB). RAM thật đang dùng = phần ngoài
+// heap (code, stack, vùng nhớ của hệ thống) + phần malloc đang cấp.
+extern char *fake_heap_start, *fake_heap_end;
+
 void platform_mem_usage(size_t *used, size_t *total) {
     u64 u = 0, t = 0;
     svcGetInfo(&u, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
     svcGetInfo(&t, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
-    *used = (size_t)u;
+    size_t heap = (size_t)(fake_heap_end - fake_heap_start);
+    size_t outside = (size_t)u > heap ? (size_t)u - heap : 0;
+    struct mallinfo mi = mallinfo();
+    *used = outside + (size_t)mi.uordblks;
     *total = (size_t)t;
 }
 

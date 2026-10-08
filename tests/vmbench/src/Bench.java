@@ -351,6 +351,50 @@ public class Bench {
         return acc + busyResult[0];
     }
 
+    // Gọi qua interface ở chỗ gọi gặp xen kẽ nhiều lớp, và chuỗi hằng trong vòng lặp
+    interface Op {
+        int apply(int v);
+    }
+
+    static class OpAdd implements Op {
+        public int apply(int v) {
+            return v + 7;
+        }
+    }
+
+    static class OpMul implements Op {
+        public int apply(int v) {
+            return v * 3;
+        }
+    }
+
+    static class OpXor implements Op {
+        public int apply(int v) {
+            return v ^ 0x5a5a;
+        }
+    }
+
+    static class OpShift extends OpAdd {
+        public int apply(int v) {
+            return (v << 1) | (v >>> 31);
+        }
+    }
+
+    static class OpInherit extends OpMul {
+    }
+
+    static int iface(int n) {
+        Op[] ops = { new OpAdd(), new OpMul(), new OpXor(), new OpShift(), new OpInherit() };
+        int acc = 1;
+        int len = 0;
+        for (int i = 0; i < n; i++) {
+            acc = ops[i % 5].apply(acc);
+            String s = (i & 1) == 0 ? "chan" : "le";
+            len += s.length() + "x".length();
+        }
+        return acc + len;
+    }
+
     // --- điểm vào cho vmbench: kết quả để ở field result
 
     public static int result;
@@ -371,6 +415,7 @@ public class Bench {
         case 7: return exceptions(n);
         case 8: return mixed(n);
         case 9: return threads(n);
+        case 10: return iface(n);
         }
         return -1;
     }

@@ -76,6 +76,7 @@ int main(int argc, char **argv) {
         { "arrays", 300, 236734017 },       { "fib", 27, 196418 },
         { "library", 30000, 508853941 },    { "exceptions", 30000, 1708000 },
         { "mixed", 500000, 1815789883 },    { "threads", 20000, 1481370101 },
+        { "iface", 1000000, -104393980 },
     };
     int ntests = (int)(sizeof(tests) / sizeof(tests[0]));
     double total = 0;

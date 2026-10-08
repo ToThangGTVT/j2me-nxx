@@ -6,8 +6,9 @@
 #include <string.h>
 #include <time.h>
 
-// Số lệnh bytecode mỗi lượt của 1 thread
-#define TIME_SLICE 4000
+// Số nhịp mỗi lượt của 1 thread. 1 nhịp = 1 nhánh lùi hoặc 1 lần vào method,
+// trung bình ~17 lệnh bytecode, nên 250 nhịp ~ 4000 lệnh
+#define TIME_SLICE 250
 
 static VMThread *threads;
 static VMThread *current;

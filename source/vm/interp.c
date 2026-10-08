@@ -397,6 +397,7 @@ void interp_run(VMThread *t, int budget) {
     Frame *f;
     Method *m;
     uint8_t *pc, *insn;
+    uint8_t op;
     Value *sp, *locals;
     CPEntry *cp;
 
@@ -411,6 +412,7 @@ void interp_run(VMThread *t, int budget) {
     } while (0)
 #define SAVE_AT(p)      do { f->pc = (p); f->sp = sp; } while (0)
 #define THROW(cls, msg) do { SAVE_AT(insn); throw_new(t, cls, msg); goto exception; } while (0)
+#define CASE(x)         case x: lbl_##x:
 #define CHECK_NULL(o)   do { if (!(o)) THROW("java/lang/NullPointerException", NULL); } while (0)
 #define PUSHI(v)        ((sp++)->i = (v))
 #define PUSHF(v)        ((sp++)->f = (v))
@@ -433,8 +435,13 @@ void interp_run(VMThread *t, int budget) {
         if (t->state != TS_RUNNABLE)                            \
             return;                                             \
         LOAD();                                                 \
+        TICK();                                                 \
         goto next;                                              \
     } while (0)
+// Ngân sách chỉ trừ ở nhánh lùi và lúc vào method: đoạn code chạy thẳng luôn hữu hạn,
+// nên vẫn chắc chắn trả lại quyền cho scheduler mà không tốn 1 phép đếm mỗi lệnh
+#define TICK()          do { if (--budget <= 0) { SAVE_AT(pc); return; } } while (0)
+#define BRANCH(off)     do { jint _o = (off); pc += _o; if (_o <= 0) TICK(); } while (0)
 #define ARRAY_CHECK(arr, idx)                                                   \
     do {                                                                        \
         CHECK_NULL(arr);                                                        \
@@ -445,6 +452,65 @@ void interp_run(VMThread *t, int budget) {
         }                                                                       \
     } while (0)
 
+    static const void *dispatch[256];
+    if (!dispatch[OP_NOP]) {
+        for (int i = 0; i < 256; i++)
+            dispatch[i] = &&lbl_default;
+#define SET(x) dispatch[x] = &&lbl_##x;
+        SET(OP_NOP) SET(OP_ACONST_NULL) SET(OP_ICONST_M1) SET(OP_ICONST_0)
+        SET(OP_ICONST_1) SET(OP_ICONST_2) SET(OP_ICONST_3) SET(OP_ICONST_4)
+        SET(OP_ICONST_5) SET(OP_LCONST_0) SET(OP_LCONST_1) SET(OP_FCONST_0)
+        SET(OP_FCONST_1) SET(OP_FCONST_2) SET(OP_DCONST_0) SET(OP_DCONST_1)
+        SET(OP_BIPUSH) SET(OP_SIPUSH) SET(OP_LDC) SET(OP_LDC_W)
+        SET(OP_LDC2_W) SET(OP_ILOAD) SET(OP_FLOAD) SET(OP_ALOAD)
+        SET(OP_LLOAD) SET(OP_DLOAD) SET(OP_ILOAD_0) SET(OP_ILOAD_1)
+        SET(OP_ILOAD_2) SET(OP_ILOAD_3) SET(OP_LLOAD_0) SET(OP_LLOAD_1)
+        SET(OP_LLOAD_2) SET(OP_LLOAD_3) SET(OP_FLOAD_0) SET(OP_FLOAD_1)
+        SET(OP_FLOAD_2) SET(OP_FLOAD_3) SET(OP_DLOAD_0) SET(OP_DLOAD_1)
+        SET(OP_DLOAD_2) SET(OP_DLOAD_3) SET(OP_ALOAD_0) SET(OP_ALOAD_1)
+        SET(OP_ALOAD_2) SET(OP_ALOAD_3) SET(OP_ISTORE) SET(OP_FSTORE)
+        SET(OP_ASTORE) SET(OP_LSTORE) SET(OP_DSTORE) SET(OP_ISTORE_0)
+        SET(OP_ISTORE_1) SET(OP_ISTORE_2) SET(OP_ISTORE_3) SET(OP_LSTORE_0)
+        SET(OP_LSTORE_1) SET(OP_LSTORE_2) SET(OP_LSTORE_3) SET(OP_FSTORE_0)
+        SET(OP_FSTORE_1) SET(OP_FSTORE_2) SET(OP_FSTORE_3) SET(OP_DSTORE_0)
+        SET(OP_DSTORE_1) SET(OP_DSTORE_2) SET(OP_DSTORE_3) SET(OP_ASTORE_0)
+        SET(OP_ASTORE_1) SET(OP_ASTORE_2) SET(OP_ASTORE_3) SET(OP_IALOAD)
+        SET(OP_FALOAD) SET(OP_LALOAD) SET(OP_DALOAD) SET(OP_AALOAD)
+        SET(OP_BALOAD) SET(OP_CALOAD) SET(OP_SALOAD) SET(OP_IASTORE)
+        SET(OP_FASTORE) SET(OP_LASTORE) SET(OP_DASTORE) SET(OP_AASTORE)
+        SET(OP_BASTORE) SET(OP_CASTORE) SET(OP_SASTORE) SET(OP_POP)
+        SET(OP_POP2) SET(OP_DUP) SET(OP_DUP_X1) SET(OP_DUP_X2)
+        SET(OP_DUP2) SET(OP_DUP2_X1) SET(OP_DUP2_X2) SET(OP_SWAP)
+        SET(OP_IADD) SET(OP_ISUB) SET(OP_IMUL) SET(OP_IDIV)
+        SET(OP_IREM) SET(OP_INEG) SET(OP_ISHL) SET(OP_ISHR)
+        SET(OP_IUSHR) SET(OP_IAND) SET(OP_IOR) SET(OP_IXOR)
+        SET(OP_LADD) SET(OP_LSUB) SET(OP_LMUL) SET(OP_LDIV)
+        SET(OP_LREM) SET(OP_LNEG) SET(OP_LSHL) SET(OP_LSHR)
+        SET(OP_LUSHR) SET(OP_LAND) SET(OP_LOR) SET(OP_LXOR)
+        SET(OP_FADD) SET(OP_FSUB) SET(OP_FMUL) SET(OP_FDIV)
+        SET(OP_FREM) SET(OP_FNEG) SET(OP_DADD) SET(OP_DSUB)
+        SET(OP_DMUL) SET(OP_DDIV) SET(OP_DREM) SET(OP_DNEG)
+        SET(OP_IINC) SET(OP_I2L) SET(OP_I2F) SET(OP_I2D)
+        SET(OP_L2I) SET(OP_L2F) SET(OP_L2D) SET(OP_F2I)
+        SET(OP_F2L) SET(OP_F2D) SET(OP_D2I) SET(OP_D2L)
+        SET(OP_D2F) SET(OP_I2B) SET(OP_I2C) SET(OP_I2S)
+        SET(OP_LCMP) SET(OP_FCMPL) SET(OP_FCMPG) SET(OP_DCMPL)
+        SET(OP_DCMPG) SET(OP_IFEQ) SET(OP_IFNE) SET(OP_IFLT)
+        SET(OP_IFGE) SET(OP_IFGT) SET(OP_IFLE) SET(OP_IF_ICMPEQ)
+        SET(OP_IF_ICMPNE) SET(OP_IF_ICMPLT) SET(OP_IF_ICMPGE) SET(OP_IF_ICMPGT)
+        SET(OP_IF_ICMPLE) SET(OP_IF_ACMPEQ) SET(OP_IF_ACMPNE) SET(OP_IFNULL)
+        SET(OP_IFNONNULL) SET(OP_GOTO) SET(OP_GOTO_W) SET(OP_JSR)
+        SET(OP_JSR_W) SET(OP_RET) SET(OP_TABLESWITCH) SET(OP_LOOKUPSWITCH)
+        SET(OP_IRETURN) SET(OP_FRETURN) SET(OP_ARETURN) SET(OP_LRETURN)
+        SET(OP_DRETURN) SET(OP_RETURN) SET(OP_GETSTATIC) SET(OP_PUTSTATIC)
+        SET(OP_GETFIELD) SET(OP_PUTFIELD) SET(OP_INVOKEVIRTUAL) SET(OP_INVOKESPECIAL)
+        SET(OP_INVOKESTATIC) SET(OP_INVOKEINTERFACE) SET(OP_NEW) SET(OP_NEWARRAY)
+        SET(OP_ANEWARRAY) SET(OP_MULTIANEWARRAY) SET(OP_ARRAYLENGTH) SET(OP_ATHROW)
+        SET(OP_CHECKCAST) SET(OP_INSTANCEOF) SET(OP_MONITORENTER) SET(OP_MONITOREXIT)
+        SET(OP_WIDE)
+#undef SET
+    }
+
     if (t->frame_count == 0)
         return;
     LOAD();
@@ -453,22 +519,25 @@ void interp_run(VMThread *t, int budget) {
         goto exception;
 
 next:
-    while (budget-- > 0) {
+    for (;;) {
         insn = pc;
-        uint8_t op = *pc;
+        op = *pc;
+        // Nhảy thẳng tới nhãn của lệnh (computed goto của GCC / Clang): mỗi lệnh có lệnh nhảy
+        // riêng nên CPU đoán đích đúng hơn 1 bảng nhảy chung. switch chỉ còn để đặt nhãn case.
+        goto *dispatch[op];
         switch (op) {
-        case OP_NOP: pc++; break;
-        case OP_ACONST_NULL: PUSHL(NULL); pc++; break;
-        case OP_ICONST_M1: case OP_ICONST_0: case OP_ICONST_1: case OP_ICONST_2:
-        case OP_ICONST_3: case OP_ICONST_4: case OP_ICONST_5:
+        CASE(OP_NOP) pc++; break;
+        CASE(OP_ACONST_NULL) PUSHL(NULL); pc++; break;
+        CASE(OP_ICONST_M1) CASE(OP_ICONST_0) CASE(OP_ICONST_1) CASE(OP_ICONST_2)
+        CASE(OP_ICONST_3) CASE(OP_ICONST_4) CASE(OP_ICONST_5)
             PUSHI(op - OP_ICONST_0); pc++; break;
-        case OP_LCONST_0: case OP_LCONST_1: PUSHJ(op - OP_LCONST_0); pc++; break;
-        case OP_FCONST_0: case OP_FCONST_1: case OP_FCONST_2: PUSHF((float)(op - OP_FCONST_0)); pc++; break;
-        case OP_DCONST_0: case OP_DCONST_1: PUSHD((double)(op - OP_DCONST_0)); pc++; break;
-        case OP_BIPUSH: PUSHI((int8_t)pc[1]); pc += 2; break;
-        case OP_SIPUSH: PUSHI(S2(pc + 1)); pc += 3; break;
+        CASE(OP_LCONST_0) CASE(OP_LCONST_1) PUSHJ(op - OP_LCONST_0); pc++; break;
+        CASE(OP_FCONST_0) CASE(OP_FCONST_1) CASE(OP_FCONST_2) PUSHF((float)(op - OP_FCONST_0)); pc++; break;
+        CASE(OP_DCONST_0) CASE(OP_DCONST_1) PUSHD((double)(op - OP_DCONST_0)); pc++; break;
+        CASE(OP_BIPUSH) PUSHI((int8_t)pc[1]); pc += 2; break;
+        CASE(OP_SIPUSH) PUSHI(S2(pc + 1)); pc += 3; break;
 
-        case OP_LDC: case OP_LDC_W: {
+        CASE(OP_LDC) CASE(OP_LDC_W) {
             uint16_t idx = op == OP_LDC ? pc[1] : U2(pc + 1);
             CPEntry *e = &cp[idx];
             switch (e->tag) {
@@ -496,7 +565,7 @@ next:
             pc += op == OP_LDC ? 2 : 3;
             break;
         }
-        case OP_LDC2_W: {
+        CASE(OP_LDC2_W) {
             CPEntry *e = &cp[U2(pc + 1)];
             if (e->tag == CONST_Long)
                 PUSHJ(e->j);
@@ -507,64 +576,64 @@ next:
         }
 
         // --- load / store
-        case OP_ILOAD: case OP_FLOAD: case OP_ALOAD: *sp++ = locals[pc[1]]; pc += 2; break;
-        case OP_LLOAD: case OP_DLOAD: sp[0] = locals[pc[1]]; sp += 2; pc += 2; break;
-        case OP_ILOAD_0: case OP_ILOAD_1: case OP_ILOAD_2: case OP_ILOAD_3:
+        CASE(OP_ILOAD) CASE(OP_FLOAD) CASE(OP_ALOAD) *sp++ = locals[pc[1]]; pc += 2; break;
+        CASE(OP_LLOAD) CASE(OP_DLOAD) sp[0] = locals[pc[1]]; sp += 2; pc += 2; break;
+        CASE(OP_ILOAD_0) CASE(OP_ILOAD_1) CASE(OP_ILOAD_2) CASE(OP_ILOAD_3)
             *sp++ = locals[op - OP_ILOAD_0]; pc++; break;
-        case OP_LLOAD_0: case OP_LLOAD_1: case OP_LLOAD_2: case OP_LLOAD_3:
+        CASE(OP_LLOAD_0) CASE(OP_LLOAD_1) CASE(OP_LLOAD_2) CASE(OP_LLOAD_3)
             sp[0] = locals[op - OP_LLOAD_0]; sp += 2; pc++; break;
-        case OP_FLOAD_0: case OP_FLOAD_1: case OP_FLOAD_2: case OP_FLOAD_3:
+        CASE(OP_FLOAD_0) CASE(OP_FLOAD_1) CASE(OP_FLOAD_2) CASE(OP_FLOAD_3)
             *sp++ = locals[op - OP_FLOAD_0]; pc++; break;
-        case OP_DLOAD_0: case OP_DLOAD_1: case OP_DLOAD_2: case OP_DLOAD_3:
+        CASE(OP_DLOAD_0) CASE(OP_DLOAD_1) CASE(OP_DLOAD_2) CASE(OP_DLOAD_3)
             sp[0] = locals[op - OP_DLOAD_0]; sp += 2; pc++; break;
-        case OP_ALOAD_0: case OP_ALOAD_1: case OP_ALOAD_2: case OP_ALOAD_3:
+        CASE(OP_ALOAD_0) CASE(OP_ALOAD_1) CASE(OP_ALOAD_2) CASE(OP_ALOAD_3)
             *sp++ = locals[op - OP_ALOAD_0]; pc++; break;
 
-        case OP_ISTORE: case OP_FSTORE: case OP_ASTORE: locals[pc[1]] = *--sp; pc += 2; break;
-        case OP_LSTORE: case OP_DSTORE: sp -= 2; locals[pc[1]] = sp[0]; pc += 2; break;
-        case OP_ISTORE_0: case OP_ISTORE_1: case OP_ISTORE_2: case OP_ISTORE_3:
+        CASE(OP_ISTORE) CASE(OP_FSTORE) CASE(OP_ASTORE) locals[pc[1]] = *--sp; pc += 2; break;
+        CASE(OP_LSTORE) CASE(OP_DSTORE) sp -= 2; locals[pc[1]] = sp[0]; pc += 2; break;
+        CASE(OP_ISTORE_0) CASE(OP_ISTORE_1) CASE(OP_ISTORE_2) CASE(OP_ISTORE_3)
             locals[op - OP_ISTORE_0] = *--sp; pc++; break;
-        case OP_LSTORE_0: case OP_LSTORE_1: case OP_LSTORE_2: case OP_LSTORE_3:
+        CASE(OP_LSTORE_0) CASE(OP_LSTORE_1) CASE(OP_LSTORE_2) CASE(OP_LSTORE_3)
             sp -= 2; locals[op - OP_LSTORE_0] = sp[0]; pc++; break;
-        case OP_FSTORE_0: case OP_FSTORE_1: case OP_FSTORE_2: case OP_FSTORE_3:
+        CASE(OP_FSTORE_0) CASE(OP_FSTORE_1) CASE(OP_FSTORE_2) CASE(OP_FSTORE_3)
             locals[op - OP_FSTORE_0] = *--sp; pc++; break;
-        case OP_DSTORE_0: case OP_DSTORE_1: case OP_DSTORE_2: case OP_DSTORE_3:
+        CASE(OP_DSTORE_0) CASE(OP_DSTORE_1) CASE(OP_DSTORE_2) CASE(OP_DSTORE_3)
             sp -= 2; locals[op - OP_DSTORE_0] = sp[0]; pc++; break;
-        case OP_ASTORE_0: case OP_ASTORE_1: case OP_ASTORE_2: case OP_ASTORE_3:
+        CASE(OP_ASTORE_0) CASE(OP_ASTORE_1) CASE(OP_ASTORE_2) CASE(OP_ASTORE_3)
             locals[op - OP_ASTORE_0] = *--sp; pc++; break;
 
         // --- array load
-        case OP_IALOAD: case OP_FALOAD: {
+        CASE(OP_IALOAD) CASE(OP_FALOAD) {
             jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             sp->i = ARRAY_DATA(a, jint)[i]; sp++;
             pc++; break;
         }
-        case OP_LALOAD: case OP_DALOAD: {
+        CASE(OP_LALOAD) CASE(OP_DALOAD) {
             jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             sp->j = ARRAY_DATA(a, jlong)[i]; sp += 2;
             pc++; break;
         }
-        case OP_AALOAD: {
+        CASE(OP_AALOAD) {
             jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             PUSHL(ARRAY_DATA(a, Object *)[i]);
             pc++; break;
         }
-        case OP_BALOAD: {
+        CASE(OP_BALOAD) {
             jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             PUSHI(ARRAY_DATA(a, jbyte)[i]);
             pc++; break;
         }
-        case OP_CALOAD: {
+        CASE(OP_CALOAD) {
             jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             PUSHI(ARRAY_DATA(a, jchar)[i]);
             pc++; break;
         }
-        case OP_SALOAD: {
+        CASE(OP_SALOAD) {
             jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             PUSHI(ARRAY_DATA(a, jshort)[i]);
@@ -572,19 +641,19 @@ next:
         }
 
         // --- array store
-        case OP_IASTORE: case OP_FASTORE: {
+        CASE(OP_IASTORE) CASE(OP_FASTORE) {
             jint v = POPI(); jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             ARRAY_DATA(a, jint)[i] = v;
             pc++; break;
         }
-        case OP_LASTORE: case OP_DASTORE: {
+        CASE(OP_LASTORE) CASE(OP_DASTORE) {
             jlong v = POPJ(); jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             ARRAY_DATA(a, jlong)[i] = v;
             pc++; break;
         }
-        case OP_AASTORE: {
+        CASE(OP_AASTORE) {
             Object *v = POPL(); jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             if (v && a->cls->component && !class_instance_of(v->cls, a->cls->component))
@@ -592,13 +661,13 @@ next:
             ARRAY_DATA(a, Object *)[i] = v;
             pc++; break;
         }
-        case OP_BASTORE: {
+        CASE(OP_BASTORE) {
             jint v = POPI(); jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             ARRAY_DATA(a, jbyte)[i] = (jbyte)v;
             pc++; break;
         }
-        case OP_CASTORE: case OP_SASTORE: {
+        CASE(OP_CASTORE) CASE(OP_SASTORE) {
             jint v = POPI(); jint i = POPI(); Object *a = POPL();
             ARRAY_CHECK(a, i);
             ARRAY_DATA(a, jchar)[i] = (jchar)v;
@@ -606,124 +675,124 @@ next:
         }
 
         // --- stack
-        case OP_POP: sp--; pc++; break;
-        case OP_POP2: sp -= 2; pc++; break;
-        case OP_DUP: sp[0] = sp[-1]; sp++; pc++; break;
-        case OP_DUP_X1: {
+        CASE(OP_POP) sp--; pc++; break;
+        CASE(OP_POP2) sp -= 2; pc++; break;
+        CASE(OP_DUP) sp[0] = sp[-1]; sp++; pc++; break;
+        CASE(OP_DUP_X1) {
             Value v1 = sp[-1], v2 = sp[-2];
             sp[-2] = v1; sp[-1] = v2; sp[0] = v1; sp++;
             pc++; break;
         }
-        case OP_DUP_X2: {
+        CASE(OP_DUP_X2) {
             Value v1 = sp[-1], v2 = sp[-2], v3 = sp[-3];
             sp[-3] = v1; sp[-2] = v3; sp[-1] = v2; sp[0] = v1; sp++;
             pc++; break;
         }
-        case OP_DUP2: sp[0] = sp[-2]; sp[1] = sp[-1]; sp += 2; pc++; break;
-        case OP_DUP2_X1: {
+        CASE(OP_DUP2) sp[0] = sp[-2]; sp[1] = sp[-1]; sp += 2; pc++; break;
+        CASE(OP_DUP2_X1) {
             Value v1 = sp[-1], v2 = sp[-2], v3 = sp[-3];
             sp[-3] = v2; sp[-2] = v1; sp[-1] = v3; sp[0] = v2; sp[1] = v1; sp += 2;
             pc++; break;
         }
-        case OP_DUP2_X2: {
+        CASE(OP_DUP2_X2) {
             Value v1 = sp[-1], v2 = sp[-2], v3 = sp[-3], v4 = sp[-4];
             sp[-4] = v2; sp[-3] = v1; sp[-2] = v4; sp[-1] = v3; sp[0] = v2; sp[1] = v1; sp += 2;
             pc++; break;
         }
-        case OP_SWAP: { Value v = sp[-1]; sp[-1] = sp[-2]; sp[-2] = v; pc++; break; }
+        CASE(OP_SWAP) { Value v = sp[-1]; sp[-1] = sp[-2]; sp[-2] = v; pc++; break; }
 
         // --- int
-        case OP_IADD: { jint b = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i + (uint32_t)b); pc++; break; }
-        case OP_ISUB: { jint b = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i - (uint32_t)b); pc++; break; }
-        case OP_IMUL: { jint b = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i * (uint32_t)b); pc++; break; }
-        case OP_IDIV: {
+        CASE(OP_IADD) { jint b = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i + (uint32_t)b); pc++; break; }
+        CASE(OP_ISUB) { jint b = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i - (uint32_t)b); pc++; break; }
+        CASE(OP_IMUL) { jint b = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i * (uint32_t)b); pc++; break; }
+        CASE(OP_IDIV) {
             jint b = POPI();
             if (b == 0) { sp++; THROW("java/lang/ArithmeticException", "/ by zero"); }
             jint a = sp[-1].i;
             sp[-1].i = (a == INT32_MIN && b == -1) ? a : a / b;
             pc++; break;
         }
-        case OP_IREM: {
+        CASE(OP_IREM) {
             jint b = POPI();
             if (b == 0) { sp++; THROW("java/lang/ArithmeticException", "/ by zero"); }
             jint a = sp[-1].i;
             sp[-1].i = (b == -1) ? 0 : a % b;
             pc++; break;
         }
-        case OP_INEG: sp[-1].i = (jint)(0u - (uint32_t)sp[-1].i); pc++; break;
-        case OP_ISHL: { jint s = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i << (s & 31)); pc++; break; }
-        case OP_ISHR: { jint s = POPI(); sp[-1].i = sp[-1].i >> (s & 31); pc++; break; }
-        case OP_IUSHR: { jint s = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i >> (s & 31)); pc++; break; }
-        case OP_IAND: { jint b = POPI(); sp[-1].i &= b; pc++; break; }
-        case OP_IOR:  { jint b = POPI(); sp[-1].i |= b; pc++; break; }
-        case OP_IXOR: { jint b = POPI(); sp[-1].i ^= b; pc++; break; }
+        CASE(OP_INEG) sp[-1].i = (jint)(0u - (uint32_t)sp[-1].i); pc++; break;
+        CASE(OP_ISHL) { jint s = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i << (s & 31)); pc++; break; }
+        CASE(OP_ISHR) { jint s = POPI(); sp[-1].i = sp[-1].i >> (s & 31); pc++; break; }
+        CASE(OP_IUSHR) { jint s = POPI(); sp[-1].i = (jint)((uint32_t)sp[-1].i >> (s & 31)); pc++; break; }
+        CASE(OP_IAND) { jint b = POPI(); sp[-1].i &= b; pc++; break; }
+        CASE(OP_IOR)  { jint b = POPI(); sp[-1].i |= b; pc++; break; }
+        CASE(OP_IXOR) { jint b = POPI(); sp[-1].i ^= b; pc++; break; }
 
         // --- long
-        case OP_LADD: { jlong b = POPJ(); sp[-2].j = (jlong)((uint64_t)sp[-2].j + (uint64_t)b); pc++; break; }
-        case OP_LSUB: { jlong b = POPJ(); sp[-2].j = (jlong)((uint64_t)sp[-2].j - (uint64_t)b); pc++; break; }
-        case OP_LMUL: { jlong b = POPJ(); sp[-2].j = (jlong)((uint64_t)sp[-2].j * (uint64_t)b); pc++; break; }
-        case OP_LDIV: {
+        CASE(OP_LADD) { jlong b = POPJ(); sp[-2].j = (jlong)((uint64_t)sp[-2].j + (uint64_t)b); pc++; break; }
+        CASE(OP_LSUB) { jlong b = POPJ(); sp[-2].j = (jlong)((uint64_t)sp[-2].j - (uint64_t)b); pc++; break; }
+        CASE(OP_LMUL) { jlong b = POPJ(); sp[-2].j = (jlong)((uint64_t)sp[-2].j * (uint64_t)b); pc++; break; }
+        CASE(OP_LDIV) {
             jlong b = POPJ();
             if (b == 0) { sp += 2; THROW("java/lang/ArithmeticException", "/ by zero"); }
             jlong a = sp[-2].j;
             sp[-2].j = (a == INT64_MIN && b == -1) ? a : a / b;
             pc++; break;
         }
-        case OP_LREM: {
+        CASE(OP_LREM) {
             jlong b = POPJ();
             if (b == 0) { sp += 2; THROW("java/lang/ArithmeticException", "/ by zero"); }
             jlong a = sp[-2].j;
             sp[-2].j = (b == -1) ? 0 : a % b;
             pc++; break;
         }
-        case OP_LNEG: sp[-2].j = (jlong)(0ull - (uint64_t)sp[-2].j); pc++; break;
-        case OP_LSHL: { jint s = POPI(); sp[-2].j = (jlong)((uint64_t)sp[-2].j << (s & 63)); pc++; break; }
-        case OP_LSHR: { jint s = POPI(); sp[-2].j = sp[-2].j >> (s & 63); pc++; break; }
-        case OP_LUSHR: { jint s = POPI(); sp[-2].j = (jlong)((uint64_t)sp[-2].j >> (s & 63)); pc++; break; }
-        case OP_LAND: { jlong b = POPJ(); sp[-2].j &= b; pc++; break; }
-        case OP_LOR:  { jlong b = POPJ(); sp[-2].j |= b; pc++; break; }
-        case OP_LXOR: { jlong b = POPJ(); sp[-2].j ^= b; pc++; break; }
+        CASE(OP_LNEG) sp[-2].j = (jlong)(0ull - (uint64_t)sp[-2].j); pc++; break;
+        CASE(OP_LSHL) { jint s = POPI(); sp[-2].j = (jlong)((uint64_t)sp[-2].j << (s & 63)); pc++; break; }
+        CASE(OP_LSHR) { jint s = POPI(); sp[-2].j = sp[-2].j >> (s & 63); pc++; break; }
+        CASE(OP_LUSHR) { jint s = POPI(); sp[-2].j = (jlong)((uint64_t)sp[-2].j >> (s & 63)); pc++; break; }
+        CASE(OP_LAND) { jlong b = POPJ(); sp[-2].j &= b; pc++; break; }
+        CASE(OP_LOR)  { jlong b = POPJ(); sp[-2].j |= b; pc++; break; }
+        CASE(OP_LXOR) { jlong b = POPJ(); sp[-2].j ^= b; pc++; break; }
 
         // --- float / double
-        case OP_FADD: { jfloat b = POPF(); sp[-1].f += b; pc++; break; }
-        case OP_FSUB: { jfloat b = POPF(); sp[-1].f -= b; pc++; break; }
-        case OP_FMUL: { jfloat b = POPF(); sp[-1].f *= b; pc++; break; }
-        case OP_FDIV: { jfloat b = POPF(); sp[-1].f /= b; pc++; break; }
-        case OP_FREM: { jfloat b = POPF(); sp[-1].f = fmodf(sp[-1].f, b); pc++; break; }
-        case OP_FNEG: sp[-1].f = -sp[-1].f; pc++; break;
-        case OP_DADD: { jdouble b = POPD(); sp[-2].d += b; pc++; break; }
-        case OP_DSUB: { jdouble b = POPD(); sp[-2].d -= b; pc++; break; }
-        case OP_DMUL: { jdouble b = POPD(); sp[-2].d *= b; pc++; break; }
-        case OP_DDIV: { jdouble b = POPD(); sp[-2].d /= b; pc++; break; }
-        case OP_DREM: { jdouble b = POPD(); sp[-2].d = fmod(sp[-2].d, b); pc++; break; }
-        case OP_DNEG: sp[-2].d = -sp[-2].d; pc++; break;
+        CASE(OP_FADD) { jfloat b = POPF(); sp[-1].f += b; pc++; break; }
+        CASE(OP_FSUB) { jfloat b = POPF(); sp[-1].f -= b; pc++; break; }
+        CASE(OP_FMUL) { jfloat b = POPF(); sp[-1].f *= b; pc++; break; }
+        CASE(OP_FDIV) { jfloat b = POPF(); sp[-1].f /= b; pc++; break; }
+        CASE(OP_FREM) { jfloat b = POPF(); sp[-1].f = fmodf(sp[-1].f, b); pc++; break; }
+        CASE(OP_FNEG) sp[-1].f = -sp[-1].f; pc++; break;
+        CASE(OP_DADD) { jdouble b = POPD(); sp[-2].d += b; pc++; break; }
+        CASE(OP_DSUB) { jdouble b = POPD(); sp[-2].d -= b; pc++; break; }
+        CASE(OP_DMUL) { jdouble b = POPD(); sp[-2].d *= b; pc++; break; }
+        CASE(OP_DDIV) { jdouble b = POPD(); sp[-2].d /= b; pc++; break; }
+        CASE(OP_DREM) { jdouble b = POPD(); sp[-2].d = fmod(sp[-2].d, b); pc++; break; }
+        CASE(OP_DNEG) sp[-2].d = -sp[-2].d; pc++; break;
 
-        case OP_IINC: locals[pc[1]].i = (jint)((uint32_t)locals[pc[1]].i + (uint32_t)(int8_t)pc[2]); pc += 3; break;
+        CASE(OP_IINC) locals[pc[1]].i = (jint)((uint32_t)locals[pc[1]].i + (uint32_t)(int8_t)pc[2]); pc += 3; break;
 
         // --- conversion
-        case OP_I2L: { jint v = POPI(); PUSHJ(v); pc++; break; }
-        case OP_I2F: sp[-1].f = (jfloat)sp[-1].i; pc++; break;
-        case OP_I2D: { jint v = POPI(); PUSHD(v); pc++; break; }
-        case OP_L2I: { jlong v = POPJ(); PUSHI((jint)v); pc++; break; }
-        case OP_L2F: { jlong v = POPJ(); PUSHF((jfloat)v); pc++; break; }
-        case OP_L2D: sp[-2].d = (jdouble)sp[-2].j; pc++; break;
-        case OP_F2I: sp[-1].i = f2i(sp[-1].f); pc++; break;
-        case OP_F2L: { jfloat v = POPF(); PUSHJ(f2l(v)); pc++; break; }
-        case OP_F2D: { jfloat v = POPF(); PUSHD(v); pc++; break; }
-        case OP_D2I: { jdouble v = POPD(); PUSHI(f2i(v)); pc++; break; }
-        case OP_D2L: sp[-2].j = f2l(sp[-2].d); pc++; break;
-        case OP_D2F: { jdouble v = POPD(); PUSHF((jfloat)v); pc++; break; }
-        case OP_I2B: sp[-1].i = (jbyte)sp[-1].i; pc++; break;
-        case OP_I2C: sp[-1].i = (jchar)sp[-1].i; pc++; break;
-        case OP_I2S: sp[-1].i = (jshort)sp[-1].i; pc++; break;
+        CASE(OP_I2L) { jint v = POPI(); PUSHJ(v); pc++; break; }
+        CASE(OP_I2F) sp[-1].f = (jfloat)sp[-1].i; pc++; break;
+        CASE(OP_I2D) { jint v = POPI(); PUSHD(v); pc++; break; }
+        CASE(OP_L2I) { jlong v = POPJ(); PUSHI((jint)v); pc++; break; }
+        CASE(OP_L2F) { jlong v = POPJ(); PUSHF((jfloat)v); pc++; break; }
+        CASE(OP_L2D) sp[-2].d = (jdouble)sp[-2].j; pc++; break;
+        CASE(OP_F2I) sp[-1].i = f2i(sp[-1].f); pc++; break;
+        CASE(OP_F2L) { jfloat v = POPF(); PUSHJ(f2l(v)); pc++; break; }
+        CASE(OP_F2D) { jfloat v = POPF(); PUSHD(v); pc++; break; }
+        CASE(OP_D2I) { jdouble v = POPD(); PUSHI(f2i(v)); pc++; break; }
+        CASE(OP_D2L) sp[-2].j = f2l(sp[-2].d); pc++; break;
+        CASE(OP_D2F) { jdouble v = POPD(); PUSHF((jfloat)v); pc++; break; }
+        CASE(OP_I2B) sp[-1].i = (jbyte)sp[-1].i; pc++; break;
+        CASE(OP_I2C) sp[-1].i = (jchar)sp[-1].i; pc++; break;
+        CASE(OP_I2S) sp[-1].i = (jshort)sp[-1].i; pc++; break;
 
         // --- compare
-        case OP_LCMP: {
+        CASE(OP_LCMP) {
             jlong b = POPJ(), a = POPJ();
             PUSHI(a > b ? 1 : a < b ? -1 : 0);
             pc++; break;
         }
-        case OP_FCMPL: case OP_FCMPG: {
+        CASE(OP_FCMPL) CASE(OP_FCMPG) {
             jfloat b = POPF(), a = POPF();
             if (isnan(a) || isnan(b))
                 PUSHI(op == OP_FCMPG ? 1 : -1);
@@ -731,7 +800,7 @@ next:
                 PUSHI(a > b ? 1 : a < b ? -1 : 0);
             pc++; break;
         }
-        case OP_DCMPL: case OP_DCMPG: {
+        CASE(OP_DCMPL) CASE(OP_DCMPG) {
             jdouble b = POPD(), a = POPD();
             if (isnan(a) || isnan(b))
                 PUSHI(op == OP_DCMPG ? 1 : -1);
@@ -740,40 +809,40 @@ next:
             pc++; break;
         }
 
-#define BRANCH_IF(cond) do { if (cond) pc += S2(pc + 1); else pc += 3; } while (0)
-        case OP_IFEQ: { jint v = POPI(); BRANCH_IF(v == 0); break; }
-        case OP_IFNE: { jint v = POPI(); BRANCH_IF(v != 0); break; }
-        case OP_IFLT: { jint v = POPI(); BRANCH_IF(v < 0); break; }
-        case OP_IFGE: { jint v = POPI(); BRANCH_IF(v >= 0); break; }
-        case OP_IFGT: { jint v = POPI(); BRANCH_IF(v > 0); break; }
-        case OP_IFLE: { jint v = POPI(); BRANCH_IF(v <= 0); break; }
-        case OP_IF_ICMPEQ: { jint b = POPI(), a = POPI(); BRANCH_IF(a == b); break; }
-        case OP_IF_ICMPNE: { jint b = POPI(), a = POPI(); BRANCH_IF(a != b); break; }
-        case OP_IF_ICMPLT: { jint b = POPI(), a = POPI(); BRANCH_IF(a < b); break; }
-        case OP_IF_ICMPGE: { jint b = POPI(), a = POPI(); BRANCH_IF(a >= b); break; }
-        case OP_IF_ICMPGT: { jint b = POPI(), a = POPI(); BRANCH_IF(a > b); break; }
-        case OP_IF_ICMPLE: { jint b = POPI(), a = POPI(); BRANCH_IF(a <= b); break; }
-        case OP_IF_ACMPEQ: { Object *b = POPL(), *a = POPL(); BRANCH_IF(a == b); break; }
-        case OP_IF_ACMPNE: { Object *b = POPL(), *a = POPL(); BRANCH_IF(a != b); break; }
-        case OP_IFNULL: { Object *a = POPL(); BRANCH_IF(a == NULL); break; }
-        case OP_IFNONNULL: { Object *a = POPL(); BRANCH_IF(a != NULL); break; }
-        case OP_GOTO: pc += S2(pc + 1); break;
-        case OP_GOTO_W: pc += S4(pc + 1); break;
-        case OP_JSR: PUSHI((jint)(pc + 3 - m->code)); pc += S2(pc + 1); break;
-        case OP_JSR_W: PUSHI((jint)(pc + 5 - m->code)); pc += S4(pc + 1); break;
-        case OP_RET: pc = m->code + locals[pc[1]].i; break;
+#define BRANCH_IF(cond) do { if (cond) BRANCH(S2(pc + 1)); else pc += 3; } while (0)
+        CASE(OP_IFEQ) { jint v = POPI(); BRANCH_IF(v == 0); break; }
+        CASE(OP_IFNE) { jint v = POPI(); BRANCH_IF(v != 0); break; }
+        CASE(OP_IFLT) { jint v = POPI(); BRANCH_IF(v < 0); break; }
+        CASE(OP_IFGE) { jint v = POPI(); BRANCH_IF(v >= 0); break; }
+        CASE(OP_IFGT) { jint v = POPI(); BRANCH_IF(v > 0); break; }
+        CASE(OP_IFLE) { jint v = POPI(); BRANCH_IF(v <= 0); break; }
+        CASE(OP_IF_ICMPEQ) { jint b = POPI(), a = POPI(); BRANCH_IF(a == b); break; }
+        CASE(OP_IF_ICMPNE) { jint b = POPI(), a = POPI(); BRANCH_IF(a != b); break; }
+        CASE(OP_IF_ICMPLT) { jint b = POPI(), a = POPI(); BRANCH_IF(a < b); break; }
+        CASE(OP_IF_ICMPGE) { jint b = POPI(), a = POPI(); BRANCH_IF(a >= b); break; }
+        CASE(OP_IF_ICMPGT) { jint b = POPI(), a = POPI(); BRANCH_IF(a > b); break; }
+        CASE(OP_IF_ICMPLE) { jint b = POPI(), a = POPI(); BRANCH_IF(a <= b); break; }
+        CASE(OP_IF_ACMPEQ) { Object *b = POPL(), *a = POPL(); BRANCH_IF(a == b); break; }
+        CASE(OP_IF_ACMPNE) { Object *b = POPL(), *a = POPL(); BRANCH_IF(a != b); break; }
+        CASE(OP_IFNULL) { Object *a = POPL(); BRANCH_IF(a == NULL); break; }
+        CASE(OP_IFNONNULL) { Object *a = POPL(); BRANCH_IF(a != NULL); break; }
+        CASE(OP_GOTO) BRANCH(S2(pc + 1)); break;
+        CASE(OP_GOTO_W) BRANCH(S4(pc + 1)); break;
+        CASE(OP_JSR) PUSHI((jint)(pc + 3 - m->code)); BRANCH(S2(pc + 1)); break;
+        CASE(OP_JSR_W) PUSHI((jint)(pc + 5 - m->code)); BRANCH(S4(pc + 1)); break;
+        CASE(OP_RET) pc = m->code + locals[pc[1]].i; TICK(); break;
 
-        case OP_TABLESWITCH: {
+        CASE(OP_TABLESWITCH) {
             uint8_t *p = m->code + (((pc - m->code) + 4) & ~3);
             jint def = S4(p), lo = S4(p + 4), hi = S4(p + 8);
             jint key = POPI();
             if (key < lo || key > hi)
-                pc += def;
+                BRANCH(def);
             else
-                pc += S4(p + 12 + (key - lo) * 4);
+                BRANCH(S4(p + 12 + (key - lo) * 4));
             break;
         }
-        case OP_LOOKUPSWITCH: {
+        CASE(OP_LOOKUPSWITCH) {
             uint8_t *p = m->code + (((pc - m->code) + 4) & ~3);
             jint def = S4(p), n = S4(p + 4);
             jint key = POPI();
@@ -792,13 +861,13 @@ next:
                 else
                     hi = mid - 1;
             }
-            pc += off;
+            BRANCH(off);
             break;
         }
 
         // --- return
-        case OP_IRETURN: case OP_FRETURN: case OP_ARETURN:
-        case OP_LRETURN: case OP_DRETURN: case OP_RETURN: {
+        CASE(OP_IRETURN) CASE(OP_FRETURN) CASE(OP_ARETURN)
+        CASE(OP_LRETURN) CASE(OP_DRETURN) CASE(OP_RETURN) {
             int slots = (op == OP_RETURN) ? 0 : (op == OP_LRETURN || op == OP_DRETURN) ? 2 : 1;
             Value ret = slots ? sp[-slots] : (Value){ .j = 0 };
             frame_pop(t);
@@ -816,7 +885,7 @@ next:
         }
 
         // --- field
-        case OP_GETSTATIC: case OP_PUTSTATIC: {
+        CASE(OP_GETSTATIC) CASE(OP_PUTSTATIC) {
             SAVE_AT(insn);
             Field *fl = resolve_field(t, m->owner, U2(pc + 1));
             if (!fl)
@@ -835,7 +904,7 @@ next:
             pc += 3;
             break;
         }
-        case OP_GETFIELD: {
+        CASE(OP_GETFIELD) {
             CPEntry *e = &cp[U2(pc + 1)];
             Field *fl = e->resolved ? e->field : NULL;
             if (!fl) {
@@ -851,7 +920,7 @@ next:
             pc += 3;
             break;
         }
-        case OP_PUTFIELD: {
+        CASE(OP_PUTFIELD) {
             CPEntry *e = &cp[U2(pc + 1)];
             Field *fl = e->resolved ? e->field : NULL;
             if (!fl) {
@@ -870,7 +939,7 @@ next:
         }
 
         // --- invoke
-        case OP_INVOKEVIRTUAL: case OP_INVOKESPECIAL: case OP_INVOKESTATIC: case OP_INVOKEINTERFACE: {
+        CASE(OP_INVOKEVIRTUAL) CASE(OP_INVOKESPECIAL) CASE(OP_INVOKESTATIC) CASE(OP_INVOKEINTERFACE) {
             uint16_t idx = U2(pc + 1);
             CPEntry *e = &cp[idx];
             Method *rm = e->resolved ? e->method : NULL;
@@ -957,6 +1026,7 @@ next:
                     if (t->state != TS_RUNNABLE)
                         return;
                     LOAD();
+                    TICK();
                     break;
                 case NATIVE_INVOKE: {
                     sp = args;
@@ -994,11 +1064,12 @@ next:
             }
             t->frames[t->frame_count - 1].sync_obj = sync;
             LOAD();
+            TICK();
             break;
         }
 
         // --- object
-        case OP_NEW: {
+        CASE(OP_NEW) {
             SAVE_AT(insn);
             Class *c = resolve_class(t, m->owner, U2(pc + 1));
             if (!c)
@@ -1014,7 +1085,7 @@ next:
             pc += 3;
             break;
         }
-        case OP_NEWARRAY: {
+        CASE(OP_NEWARRAY) {
             static const char types[] = { 0, 0, 0, 0, 'Z', 'C', 'F', 'D', 'B', 'S', 'I', 'J' };
             jint n = POPI();
             uint8_t at = pc[1];
@@ -1028,7 +1099,7 @@ next:
             pc += 2;
             break;
         }
-        case OP_ANEWARRAY: {
+        CASE(OP_ANEWARRAY) {
             SAVE_AT(insn);
             Class *c = resolve_class(t, m->owner, U2(pc + 1));
             if (!c)
@@ -1044,7 +1115,7 @@ next:
             pc += 3;
             break;
         }
-        case OP_MULTIANEWARRAY: {
+        CASE(OP_MULTIANEWARRAY) {
             SAVE_AT(insn);
             Class *c = resolve_class(t, m->owner, U2(pc + 1));
             if (!c)
@@ -1061,21 +1132,21 @@ next:
             pc += 4;
             break;
         }
-        case OP_ARRAYLENGTH: {
+        CASE(OP_ARRAYLENGTH) {
             Object *a = sp[-1].l;
             CHECK_NULL(a);
             sp[-1].i = ARRAY_LEN(a);
             pc++;
             break;
         }
-        case OP_ATHROW: {
+        CASE(OP_ATHROW) {
             Object *ex = sp[-1].l;
             CHECK_NULL(ex);
             SAVE_AT(insn);
             t->exception = ex;
             goto exception;
         }
-        case OP_CHECKCAST: {
+        CASE(OP_CHECKCAST) {
             Object *o = sp[-1].l;
             if (o) {
                 SAVE_AT(insn);
@@ -1091,7 +1162,7 @@ next:
             pc += 3;
             break;
         }
-        case OP_INSTANCEOF: {
+        CASE(OP_INSTANCEOF) {
             Object *o = sp[-1].l;
             if (o) {
                 SAVE_AT(insn);
@@ -1105,7 +1176,7 @@ next:
             pc += 3;
             break;
         }
-        case OP_MONITORENTER: {
+        CASE(OP_MONITORENTER) {
             Object *o = sp[-1].l;
             CHECK_NULL(o);
             if (!monitor_enter(t, o)) {
@@ -1116,7 +1187,7 @@ next:
             pc++;
             break;
         }
-        case OP_MONITOREXIT: {
+        CASE(OP_MONITOREXIT) {
             Object *o = sp[-1].l;
             CHECK_NULL(o);
             if (!monitor_exit(t, o))
@@ -1126,7 +1197,7 @@ next:
             break;
         }
 
-        case OP_WIDE: {
+        CASE(OP_WIDE) {
             uint8_t wop = pc[1];
             uint16_t idx = U2(pc + 2);
             switch (wop) {
@@ -1134,7 +1205,7 @@ next:
             case OP_LLOAD: case OP_DLOAD: sp[0] = locals[idx]; sp += 2; break;
             case OP_ISTORE: case OP_FSTORE: case OP_ASTORE: locals[idx] = *--sp; break;
             case OP_LSTORE: case OP_DSTORE: sp -= 2; locals[idx] = sp[0]; break;
-            case OP_RET: pc = m->code + locals[idx].i; goto next_insn;
+            case OP_RET: pc = m->code + locals[idx].i; TICK(); goto next_insn;
             case OP_IINC:
                 locals[idx].i = (jint)((uint32_t)locals[idx].i + (uint32_t)(int32_t)S2(pc + 4));
                 pc += 6;
@@ -1146,7 +1217,7 @@ next:
             break;
         }
 
-        default: {
+        default: lbl_default: {
             char msg[64];
             snprintf(msg, sizeof(msg), "opcode 0x%02x", op);
             THROW("java/lang/InternalError", msg);
@@ -1155,14 +1226,12 @@ next:
     next_insn:;
     }
 
-    SAVE_AT(pc);
-    return;
-
 exception:
     if (!t->exception)
         throw_new(t, "java/lang/InternalError", "exception without object");
     if (interp_handle_exception(t)) {
         LOAD();
+        TICK();
         goto next;
     }
     // Không ai bắt: kết thúc thread

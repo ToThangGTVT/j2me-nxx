@@ -347,7 +347,7 @@ bool monitor_notify(VMThread *t, Object *o, bool all);
 void thread_wake_waiters(void);
 
 // --- interpreter
-void interp_run(VMThread *t, int max_instructions);
+void interp_run(VMThread *t, int budget);     // budget: số nhánh lùi + lần vào method
 
 // --- exception
 void throw_new(VMThread *t, const char *cls_name, const char *msg);

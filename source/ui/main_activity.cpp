@@ -266,6 +266,16 @@ brls::View* MainActivity::createContentView()
 
     frame = new brls::AppletFrame(body);
     frame->setTitle("J2ME-NXX");
+    // Cạnh tiêu đề: phiên bản và mô tả app
+    if (brls::View* title = frame->getView("brls/applet_frame/title_label"))
+    {
+        subtitle_label = make_label("", 18, color_dim(), false);
+        subtitle_label->setMargins(0, 0, 0, 16);
+        subtitle_label->setVerticalAlign(brls::VerticalAlign::BOTTOM);
+        subtitle_label->setAlignSelf(brls::AlignSelf::FLEX_END);
+        subtitle_label->setMarginBottom(9);
+        ((brls::Box*)title->getParent())->addView(subtitle_label);
+    }
 
     // Góc phải đầu trang: nhãn có bản mới + số ứng dụng
     auto* right = new brls::Box(brls::Axis::ROW);
@@ -360,6 +370,8 @@ void MainActivity::refresh_header()
     if (!count_label)
         return;
     count_label->setText(trf(S_GAME_COUNT, list.count));
+    if (subtitle_label)
+        subtitle_label->setText("v" APP_VERSION_STR "  -  " + T(S_APP_SUBTITLE));
     folder_label->setText(trf(S_FOLDER, platform_games_dir()));
     bool avail = update_available();
     if (avail)

@@ -43,6 +43,7 @@ class MainActivity : public brls::Activity
     brls::RecyclerFrame* recycler = nullptr;
     brls::Box* empty             = nullptr;
     brls::Label* count_label     = nullptr;
+    brls::Label* subtitle_label  = nullptr;
     brls::Box* badge             = nullptr;
     brls::Label* badge_label     = nullptr;
     brls::Label* folder_label    = nullptr;

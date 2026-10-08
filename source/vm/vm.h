@@ -146,6 +146,11 @@ struct Method {
     char ret_type;              // 'V' 'I' 'J' 'F' 'D' 'L' (ref, gồm cả mảng) 'Z' 'B' 'C' 'S'
     int vtable_index;           // -1 nếu không phải phương thức ảo
     NativeFn native;
+    // Chế độ AOT: mã máy của method (NULL: thông dịch) và điểm vào theo vị trí bytecode
+    // (aot_entry[pc] = offset trong aot_code, 0 = không có, thông dịch lệnh đó)
+    void *aot_code;
+    uint32_t *aot_entry;
+    void *aot_sites;            // cache method đích tại từng lệnh gọi
 };
 
 typedef enum {
@@ -261,6 +266,8 @@ typedef struct {
     void (*log)(const char *msg);
     // System.exit() / MIDlet.notifyDestroyed()
     void (*exit_request)(int status);
+    // Chế độ AOT (thử nghiệm): dịch method sang mã máy khi nạp lớp, chạy chung với trình thông dịch
+    bool aot;
 } VMHost;
 
 bool vm_init(const VMHost *host);

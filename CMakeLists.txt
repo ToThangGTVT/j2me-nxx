@@ -114,6 +114,8 @@ add_executable(j2me-nxx
     source/crash.c
     source/update.c
     source/update_screen.c
+    source/vm/aot_arm64.c
+    source/vm/aot_mem.c
     source/vm/class.c
     source/vm/heap.c
     source/vm/interp.c
@@ -235,6 +237,8 @@ if(NOT NINTENDO_SWITCH)
 
     add_executable(vmbench EXCLUDE_FROM_ALL
         tests/vmbench/vmbench.c
+        source/vm/aot_arm64.c
+        source/vm/aot_mem.c
         source/vm/class.c
         source/vm/heap.c
         source/vm/interp.c

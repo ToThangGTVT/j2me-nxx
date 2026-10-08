@@ -542,6 +542,8 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         .read_resource = host_read_resource,
         .log = host_log,
         .exit_request = host_exit,
+        // J2ME_NX_AOT: bật để thử trên desktop không cần vào Cài đặt
+        .aot = (gs.aot >= 0 ? gs.aot == 1 : settings()->aot) || SDL_getenv("J2ME_NX_AOT") != NULL,
     };
     midp_register_natives();
     if (!vm_init(&host)) {

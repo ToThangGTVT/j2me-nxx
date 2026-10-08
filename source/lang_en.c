@@ -135,6 +135,11 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_VPAD_HINT]      = "Phone keypad on the touch screen while running: joystick (follows the left stick), soft keys, "
                          "Fire, number keys. Turn it on or off per app in App options.",
     [S_VPAD_HINT_APP]  = "Phone keypad on the touch screen while this app runs. The layout is set in the global settings.",
+    [S_AOT]            = "AOT (experimental)",
+    [S_AOT_HINT]       = "Compile Java code to machine code when it loads, running alongside the interpreter: compute-heavy "
+                         "code gets much faster. Experimental, turn it off if an app misbehaves. Can be set per app in App options.",
+    [S_AOT_HINT_APP]   = "Compile this app's Java code to machine code when it loads. Experimental, turn it off if it misbehaves.",
+    [S_AOT_UNSUPPORTED] = "Not supported",
     [S_VPAD_LAYOUT]    = "On-screen keypad layout",
     [S_VPAD_LAYOUT_HINT] = "Keys are placed on the Switch screen, shared by all apps. Drag each key to move it, drag the corner dot to resize; set rounded corners, opacity and hide "
                            "keys you don't need. Keys placed next to each other snap together. Press " ICON_A " to open.",

@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "aot.h"
+
 // ---------------------------------------------------------------------------
 // Intern string
 
@@ -452,11 +454,13 @@ static bool link_class(VMThread *t, Class *c) {
         }
     }
 
-    // Native
+    // Native, và mã máy khi bật chế độ AOT
     for (int i = 0; i < c->method_count; i++) {
         Method *m = &c->methods[i];
         if (m->access & ACC_NATIVE)
             m->native = native_lookup(c->name, m->name, m->desc);
+        else if (m->code && aot_active())
+            aot_compile(c, m);
     }
 
     c->state = CLASS_LINKED;
@@ -809,6 +813,7 @@ void class_mark_roots(MarkFn mark) {
 static void class_free(Class *c) {
     if (!c->is_array) {
         for (int i = 0; i < c->method_count; i++) {
+            aot_free_method(&c->methods[i]);
             free(c->methods[i].code);
             free(c->methods[i].exc);
             free(c->methods[i].lines);

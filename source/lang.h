@@ -128,6 +128,10 @@ typedef enum {
     S_VPAD,
     S_VPAD_HINT,
     S_VPAD_HINT_APP,
+    S_AOT,
+    S_AOT_HINT,
+    S_AOT_HINT_APP,
+    S_AOT_UNSUPPORTED,
     S_VPAD_LAYOUT,
     S_VPAD_LAYOUT_HINT,
     S_VPAD_CUSTOMIZED,      // %s

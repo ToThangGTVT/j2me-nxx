@@ -144,7 +144,8 @@ static void launch(Menu *menu, const char *path, const char *id, int midlet) {
 int main(int argc, char *argv[]) {
     // Trước hết: lỗi lúc khởi động cũng có log / báo cáo crash
     crash_init();
-    crash_logf("argv[0] = %s", argc > 0 && argv[0] ? argv[0] : "(khong co)");
+    for (int i = 0; i < argc; i++)
+        crash_logf("argv[%d] = %s", i, argv[i] ? argv[i] : "(null)");
     if (!platform_init()) {
         crash_fatal("platform_init failed");
         return 1;
@@ -398,17 +399,21 @@ int main(int argc, char *argv[]) {
         gfx_present();
     }
 
+    // Từng bước thoát có log: sập lúc thoát (vd ngay sau khi cập nhật) thì biết sập ở đâu
     crash_logf("Thoat app");
     update_shutdown();
     upload_screen_close();
     video_screen_close();
     emu_stop();
+    crash_logf("Thoat: da dung luong nen, game");
     menu_free_textures(&list);
     game_list_free(&list);
     input_exit();
 out:
     gfx_exit();
+    crash_logf("Thoat: da dong do hoa");
     SDL_Quit();
+    crash_logf("Thoat: da dong SDL");
     platform_exit();
     crash_logf("Da thoat (ret %d)", ret);
     return ret;

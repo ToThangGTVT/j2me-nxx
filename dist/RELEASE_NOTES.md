@@ -1,13 +1,12 @@
-## J2ME-NXX v0.7.2
+## J2ME-NXX v0.7.3
 
 💬 Join the [J2ME-NXX Discord](https://discord.gg/skHsYt8GAa) to chat, ask questions, report bugs and suggest features.
 
 ### 🐛 Fixed
-- J2ME-NXX no longer crashes when a Java app runs out of memory; the Java app gets an `OutOfMemoryError` instead.
-- Better crash logs: startup and update steps are written to `sdmc:/switch/j2me-nxx/app.log`, and a failed update or startup error now saves a crash report in `sdmc:/switch/j2me-nxx/crash/`. Please attach these when reporting a crash.
+- More detailed `app.log` when the app closes, to track down crashes right after an in-app update. If the app crashes after updating, please send `sdmc:/switch/j2me-nxx/app-prev.log` (the log of the update session).
 
 ### Installation
-- **Zip** (recommended): extract `j2me-nxx-v0.7.2.zip` to the root of your SD card, then copy your `.jar` apps to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
+- **Zip** (recommended): extract `j2me-nxx-v0.7.3.zip` to the root of your SD card, then copy your `.jar` apps to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
 - **NRO only**: copy `j2me-nxx.nro` to `sdmc:/switch/`, replacing the old one.
 
 Already on v0.6.0 or newer: open J2ME-NXX and accept the update prompt (or press **B** in the app list). Coming from v0.5.0 or older: install this version by hand once.

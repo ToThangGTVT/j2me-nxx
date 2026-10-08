@@ -6,6 +6,7 @@
 #include <string.h>
 #include <SDL_ttf.h>
 
+#include "crash.h"
 #include "platform.h"
 
 // Cache texture của chữ đã render. Direct-mapped theo hash, trùng slot thì ghi đè.
@@ -43,13 +44,13 @@ bool gfx_init(const char *title) {
     window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               SCREEN_W, SCREEN_H, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!window) {
-        printf("SDL_CreateWindow: %s\n", SDL_GetError());
+        crash_logf("SDL_CreateWindow: %s", SDL_GetError());
         return false;
     }
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
-        printf("SDL_CreateRenderer: %s\n", SDL_GetError());
+        crash_logf("SDL_CreateRenderer: %s", SDL_GetError());
         return false;
     }
     // Luôn vẽ theo toạ độ 1280x720, SDL tự scale theo kích thước cửa sổ
@@ -57,13 +58,13 @@ bool gfx_init(const char *title) {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
     if (TTF_Init() < 0) {
-        printf("TTF_Init: %s\n", TTF_GetError());
+        crash_logf("TTF_Init: %s", TTF_GetError());
         return false;
     }
     for (int i = 0; i < FONT_COUNT; i++) {
         fonts[i] = platform_open_font(font_sizes[i]);
         if (!fonts[i]) {
-            printf("Khong mo duoc font size %d: %s\n", font_sizes[i], TTF_GetError());
+            crash_logf("Khong mo duoc font size %d: %s", font_sizes[i], TTF_GetError());
             return false;
         }
         icon_fonts[i] = platform_open_icon_font(font_sizes[i]);

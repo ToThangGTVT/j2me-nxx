@@ -132,18 +132,28 @@ static void debug_press(void) {
 
 static void launch(Menu *menu, const char *path, const char *id, int midlet) {
     char err[256] = "";
-    if (!emu_start(path, id, midlet, err, sizeof(err)))
+    crash_logf("Mo game %s (MIDlet %d)", path, midlet);
+    if (!emu_start(path, id, midlet, err, sizeof(err))) {
+        crash_logf("Khong mo duoc game: %s", err);
         snprintf(menu->status, sizeof(menu->status), tr(S_ERROR_FMT), err);
-    else
+    } else {
         menu->status[0] = '\0';
+    }
 }
 
 int main(int argc, char *argv[]) {
-    if (!platform_init())
+    // Trước hết: lỗi lúc khởi động cũng có log / báo cáo crash
+    crash_init();
+    crash_logf("argv[0] = %s", argc > 0 && argv[0] ? argv[0] : "(khong co)");
+    if (!platform_init()) {
+        crash_fatal("platform_init failed");
         return 1;
+    }
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0) {
-        printf("SDL_Init: %s\n", SDL_GetError());
+        char what[300];
+        snprintf(what, sizeof(what), "SDL_Init: %s", SDL_GetError());
+        crash_fatal(what);
         platform_exit();
         return 1;
     }
@@ -154,11 +164,12 @@ int main(int argc, char *argv[]) {
     const char *games_dir = platform_games_dir();
 
     if (!gfx_init("J2ME-NXX")) {
+        crash_fatal("gfx_init failed (xem log)");
         ret = 1;
         goto out;
     }
     input_init();
-    crash_init();
+    crash_logf("Khoi dong xong do hoa, input");
     // Mở app lần đầu: chọn ngôn ngữ trước
     bool in_lang = !settings_load();
     if (in_lang)
@@ -169,6 +180,7 @@ int main(int argc, char *argv[]) {
             snprintf(menu.status, sizeof(menu.status), tr(S_APP_CRASHED_BEFORE), name);
     }
     game_list_scan(&list, games_dir);
+    crash_logf("%d game trong %s", list.count, games_dir);
     update_init(argc > 0 ? argv[0] : NULL);
     if (settings()->check_update)
         update_check();
@@ -221,6 +233,7 @@ int main(int argc, char *argv[]) {
         if (emu_running()) {
             if (!emu_update()) {
                 const char *msg = emu_exit_message();
+                crash_logf("Game thoat%s%s", msg[0] ? ": " : "", msg);
                 snprintf(menu.status, sizeof(menu.status), "%s", msg[0] ? msg : tr(S_GAME_EXITED));
                 emu_stop();
 #ifndef __SWITCH__
@@ -385,6 +398,7 @@ int main(int argc, char *argv[]) {
         gfx_present();
     }
 
+    crash_logf("Thoat app");
     update_shutdown();
     upload_screen_close();
     video_screen_close();
@@ -396,5 +410,6 @@ out:
     gfx_exit();
     SDL_Quit();
     platform_exit();
+    crash_logf("Da thoat (ret %d)", ret);
     return ret;
 }

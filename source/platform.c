@@ -5,6 +5,8 @@
 #include <string.h>
 #include <SDL.h>
 
+#include "crash.h"
+
 #ifndef __SWITCH__
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -29,7 +31,7 @@ bool platform_init(void) {
     socketInitializeDefault();
     Result rc = plInitialize(PlServiceType_User);
     if (R_FAILED(rc)) {
-        printf("plInitialize failed: 0x%x\n", rc);
+        crash_logf("plInitialize failed: 0x%x", rc);
         return false;
     }
     return true;

@@ -1,5 +1,6 @@
 #include "crash.h"
 
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,11 +11,12 @@
 #include "platform.h"
 #include "vm/vm.h"
 
+#include <signal.h>
+
 #ifdef __SWITCH__
 #include <switch.h>
 #else
 #include <execinfo.h>
-#include <signal.h>
 #include <unistd.h>
 #endif
 
@@ -26,6 +28,7 @@ static bool ring_full;
 static SDL_SpinLock ring_lock;
 static char game_jar[512], game_cls[256];
 static char crash_dir[512];
+static FILE *app_log;
 
 void crash_log(const char *line) {
     SDL_AtomicLock(&ring_lock);
@@ -40,6 +43,27 @@ void crash_log(const char *line) {
         }
     }
     SDL_AtomicUnlock(&ring_lock);
+}
+
+void crash_logf(const char *fmt, ...) {
+    char line[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(line, sizeof(line), fmt, ap);
+    va_end(ap);
+    crash_log(line);
+    // Giây từ lúc mở app (không dùng SDL_GetTicks: về 0 sau SDL_Quit)
+    static struct timespec t0;
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    if (!t0.tv_sec && !t0.tv_nsec)
+        t0 = t;
+    long long ms = (long long)(t.tv_sec - t0.tv_sec) * 1000 + (t.tv_nsec - t0.tv_nsec) / 1000000;
+    if (app_log)
+        fprintf(app_log, "[%5lld.%03lld] %s\n", ms / 1000, ms % 1000, line);
+#ifndef __SWITCH__
+    fprintf(stderr, "%s\n", line);
+#endif
 }
 
 void crash_set_game(const char *jar_path, const char *midlet_class) {
@@ -132,6 +156,21 @@ bool crash_write_report(const char *title, const char *detail, char *name, size_
     return fclose(f) == 0;
 }
 
+void crash_fatal(const char *what) {
+    crash_logf("LOI NGHIEM TRONG: %s", what);
+    char name[64] = "";
+    if (crash_write_report("App bi loi nghiem trong", what, name, sizeof(name)))
+        write_marker(name);
+#ifdef __SWITCH__
+    char detail[1024];
+    snprintf(detail, sizeof(detail), "%s\n\n%s/crash/%s", what, crash_dir, name);
+    ErrorApplicationConfig c;
+    if (R_SUCCEEDED(errorApplicationCreate(&c, "J2ME-NXX gap loi va phai dong / J2ME-NXX hit an error and must close",
+                                           detail)))
+        errorApplicationShow(&c);
+#endif
+}
+
 bool crash_take_previous(char *name, size_t name_size) {
     char path[600];
     snprintf(path, sizeof(path), "%s/last.txt", crash_dir);
@@ -144,6 +183,26 @@ bool crash_take_previous(char *name, size_t name_size) {
     if (ok)
         name[strcspn(name, "\r\n")] = 0;
     return ok && name[0];
+}
+
+// Thư mục crash + app.log (giữ log lần mở trước ở app-prev.log)
+static void init_common(void) {
+    snprintf(crash_dir, sizeof(crash_dir), "%s/crash", platform_data_dir());
+    mkdir(platform_data_dir(), 0777);
+    char path[600], prev[600];
+    snprintf(path, sizeof(path), "%s/app.log", platform_data_dir());
+    snprintf(prev, sizeof(prev), "%s/app-prev.log", platform_data_dir());
+    remove(prev);
+    rename(path, prev);
+    app_log = fopen(path, "w");
+    if (app_log)
+        setvbuf(app_log, NULL, _IONBF, 0);
+    time_t now = time(NULL);
+    struct tm *tm = localtime(&now);
+    char when[64] = "?";
+    if (tm)
+        strftime(when, sizeof(when), "%Y-%m-%d %H:%M:%S", tm);
+    crash_logf("J2ME-NXX v" APP_VERSION_STR " mo luc %s", when);
 }
 
 // ---------------------------------------------------------------------------
@@ -247,8 +306,30 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
     // Trả về: libnx báo lỗi cho hệ thống, app đóng như crash bình thường
 }
 
+// abort() (assert sai, lỗi của thư viện...): newlib gọi raise(SIGABRT) rồi thoát im lặng
+static void on_abort(int sig) {
+    static volatile sig_atomic_t busy;
+    char name[64];
+    FILE *f = busy ? NULL : open_report(name, sizeof(name));
+    busy = 1;
+    if (f) {
+        write_header(f, "App bi sap - abort()");
+        write_java_state(f);
+        write_footer(f);
+        fclose(f);
+        write_marker(name);
+    }
+    signal(sig, SIG_DFL);
+}
+
 void crash_init(void) {
-    snprintf(crash_dir, sizeof(crash_dir), "%s/crash", platform_data_dir());
+    init_common();
+    signal(SIGABRT, on_abort);
+    u64 used = 0, total = 0;
+    svcGetInfo(&used, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
+    svcGetInfo(&total, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
+    crash_logf("Switch: applet type %d, next load %s, RAM %lluM / %lluM", (int)appletGetAppletType(),
+               envHasNextLoad() ? "co" : "khong", (unsigned long long)(used >> 20), (unsigned long long)(total >> 20));
 }
 
 #else
@@ -279,7 +360,7 @@ static void on_signal(int sig) {
 }
 
 void crash_init(void) {
-    snprintf(crash_dir, sizeof(crash_dir), "%s/crash", platform_data_dir());
+    init_common();
     // Stack riêng để vẫn ghi được khi tràn stack
     static char alt[64 * 1024];
     stack_t ss = { .ss_sp = alt, .ss_size = sizeof(alt), .ss_flags = 0 };

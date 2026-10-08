@@ -1,11 +1,13 @@
 #include "update.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <SDL.h>
 
+#include "crash.h"
 #include "http.h"
 #include "platform.h"
 
@@ -36,9 +38,22 @@ static void set_state(UpdateState s) {
 }
 
 static void set_error(UpdateState s, const char *msg) {
-    printf("[update] %s\n", msg);
+    crash_logf("[update] loi: %s", msg);
+    // Tải / thay file lỗi: ghi báo cáo (kèm log các bước cập nhật) để gửi lại
+    char name[64] = "";
+    if (s == UPDATE_FAILED) {
+        char detail[1600];
+        SDL_LockMutex(lock);
+        snprintf(detail, sizeof(detail), "%s\nFile .nro: %s\nURL: %s\nDa tai: %lld / %lld byte", msg, self_path,
+                 asset_url, (long long)done_bytes, (long long)total_bytes);
+        SDL_UnlockMutex(lock);
+        crash_write_report("Cap nhat loi", detail, name, sizeof(name));
+    }
     SDL_LockMutex(lock);
-    snprintf(error, sizeof(error), "%s", msg);
+    if (name[0])
+        snprintf(error, sizeof(error), "%s (crash/%s)", msg, name);
+    else
+        snprintf(error, sizeof(error), "%s", msg);
     state = s;
     SDL_UnlockMutex(lock);
 }
@@ -61,6 +76,7 @@ void update_init(const char *argv0) {
     else
         snprintf(self_path, sizeof(self_path), "%s/" UPDATE_ASSET, platform_data_dir());
 #endif
+    crash_logf("[update] file .nro dang chay: %s", self_path);
 }
 
 bool update_supported(void) {
@@ -326,7 +342,8 @@ static int check_thread(void *arg) {
     has_new = newer(tag, local) && url[0];
     state = has_new ? UPDATE_AVAILABLE : UPDATE_LATEST;
     SDL_UnlockMutex(lock);
-    printf("[update] latest %s, running %s%s\n", tag, local, has_new ? ": update available" : "");
+    crash_logf("[update] moi nhat %s, dang chay %s%s", tag, local,
+               has_new ? ": co ban moi" : url[0] ? "" : " (release khong co file " UPDATE_ASSET ")");
     return 0;
 }
 
@@ -392,6 +409,7 @@ static int download_thread(void *arg) {
     SDL_UnlockMutex(lock);
     snprintf(tmp_path, sizeof(tmp_path), "%s.new", self_path);
     snprintf(old_path, sizeof(old_path), "%s.old", self_path);
+    crash_logf("[update] tai %s -> %s", url, tmp_path);
 
     Dl d = { 0 };
     d.f = fopen(tmp_path, "wb");
@@ -415,6 +433,8 @@ static int download_thread(void *arg) {
     int64_t got, want;
     int bps;
     update_progress(&got, &want, &bps);
+    crash_logf("[update] tai xong: HTTP %d, %lld / %lld byte, ghi file %s%s%s", status, (long long)got,
+               (long long)want, write_ok ? "ok" : "loi", status > 0 ? "" : ", ", status > 0 ? "" : err);
     if (status != 200 || !write_ok) {
         remove(tmp_path);
         if (status > 0 && status != 200)
@@ -434,19 +454,23 @@ static int download_thread(void *arg) {
     struct stat st;
     bool had_old = stat(self_path, &st) == 0;
     remove(old_path);
+    char msg[160];
     if (had_old && rename(self_path, old_path) != 0) {
+        snprintf(msg, sizeof(msg), "cannot replace the .nro file (rename old: %s)", strerror(errno));
         remove(tmp_path);
-        set_error(UPDATE_FAILED, "cannot replace the .nro file");
+        set_error(UPDATE_FAILED, msg);
         return 0;
     }
     if (rename(tmp_path, self_path) != 0) {
-        if (had_old)
-            rename(old_path, self_path);
+        snprintf(msg, sizeof(msg), "cannot replace the .nro file (rename new: %s)", strerror(errno));
+        if (had_old && rename(old_path, self_path) != 0)
+            crash_logf("[update] khong tra lai duoc file cu: %s", strerror(errno));
         remove(tmp_path);
-        set_error(UPDATE_FAILED, "cannot replace the .nro file");
+        set_error(UPDATE_FAILED, msg);
         return 0;
     }
     remove(old_path);
+    crash_logf("[update] da thay file %s", self_path);
     SDL_LockMutex(lock);
     has_new = false;
     state = UPDATE_DONE;
@@ -474,11 +498,15 @@ void update_cancel(void) {
 bool update_restart(void) {
 #ifdef __SWITCH__
     // Chạy từ hbmenu: báo hbloader nạp file .nro mới khi app thoát
-    if (!envHasNextLoad())
+    if (!envHasNextLoad()) {
+        crash_logf("[update] loader khong ho tro mo lai app, thoat de nguoi dung tu mo");
         return false;
+    }
     char args[600];
     snprintf(args, sizeof(args), "\"%s\"", self_path);
-    return R_SUCCEEDED(envSetNextLoad(self_path, args));
+    Result rc = envSetNextLoad(self_path, args);
+    crash_logf("[update] mo lai vao %s khi thoat: rc 0x%x", self_path, rc);
+    return R_SUCCEEDED(rc);
 #else
     return false;
 #endif

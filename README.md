@@ -21,9 +21,9 @@ Chạy file `.jar` của ứng dụng, game điện thoại Java cũ trực ti�
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; `tsf.h` (TinySoundFont, MIT); SoundFont `TimGM6mb.sf2` (GPL v2, nhúng vào binary); font Google Sans (OFL) có đủ chữ tiếng Việt |
 | `source/ui/` | Giao diện dựng bằng [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): danh sách ứng dụng, cài đặt, ánh xạ phím, cập nhật, gửi game từ điện thoại |
-| `source/` | Phiên chạy ứng dụng (`emu.c`), lớp vẽ `gfx.c` trên NanoVG cho màn hình chạy game / phím ảo / trình xem video, giải mã video qua FFmpeg (`video_dec.c`), lớp nền tảng Switch/desktop |
+| `source/` | Phiên chạy ứng dụng (`emu.c`), lớp vẽ `gfx.c` trên NanoVG cho màn hình chạy game / phím ảo, lớp nền tảng Switch/desktop |
 | `resources/` | Tài nguyên của borealis (chữ gợi ý nút vi/en, icon): nằm trong romfs của `.nro` |
-| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video trên Canvas, trong Form, `platformRequest`) |
+| `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
 
 Thư viện Java được biên dịch bằng `javac` lúc build rồi nhúng vào binary dưới dạng `classlib.jar`.
 
@@ -33,21 +33,21 @@ Cần: [devkitPro](https://devkitpro.org/wiki/Getting_Started) (gói `switch-dev
 
 ```bash
 git submodule update --init library/borealis
-sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg switch-mesa switch-libdrm_nouveau
+sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-mesa switch-libdrm_nouveau
 export DEVKITPRO=/opt/devkitpro
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
 ```
 
-Kết quả: `build/j2me-nxx.nro`. Thiếu mbedTLS thì vẫn build được, chỉ không có `https://` / `ssl://`; thiếu FFmpeg thì không có video và AMR/AAC.
+Kết quả: `build/j2me-nxx.nro`. Thiếu mbedTLS thì vẫn build được, chỉ không có `https://` / `ssl://`.
 
 ### Bản desktop (test nhanh trên Mac/Linux)
 
 ```bash
-brew install sdl2 sdl2_ttf libpng mbedtls ffmpeg pkgconf
+brew install sdl2 sdl2_ttf libpng mbedtls pkgconf
 cmake -B build-desktop -DJ2ME_NX_DESKTOP=ON
 cmake --build build-desktop
-./build-desktop/j2me-nxx path/to/game.jar     # hoặc file video .mp4 / .3gp
+./build-desktop/j2me-nxx path/to/game.jar
 ```
 
 Biến môi trường: `J2ME_NX_GAMES` (thư mục ứng dụng, mặc định `./games`), `J2ME_NX_DATA` (log, save, cài đặt; mặc định `./data`).
@@ -94,11 +94,9 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
 **SoundFont**: nhạc MIDI phát bằng SoundFont. App có sẵn `TimGM6mb` (~6 MB, GPL v2) nhúng trong file `.nro`, không cần chép gì thêm. Mặc định **tắt** (dùng bộ tổng hợp sóng), bật ở **Cài đặt > SoundFont MIDI**. Muốn dùng SoundFont General MIDI khác thì chép file `.sf2` vào `sdmc:/switch/j2me-nxx/soundfonts/` rồi chọn ở cùng mục đó: "Tự động" dùng file `.sf2` đầu tiên theo tên (không có thì dùng bản có sẵn), "TimGM6mb (có sẵn)" luôn dùng bản nhúng, "Tắt" dùng bộ tổng hợp sóng cũ (nhẹ hơn). File `.sf2` được nạp cả vào RAM, nên chọn file nhỏ (dưới ~50 MB).
 
-**Gửi ứng dụng, video từ điện thoại (Upload)**: ở danh sách ứng dụng bấm **R**, Switch hiện mã QR. Điện thoại (cùng mạng Wi-Fi với Switch) quét mã để mở trang tải lên, chọn một hoặc nhiều file ứng dụng `.jar` / `.jad` hoặc video, file được lưu thẳng vào thư mục `games` (có thanh tiến trình trên cả điện thoại và Switch). Không quét được mã thì gõ địa chỉ hiện bên cạnh (dạng `http://192.168.x.x:8080/`) vào trình duyệt. Bấm **B** để đóng, danh sách tự quét lại.
+**Gửi ứng dụng từ điện thoại (Upload)**: ở danh sách ứng dụng bấm **R**, Switch hiện mã QR. Điện thoại (cùng mạng Wi-Fi với Switch) quét mã để mở trang tải lên, chọn một hoặc nhiều file ứng dụng `.jar` / `.jad`, file được lưu thẳng vào thư mục `games` (có thanh tiến trình trên cả điện thoại và Switch). Không quét được mã thì gõ địa chỉ hiện bên cạnh (dạng `http://192.168.x.x:8080/`) vào trình duyệt. Bấm **B** để đóng, danh sách tự quét lại.
 
-**Xoá ứng dụng, video**: chọn file trong danh sách rồi bấm **L**, hộp xác nhận hiện tên và dung lượng file, bấm **A** để xoá (kèm file `.jad` cùng tên nếu có), **B** để huỷ. Dữ liệu save và tuỳ chọn riêng của ứng dụng vẫn được giữ lại, chép lại ứng dụng là dùng tiếp được.
-
-**Xem video**: chép file `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... vào cùng thư mục `games`, chúng hiện trong danh sách với biểu tượng ▶. Khi xem: **A** phát / dừng, **trái / phải** tua 10 giây, **L / R** tua 1 phút, **lên / xuống** âm lượng, **B** thoát.
+**Xoá ứng dụng**: chọn file trong danh sách rồi bấm **L**, hộp xác nhận hiện tên và dung lượng file, bấm **A** để xoá (kèm file `.jad` cùng tên nếu có), **B** để huỷ. Dữ liệu save và tuỳ chọn riêng của ứng dụng vẫn được giữ lại, chép lại ứng dụng là dùng tiếp được.
 
 Danh sách ứng dụng hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng ứng dụng (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
@@ -111,9 +109,9 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 ## Trạng thái
 
 - Đã chạy: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (bàn phím ảo của Switch), RecordStore, Timer, thread / wait / notify.
-- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (phát bằng SoundFont `.sf2` qua TinySoundFont; không có file `.sf2` thì tổng hợp bằng sóng cơ bản + trống), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A và tiếng trong 3GP/MP4 giải mã bằng FFmpeg.
-- Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) từ JAR, `file://` hoặc `http://`; vẽ đè lên Canvas (`USE_DIRECT_VIDEO`, cả toàn màn hình) hoặc trong Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), lặp, tua. Chưa có camera (`capture://`).
-- `MIDlet.platformRequest`: link video (`http://`, `file:///`...) phát bằng trình xem video đè lên app (B để quay lại), trang web mở bằng trình duyệt có sẵn của Switch (cần chạy hbmenu ở chế độ full RAM). Dùng cho app như JTube (chọn Playback method: Via browser).
+- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (phát bằng SoundFont `.sf2` qua TinySoundFont; không có file `.sf2` thì tổng hợp bằng sóng cơ bản + trống), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. Không phát được AMR, AAC, M4A (game vẫn chạy, chỉ không có tiếng đó).
+- Không hỗ trợ video (MMAPI `VideoControl`): Player kiểu `video/...` báo `MediaException`. Chưa có camera (`capture://`).
+- `MIDlet.platformRequest`: trang web (`http://`, `https://`) mở bằng trình duyệt có sẵn của Switch (cần chạy hbmenu ở chế độ full RAM).
 - Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ), `datagram://` (UDP).
 - File: JSR-75 FileConnection với ổ `C:/`, `E:/` trong sandbox riêng của từng ứng dụng (`sdmc:/switch/j2me-nxx/files/<tên>/`).
 - API của hãng: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).
@@ -149,9 +147,9 @@ It runs `.jar` files of old Java phone apps and games directly on the Switch (ho
 | `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
 | `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; `tsf.h` (TinySoundFont, MIT); `TimGM6mb.sf2` SoundFont (GPL v2, embedded in the binary); Google Sans font (OFL) with full Vietnamese coverage |
 | `source/ui/` | UI built with [borealis](https://github.com/xfangfang/borealis) (submodule `library/borealis`): app list, settings, button mapping, updates, sending apps from a phone |
-| `source/` | App session (`emu.c`), `gfx.c` drawing layer on NanoVG for the running app / on-screen keypad / video player, FFmpeg video decoding (`video_dec.c`), Switch/desktop platform layer |
+| `source/` | App session (`emu.c`), `gfx.c` drawing layer on NanoVG for the running app / on-screen keypad, Switch/desktop platform layer |
 | `resources/` | borealis resources (vi/en button hint strings, icons): packed into the `.nro` romfs |
-| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video on a Canvas, in a Form, `platformRequest`) |
+| `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D) |
 
 The Java library is compiled with `javac` at build time and embedded in the binary as `classlib.jar`.
 
@@ -161,21 +159,21 @@ Requirements: [devkitPro](https://devkitpro.org/wiki/Getting_Started) (`switch-d
 
 ```bash
 git submodule update --init library/borealis
-sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-ffmpeg switch-mesa switch-libdrm_nouveau
+sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-zlib switch-mbedtls switch-mesa switch-libdrm_nouveau
 export DEVKITPRO=/opt/devkitpro
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake
 cmake --build build
 ```
 
-Output: `build/j2me-nxx.nro`. It still builds without mbedTLS, just without `https://` / `ssl://`; without FFmpeg there is no video and no AMR/AAC.
+Output: `build/j2me-nxx.nro`. It still builds without mbedTLS, just without `https://` / `ssl://`.
 
 #### Desktop build (quick testing on Mac/Linux)
 
 ```bash
-brew install sdl2 sdl2_ttf libpng mbedtls ffmpeg pkgconf
+brew install sdl2 sdl2_ttf libpng mbedtls pkgconf
 cmake -B build-desktop -DJ2ME_NX_DESKTOP=ON
 cmake --build build-desktop
-./build-desktop/j2me-nxx path/to/game.jar     # or a .mp4 / .3gp video file
+./build-desktop/j2me-nxx path/to/game.jar
 ```
 
 Environment variables: `J2ME_NX_GAMES` (apps folder, default `./games`), `J2ME_NX_DATA` (logs, saves, settings; default `./data`).
@@ -222,11 +220,9 @@ The touch screen is mapped to pointer events.
 
 **SoundFont**: MIDI music is played with a SoundFont. `TimGM6mb` (~6 MB, GPL v2) is embedded in the `.nro`, so nothing extra needs to be copied. It is **off** by default (wave synth); turn it on in **Settings > MIDI SoundFont**. To use another General MIDI SoundFont, copy a `.sf2` file to `sdmc:/switch/j2me-nxx/soundfonts/` and pick it in the same setting: "Auto" uses the first `.sf2` file by name (or the built-in one if there is none), "TimGM6mb (built-in)" always uses the embedded one, "Off" uses the old wave synth (lighter). The whole `.sf2` is loaded into RAM, so prefer small files (under ~50 MB).
 
-**Sending apps and videos from your phone (Upload)**: press **R** in the app list and the Switch shows a QR code. Scan it with a phone on the same Wi-Fi network to open the upload page, then pick one or more `.jar` / `.jad` apps or videos; they are saved straight into the `games` folder (with progress on both the phone and the Switch). If scanning does not work, type the address shown next to the code (like `http://192.168.x.x:8080/`) into the browser. Press **B** to close; the list is rescanned automatically.
+**Sending apps from your phone (Upload)**: press **R** in the app list and the Switch shows a QR code. Scan it with a phone on the same Wi-Fi network to open the upload page, then pick one or more `.jar` / `.jad` apps; they are saved straight into the `games` folder (with progress on both the phone and the Switch). If scanning does not work, type the address shown next to the code (like `http://192.168.x.x:8080/`) into the browser. Press **B** to close; the list is rescanned automatically.
 
-**Deleting apps and videos**: select a file in the list and press **L**; a confirmation shows its name and size. Press **A** to delete it (along with the matching `.jad`, if any) or **B** to cancel. Save data and per-app options are kept, so copying the app back lets you continue where you left off.
-
-**Watching videos**: copy `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... files into the same `games` folder; they show up in the list with a ▶ icon. While watching: **A** play / pause, **left / right** seek 10 s, **L / R** seek 1 min, **up / down** volume, **B** exit.
+**Deleting apps**: select a file in the list and press **L**; a confirmation shows its name and size. Press **A** to delete it (along with the matching `.jad`, if any) or **B** to cancel. Save data and per-app options are kept, so copying the app back lets you continue where you left off.
 
 The app list shows the name, vendor, version and icon read from each app's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
 
@@ -239,9 +235,9 @@ Screen size is chosen in this order: the app's own options > `Nokia-MIDlet-Origi
 ### Status
 
 - Working: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (Switch software keyboard), RecordStore, Timer, threads / wait / notify.
-- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (played with a `.sf2` SoundFont via TinySoundFont; without one, synthesized with basic waveforms + drums), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A and the audio track of 3GP/MP4 are decoded with FFmpeg.
-- Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) from the JAR, `file://` or `http://`; drawn over a Canvas (`USE_DIRECT_VIDEO`, including full screen) or inside a Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), looping, seeking. No camera (`capture://`) yet.
-- `MIDlet.platformRequest`: video links (`http://`, `file:///`...) play in the video player on top of the app (B to go back), web pages open in the Switch's built-in browser (requires hbmenu in full RAM mode). Useful for apps like JTube (set Playback method to Via browser).
+- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (played with a `.sf2` SoundFont via TinySoundFont; without one, synthesized with basic waveforms + drums), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC and M4A are not supported (the app still runs, just without those sounds).
+- No video support (MMAPI `VideoControl`): `video/...` players throw `MediaException`. No camera (`capture://`) yet.
+- `MIDlet.platformRequest`: web pages (`http://`, `https://`) open in the Switch's built-in browser (requires hbmenu in full RAM mode).
 - Networking: `socket://`, `http://`, `https://`, `ssl://` (TLS via mbedTLS, certificates are not verified), `datagram://` (UDP).
 - Files: JSR-75 FileConnection with `C:/` and `E:/` drives in a per-app sandbox (`sdmc:/switch/j2me-nxx/files/<name>/`).
 - Vendor APIs: Nokia UI (`FullCanvas`, `DirectGraphics`, `Sound`), Siemens (`com.siemens.mp.game/ui/io/gsm`), Samsung (`com.samsung.util`), Motorola (`funlight`, `multimedia`).

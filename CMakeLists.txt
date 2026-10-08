@@ -147,8 +147,6 @@ add_executable(j2me-nxx
     source/settings.c
     source/qr.c
     source/upload.c
-    source/video_dec.c
-    source/video_screen.c
     source/vkb.c
     source/vpad.c
     source/vpad_screen.c
@@ -173,7 +171,6 @@ add_executable(j2me-nxx
     source/midp/audio.c
     source/midp/fileio.c
     source/midp/m3g.c
-    source/midp/video.c
     source/third_party/dr_mp3.c
     "${SOUNDFONT_C}"
     "${CLASSLIB_C}"
@@ -223,27 +220,12 @@ else()
     target_compile_definitions(j2me-nxx PRIVATE J2ME_NX_NO_TLS)
 endif()
 
-# FFmpeg cho video (3GP/MP4...) và âm thanh AMR/AAC (không bắt buộc: thiếu thì build không có video)
-pkg_check_modules(FFMPEG libavformat libavcodec libswscale libswresample libavutil)
-if(FFMPEG_FOUND)
-    message(STATUS "Video: dung FFmpeg ${FFMPEG_libavcodec_VERSION}")
-    target_include_directories(j2me-nxx PRIVATE ${FFMPEG_INCLUDE_DIRS})
-    if(NINTENDO_SWITCH)
-        set(VIDEO_LIBS ${FFMPEG_LDFLAGS})
-    else()
-        set(VIDEO_LIBS ${FFMPEG_LINK_LIBRARIES})
-    endif()
-else()
-    message(WARNING "Khong tim thay FFmpeg: build khong co video / AMR. Switch: sudo dkp-pacman -S switch-ffmpeg, Mac: brew install ffmpeg")
-    target_compile_definitions(j2me-nxx PRIVATE J2ME_NX_NO_VIDEO)
-endif()
-
 target_include_directories(j2me-nxx PRIVATE ${DEPS_INCLUDE_DIRS})
 target_compile_options(j2me-nxx PRIVATE ${DEPS_CFLAGS_OTHER})
 
 if(NINTENDO_SWITCH)
     # mbedTLS phải đứng trước libnx trong lệnh link
-    target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LDFLAGS})
+    target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${DEPS_LDFLAGS})
 
     nx_generate_nacp(j2me-nxx.nacp
         NAME    "${APP_TITLE}"
@@ -256,7 +238,7 @@ if(NINTENDO_SWITCH)
         ROMFS "${RESOURCES_DIR}"
     )
 else()
-    target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${VIDEO_LIBS} ${DEPS_LINK_LIBRARIES} m)
+    target_link_libraries(j2me-nxx PRIVATE ${TLS_LIBS} ${DEPS_LINK_LIBRARIES} m)
     # Tài nguyên của borealis cạnh file chạy (BRLS_RESOURCES = <thư mục build>/resources/)
     add_custom_command(TARGET j2me-nxx POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_directory "${RESOURCES_DIR}" "${CMAKE_BINARY_DIR}/resources"

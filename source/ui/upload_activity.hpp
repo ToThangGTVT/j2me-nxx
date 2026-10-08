@@ -1,4 +1,4 @@
-// Nhận ứng dụng / video từ điện thoại qua Wi-Fi: mã QR tới trang tải lên, tiến độ nhận file
+// Nhận ứng dụng từ điện thoại qua Wi-Fi: mã QR tới trang tải lên, tiến độ nhận file
 #pragma once
 
 #include "ui/common.hpp"

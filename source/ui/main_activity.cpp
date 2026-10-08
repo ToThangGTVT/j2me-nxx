@@ -37,8 +37,6 @@ static std::string subtitle(const GameEntry* g)
     std::string folder = slash ? std::string(g->name, slash - g->name) + "/" : "";
     if (!g->info_loaded)
         return "...";
-    if (g->video)
-        return folder.empty() ? T(S_VIDEO_TAG) : T(S_VIDEO_TAG) + "  -  " + folder;
     if (!g->valid)
         return T(S_NO_MIDLET);
     std::string s = g->vendor;
@@ -49,7 +47,7 @@ static std::string subtitle(const GameEntry* g)
     return s;
 }
 
-// Icon của ứng dụng: ảnh trong JAR (phóng nguyên lần cho icon điểm ảnh nhỏ), video thì nút phát,
+// Icon của ứng dụng: ảnh trong JAR (phóng nguyên lần cho icon điểm ảnh nhỏ),
 // không có icon thì ô màu theo tên + chữ cái đầu
 class GameIcon : public brls::View
 {
@@ -65,22 +63,6 @@ class GameIcon : public brls::View
         if (!entry)
             return;
         GameEntry* g = entry;
-        if (g->video)
-        {
-            nvgBeginPath(vg);
-            nvgRoundedRect(vg, x, y, width, height, 8);
-            nvgFillColor(vg, nvgRGB(0x30, 0x34, 0x3c));
-            nvgFill(vg);
-            float h = height / 2, x0 = x + width / 2 - h / 3, y0 = y + (height - h) / 2;
-            nvgBeginPath(vg);
-            nvgMoveTo(vg, x0, y0);
-            nvgLineTo(vg, x0 + h * 0.87f, y0 + h / 2);
-            nvgLineTo(vg, x0, y0 + h);
-            nvgClosePath(vg);
-            nvgFillColor(vg, color_accent());
-            nvgFill(vg);
-            return;
-        }
         if (g->icon && !g->icon_img)
             g->icon_img = gfx_image_argb(g->icon, g->icon_w, g->icon_h, false);
         if (g->icon_img)
@@ -168,7 +150,7 @@ class GameCell : public brls::RecyclerCell
         icon->entry = g;
         title->setText(g->title);
         sub->setText(subtitle(g));
-        sub->setTextColor(g->info_loaded && !g->video && !g->valid ? color_warn() : color_dim());
+        sub->setTextColor(g->info_loaded && !g->valid ? color_warn() : color_dim());
         size->setText(format_size(g->size));
     }
 
@@ -415,7 +397,6 @@ void MainActivity::rescan(bool keep)
         add(T(S_EMPTY_COPY), 22, color_dim(), 28);
         add(std::string(platform_games_dir()) + "/", 28, color_accent(), 14);
         add(T(S_EMPTY_SUBDIR), 20, color_dim(), 28);
-        add(T(S_EMPTY_VIDEO), 20, color_dim(), 8);
         add(T(S_EMPTY_RESCAN), 22, color_warn(), 28);
         add(T(S_EMPTY_UPLOAD), 22, color_warn(), 8);
     }
@@ -448,11 +429,6 @@ void MainActivity::open_entry(int index)
         return;
     GameEntry* g = &list.items[index];
     game_list_load_info(g);
-    if (g->video)
-    {
-        play_video(g->path, g->title);
-        return;
-    }
     if (g->midlet_count <= 1)
     {
         launch_entry(g, 1);
@@ -477,11 +453,6 @@ void MainActivity::open_options(int index)
     if (index < 0 || index >= list.count)
         return;
     GameEntry* g = &list.items[index];
-    if (g->video)
-    {
-        notify(T(S_VIDEO_NO_OPTIONS));
-        return;
-    }
     char id[256];
     game_list_id(g, id, sizeof(id));
     game_list_load_info(g);
@@ -498,7 +469,7 @@ void MainActivity::confirm_delete(int index)
 
     auto* box = new brls::Box(brls::Axis::COLUMN);
     box->setPadding(36, 40, 24, 40);
-    box->addView(make_label(T(g->video ? S_DELETE_VIDEO : S_DELETE_GAME), 20, color_warn()));
+    box->addView(make_label(T(S_DELETE_GAME), 20, color_warn()));
     auto* name = make_label(g->title, 30, brls::Application::getTheme()["brls/text"]);
     name->setMarginTop(10);
     box->addView(name);
@@ -506,12 +477,9 @@ void MainActivity::confirm_delete(int index)
                             color_dim());
     file->setMarginTop(10);
     box->addView(file);
-    if (!g->video)
-    {
-        auto* keep = make_label(T(S_DELETE_KEEP_SAVE), 18, color_dim());
-        keep->setMarginTop(16);
-        box->addView(keep);
-    }
+    auto* keep = make_label(T(S_DELETE_KEEP_SAVE), 18, color_dim());
+    keep->setMarginTop(16);
+    box->addView(keep);
 
     auto* dialog = new brls::Dialog(box);
     dialog->addButton(T(S_ACT_CANCEL), []() {});
@@ -553,25 +521,6 @@ bool MainActivity::launch_game(const char* path, const char* game_id, int midlet
             brls::Application::quit();
 #endif
     };
-    ScreenActivity::open(hooks);
-    return true;
-}
-
-bool MainActivity::play_video(const char* path, const char* title)
-{
-    char err[160];
-    if (!video_screen_open(path, title, err, sizeof(err)))
-    {
-        notify(err);
-        return false;
-    }
-    ScreenHooks hooks;
-    hooks.update = []()
-    { return video_screen_update(); };
-    hooks.draw   = []()
-    { video_screen_draw(); };
-    hooks.closed = []()
-    { video_screen_close(); };
     ScreenActivity::open(hooks);
     return true;
 }

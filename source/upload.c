@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <SDL.h>
 
-#include "game_list.h"
 #include "lang.h"
 #include "platform.h"
 
@@ -181,8 +180,6 @@ static void send_page(int fd) {
     }
     // Đuôi file nhận được, để trang kiểm tra trước khi gửi
     o += (size_t)snprintf(strs + o, sizeof(strs) - o, ",exts:[\"jar\",\"jad\"");
-    for (int i = 0; i < game_list_video_ext_count && o < sizeof(strs) - 16; i++)
-        o += (size_t)snprintf(strs + o, sizeof(strs) - o, ",\"%s\"", game_list_video_exts[i] + 1);
     strs[o++] = ']';
     strs[o++] = '}';
     strs[o] = '\0';
@@ -222,7 +219,7 @@ static void url_decode(char *out, size_t size, const char *s, size_t len) {
     out[o] = '\0';
 }
 
-// Lấy tên file an toàn từ ?name=...: bỏ thư mục, chỉ nhận game .jar / .jad và video
+// Lấy tên file an toàn từ ?name=...: bỏ thư mục, chỉ nhận game .jar / .jad
 static bool file_name_from_query(const char *path, char *out, size_t size) {
     const char *q = strstr(path, "?name=");
     if (!q)
@@ -244,7 +241,7 @@ static bool file_name_from_query(const char *path, char *out, size_t size) {
         if ((unsigned char)*p < 0x20 || strchr(":*?\"<>|", *p))
             return false;
     }
-    if (strcasecmp(base + n - 4, ".jar") != 0 && strcasecmp(base + n - 4, ".jad") != 0 && !game_list_is_video(base))
+    if (strcasecmp(base + n - 4, ".jar") != 0 && strcasecmp(base + n - 4, ".jad") != 0)
         return false;
     memcpy(out, base, n + 1);
     return true;

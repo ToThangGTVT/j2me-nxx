@@ -22,7 +22,6 @@ extern "C" {
 #include "settings.h"
 #include "update.h"
 #include "upload.h"
-#include "video_screen.h"
 #include "vpad.h"
 #include "vpad_screen.h"
 
@@ -45,7 +44,7 @@ NVGcolor color_ok();
 // Thông báo nhỏ góc màn hình
 void notify(const std::string& text);
 
-// Sự kiện SDL thô (bàn phím, joystick, chạm) cho các màn hình tự xử lý phím (chạy game, video...).
+// Sự kiện SDL thô (bàn phím, joystick, chạm) cho các màn hình tự xử lý phím (chạy game, chỉnh phím ảo).
 // borealis không chuyển các sự kiện này ra ngoài nên bắt bằng SDL_AddEventWatch.
 using SdlEventHandler = std::function<void(const SDL_Event*)>;
 void sdl_events_init();

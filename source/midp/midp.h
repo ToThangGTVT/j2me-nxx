@@ -78,16 +78,6 @@ const uint32_t *midp_framebuffer_hires(int *k);
 int midp_take_frame_gap_max(void);
 bool midp_exit_requested(void);
 
-// Lớp phủ video lên màn hình game (midp.c, gọi từ luồng VM)
-int midp_overlay_add(void);
-void midp_overlay_set(int id, bool visible, int x, int y, int w, int h);
-void midp_overlay_frame(int id, const uint32_t *frame, int fw, int fh);
-void midp_overlay_remove(int id);
-
-// video.c
-void midp_video_register(void);
-void midp_video_shutdown(void);
-
 // m3g.c
 void midp_m3g_register(void);
 void midp_m3g_shutdown(void);
@@ -103,8 +93,6 @@ void midp_audio_shutdown(void);
 // NULL hoặc "" = bộ tổng hợp sóng. Gọi trước khi game chạy, giữ lại giữa các game.
 #define MIDP_SOUNDFONT_BUILTIN ":builtin"
 void midp_audio_set_soundfont(const char *path);
-// Tạm đóng thiết bị âm thanh (khi trình xem video đè lên game). Gọi khi luồng VM đang dừng.
-void midp_audio_suspend(bool suspend);
 
 // net.c, tls.c
 void midp_net_register(void);

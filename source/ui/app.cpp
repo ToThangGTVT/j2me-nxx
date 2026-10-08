@@ -1,6 +1,6 @@
 // J2ME-NXX - J2ME emulator cho Nintendo Switch
 //
-// Giao diện dựng bằng borealis (danh sách ứng dụng, cài đặt...); màn hình chạy game, xem video,
+// Giao diện dựng bằng borealis (danh sách ứng dụng, cài đặt...); màn hình chạy game,
 // chỉnh phím ảo vẽ bằng gfx.h trên NanoVG (ScreenActivity).
 // Chạy được cả trên Switch (devkitPro) và desktop (để test nhanh).
 // Desktop: có thể truyền đường dẫn .jar làm tham số để chạy thẳng game.
@@ -8,7 +8,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <strings.h>
 
 #include <glad/glad.h>
 
@@ -219,12 +218,8 @@ int main(int argc, char* argv[])
 #endif
     if (argc > 1)
     {
-        // Desktop: tham số là .jar thì chạy game, file khác thì mở bằng trình xem video
-        const char* dot = strrchr(argv[1], '.');
-        if (dot && strcasecmp(dot, ".jar") != 0)
-            ui::MainActivity::play_video(argv[1], argv[1]);
-        else
-            ui::MainActivity::launch_game(argv[1], nullptr, argc > 2 ? atoi(argv[2]) : 1);
+        // Desktop: tham số là file .jar thì chạy luôn
+        ui::MainActivity::launch_game(argv[1], nullptr, argc > 2 ? atoi(argv[2]) : 1);
     }
     ui::notify(startup_note);
 
@@ -246,7 +241,6 @@ int main(int argc, char* argv[])
         {
             update_shutdown();
             upload_stop();
-            video_screen_close();
             emu_stop();
             ui::MainActivity::shutdown();
             input_exit();

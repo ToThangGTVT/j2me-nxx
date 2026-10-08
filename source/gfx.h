@@ -1,5 +1,5 @@
 // Lớp vẽ 2D trên NanoVG của borealis: toạ độ logic 1280x720 (giữ tỉ lệ, đặt giữa vùng vẽ),
-// hình chữ nhật, chữ, ảnh. Dùng cho các màn hình tự vẽ (chạy game, phím ảo, xem video).
+// hình chữ nhật, chữ, ảnh. Dùng cho các màn hình tự vẽ (chạy game, phím ảo).
 #pragma once
 
 #include <stdbool.h>

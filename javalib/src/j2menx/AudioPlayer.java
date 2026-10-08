@@ -10,9 +10,8 @@ import javax.microedition.media.TimeBase;
 import javax.microedition.media.control.ToneControl;
 import javax.microedition.media.control.VolumeControl;
 
-// Player phát WAV / MIDI / MP3 / tone qua bộ trộn native (source/midp/audio.c); AMR, AAC...
-// giải mã bằng FFmpeg. Định dạng không đọc được thì giả lập trạng thái, không có tiếng.
-// VideoPlayer dùng lại các native này để phát tiếng của video.
+// Player phát WAV / MIDI / MP3 / tone qua bộ trộn native (source/midp/audio.c).
+// Định dạng không đọc được (AMR, AAC...) thì giả lập trạng thái, không có tiếng.
 public class AudioPlayer implements Player, VolumeControl, ToneControl {
     private static final Hashtable active = new Hashtable();
 

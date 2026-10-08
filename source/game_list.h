@@ -1,4 +1,4 @@
-// Danh sách game .jar (và file video) trong thư mục games (quét cả thư mục con)
+// Danh sách game .jar trong thư mục games (quét cả thư mục con)
 #pragma once
 
 #include <stdbool.h>
@@ -9,7 +9,6 @@ typedef struct {
     char name[256];         // đường dẫn tương đối trong thư mục games, vd "RPG/abc.jar"
     char path[512];         // đường dẫn đầy đủ
     long size;              // byte
-    bool video;             // file video (.3gp, .mp4...): mở bằng trình xem video
 
     // Đọc lười từ MANIFEST.MF / JAD (game_list_load_info)
     bool info_loaded;
@@ -37,10 +36,6 @@ void game_list_free(GameList *list);
 
 // File .jad cùng tên cạnh file .jar (đuôi .jad hoặc .JAD); false nếu không có
 bool game_list_find_jad(const GameEntry *g, char *out, size_t size);
-// Xoá file game (kèm .jad cùng tên) hoặc file video. Không đụng tới save RMS / tuỳ chọn riêng
+// Xoá file game (kèm .jad cùng tên). Không đụng tới save RMS / tuỳ chọn riêng
 bool game_list_delete(const GameEntry *g);
 
-// Đuôi file video mở được bằng trình xem video (".3gp", ".mp4"...)
-extern const char *const game_list_video_exts[];
-extern const int game_list_video_ext_count;
-bool game_list_is_video(const char *name);

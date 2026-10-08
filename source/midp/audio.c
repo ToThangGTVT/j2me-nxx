@@ -11,7 +11,6 @@
 #include "../third_party/dr_mp3.h"
 #define TSF_IMPLEMENTATION
 #include "../third_party/tsf.h"
-#include "../video_dec.h"
 #include "../vm/vm.h"
 
 #define RATE        48000       // tần số gốc của Switch; thấp hơn thì SoundFont bị rè (răng cưa)
@@ -81,7 +80,6 @@ typedef struct {
 } Player;
 
 static SDL_AudioDeviceID dev;
-static bool suspended, reopen_after_suspend;
 #ifndef __SWITCH__
 static FILE *dump;  // J2ME_NX_AUDIO_DUMP=<file>: ghi PCM 16-bit mono 48000Hz để kiểm tra
 #endif
@@ -523,11 +521,6 @@ static void audio_callback(void *userdata, Uint8 *stream, int bytes) {
 static bool audio_open(void) {
     if (dev)
         return true;
-    if (suspended) {
-        // Player vẫn tạo được, mở thiết bị khi hết tạm dừng
-        reopen_after_suspend = true;
-        return true;
-    }
     if (!SDL_WasInit(SDL_INIT_AUDIO) && SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
         vm_log("SDL audio: %s", SDL_GetError());
         return false;
@@ -736,17 +729,6 @@ static bool load_mp3(Player *p, const uint8_t *d, size_t size) {
     drmp3_free(pcm, NULL);
     set_pcm(p, mono, (uint32_t)frames, (int)cfg.sampleRate);
     free(mono);
-    return true;
-}
-
-// AMR, AAC, M4A, tiếng trong 3GP/MP4... qua FFmpeg
-static bool load_ffmpeg(Player *p, const uint8_t *d, size_t size) {
-    int16_t *pcm = NULL;
-    size_t frames = 0;
-    if (!vdec_decode_audio(d, size, RATE, 1, &pcm, &frames))
-        return false;
-    set_pcm(p, pcm, (uint32_t)frames, RATE);
-    free(pcm);
     return true;
 }
 
@@ -978,12 +960,12 @@ static NativeResult A_create0(VMThread *t, Value *args, Value *ret) {
     int h = player_alloc();
     unlock();
     if (h) {
-        // Giải mã ngoài khoá (FFmpeg có thể mất vài trăm ms): player chưa có kind nên bộ trộn bỏ qua,
+        // Giải mã ngoài khoá (MP3 dài có thể mất vài trăm ms): player chưa có kind nên bộ trộn bỏ qua,
         // set_pcm / load_midi gán kind sau cùng
         Player *p = &players[h];
         const uint8_t *d = ARRAY_DATA(data, uint8_t);
         size_t n = (size_t)ARRAY_LEN(data);
-        if (!load_wav(p, d, n) && !load_midi(p, d, n) && !load_mp3(p, d, n) && !load_ffmpeg(p, d, n)) {
+        if (!load_wav(p, d, n) && !load_midi(p, d, n) && !load_mp3(p, d, n)) {
             lock();
             player_free(p);
             unlock();
@@ -1224,26 +1206,7 @@ void midp_audio_set_soundfont(const char *path) {
            tsf_get_presetcount(sf_base), SDL_GetTicks() - t0);
 }
 
-void midp_audio_suspend(bool s) {
-    if (s == suspended)
-        return;
-    if (s) {
-        suspended = true;
-        reopen_after_suspend = dev != 0;
-        if (dev) {
-            SDL_CloseAudioDevice(dev);
-            dev = 0;
-        }
-    } else {
-        suspended = false;
-        if (reopen_after_suspend)
-            audio_open();
-        reopen_after_suspend = false;
-    }
-}
-
 void midp_audio_shutdown(void) {
-    suspended = reopen_after_suspend = false;
     if (dev) {
         SDL_CloseAudioDevice(dev);
         dev = 0;

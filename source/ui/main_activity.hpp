@@ -1,4 +1,4 @@
-// Màn hình chính: danh sách ứng dụng (.jar) và video trong thư mục games
+// Màn hình chính: danh sách ứng dụng (.jar) trong thư mục games
 #pragma once
 
 #include "ui/common.hpp"
@@ -27,7 +27,6 @@ class MainActivity : public brls::Activity
 
     // game_id: khoá cho save / tuỳ chọn riêng (NULL = tên file)
     static bool launch_game(const char* path, const char* game_id, int midlet);
-    static bool play_video(const char* path, const char* title);
 
     // Quét lại thư mục games; keep: giữ con trỏ ở gần chỗ cũ
     void rescan(bool keep);

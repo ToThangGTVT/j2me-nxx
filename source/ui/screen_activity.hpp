@@ -1,4 +1,4 @@
-// Màn hình tự vẽ và tự đọc phím (chạy game, xem video, chỉnh phím ảo): code C cũ vẽ qua gfx.h
+// Màn hình tự vẽ và tự đọc phím (chạy game, chỉnh phím ảo): code C cũ vẽ qua gfx.h
 // trên NanoVG, nhận sự kiện SDL thô. Trong lúc mở, borealis không nhận phím / chạm.
 #pragma once
 

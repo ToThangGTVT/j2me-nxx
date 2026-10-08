@@ -15,7 +15,6 @@
 #include "midp/midp.h"
 #include "platform.h"
 #include "settings.h"
-#include "video_screen.h"
 #include "vkb.h"
 #include "vpad.h"
 #include "vm/vm.h"
@@ -176,22 +175,10 @@ static void vm_thread_stop(void) {
 }
 
 // ---------------------------------------------------------------------------
-// MIDlet.platformRequest: link video -> trình xem video đè lên game, trang web -> trình duyệt.
-// Luồng VM chỉ ghi yêu cầu; luồng chính mở link (luồng mạng mở ở luồng phụ để không đứng hình).
-
-typedef enum {
-    LINK_NONE,
-    LINK_OPENING,           // đang thử mở bằng FFmpeg
-    LINK_VIDEO,             // trình xem video đang hiện
-} LinkState;
+// MIDlet.platformRequest: trang web mở bằng trình duyệt. Luồng VM chỉ ghi yêu cầu, luồng chính mở.
 
 static SDL_mutex *req_lock;
 static char *req_url;                   // yêu cầu chờ xử lý (malloc)
-static LinkState link_state;
-static SDL_Thread *link_thread;
-static volatile int link_abort, link_done;
-static VideoDec *link_dec;
-static char link_url[2048];
 static char toast[256];
 static Uint32 toast_until;
 
@@ -207,131 +194,28 @@ static void host_platform_request(const char *url) {
     SDL_UnlockMutex(req_lock);
 }
 
-static int link_open_thread(void *arg) {
-    (void)arg;
-    VDecOptions opt;
-    video_screen_options(&opt);
-    opt.abort = &link_abort;
-    link_dec = vdec_open_url(link_url, &opt);
-    __atomic_store_n(&link_done, 1, __ATOMIC_SEQ_CST);
-    return 0;
-}
-
-// Tên hiển thị: phần cuối đường dẫn, bỏ query
-static void link_title(char *out, size_t size) {
-    const char *s = link_url;
-    const char *p = strstr(s, "://");
-    if (p)
-        s = p + 3;
-    char buf[256];
-    snprintf(buf, sizeof(buf), "%.255s", s);
-    char *q = strchr(buf, '?');
-    if (q)
-        *q = '\0';
-    char *slash = strrchr(buf, '/');
-    snprintf(out, size, "%s", slash && slash[1] ? slash + 1 : buf);
-}
-
-static void link_stop(void);
 static void release_all_keys(void);
-// Phím từ bàn phím ảo QWERTY
 
-static void start_video(VideoDec *d) {
-    // Tiếng của game tạm đóng: Switch không mở được 2 thiết bị âm thanh cùng lúc
-    lock_vm();
-    midp_audio_suspend(true);
-    unlock_vm();
-    char title[256], err[160];
-    link_title(title, sizeof(title));
-    if (video_screen_open_dec(d, title, err, sizeof(err))) {
-        link_state = LINK_VIDEO;
+// Luồng chính, mỗi frame. Trình duyệt chỉ mở trang web (Java đã chặn link khác)
+static void link_update(void) {
+    SDL_LockMutex(req_lock);
+    char *u = req_url;
+    req_url = NULL;
+    SDL_UnlockMutex(req_lock);
+    if (!u)
         return;
-    }
-    lock_vm();
-    midp_audio_suspend(false);
-    unlock_vm();
-    show_toast(err, 3000);
-    link_state = LINK_NONE;
-}
-
-static void open_browser(void) {
-    OpenUrlResult r = platform_open_url(link_url);
+    // Trình duyệt chặn tới khi đóng: nhả phím đang giữ trước
+    release_all_keys();
+    OpenUrlResult r = strstr(u, "://") ? platform_open_url(u) : OPEN_URL_FAILED;
+    free(u);
     if (r == OPEN_URL_NEED_APP)
         show_toast(tr(S_BROWSER_NEEDS_APP), 6000);
     else if (r == OPEN_URL_FAILED)
         show_toast(tr(S_LINK_FAILED), 3000);
 }
 
-// Luồng chính, mỗi frame
-static void link_update(void) {
-    if (link_state == LINK_NONE) {
-        SDL_LockMutex(req_lock);
-        char *u = req_url;
-        req_url = NULL;
-        SDL_UnlockMutex(req_lock);
-        if (!u)
-            return;
-        snprintf(link_url, sizeof(link_url), "%s", u);
-        free(u);
-        release_all_keys();
-        if (!strstr(link_url, "://")) {
-            // File thật trong sandbox (file:/// đã đổi đường dẫn ở phía Java)
-            VDecOptions opt;
-            video_screen_options(&opt);
-            VideoDec *d = vdec_open_file(link_url, &opt);
-            if (d)
-                start_video(d);
-            else
-                show_toast(tr(S_LINK_FAILED), 3000);
-            return;
-        }
-        link_abort = link_done = 0;
-        link_dec = NULL;
-        link_thread = SDL_CreateThread(link_open_thread, "link", NULL);
-        if (!link_thread) {
-            open_browser();
-            return;
-        }
-        link_state = LINK_OPENING;
-        return;
-    }
-    if (link_state == LINK_OPENING) {
-        if (input_pressed(BTN_B))
-            link_abort = 1;
-        if (!__atomic_load_n(&link_done, __ATOMIC_SEQ_CST))
-            return;
-        SDL_WaitThread(link_thread, NULL);
-        link_thread = NULL;
-        link_state = LINK_NONE;
-        VideoDec *d = link_dec;
-        link_dec = NULL;
-        if (d)
-            start_video(d);
-        else if (!link_abort)
-            open_browser();     // không phải luồng video: coi là trang web
-        return;
-    }
-    if (link_state == LINK_VIDEO && !video_screen_update()) {
-        video_screen_close();
-        lock_vm();
-        midp_audio_suspend(false);
-        unlock_vm();
-        link_state = LINK_NONE;
-    }
-}
-
 // Dừng hẳn (thoát game)
 static void link_stop(void) {
-    if (link_thread) {
-        link_abort = 1;
-        SDL_WaitThread(link_thread, NULL);
-        link_thread = NULL;
-    }
-    vdec_close(link_dec);
-    link_dec = NULL;
-    if (link_state == LINK_VIDEO)
-        video_screen_close();
-    link_state = LINK_NONE;
     if (req_lock) {
         SDL_LockMutex(req_lock);
         free(req_url);
@@ -698,7 +582,7 @@ static void vkb_send(int type, int code) {
         midp_post_key(code, type == MIDP_EV_KEY_PRESSED);
 }
 
-// Nhả mọi phím đang giữ (trước khi trình xem video lấy hết phím)
+// Nhả mọi phím đang giữ (trước khi mở trình duyệt)
 static void release_all_keys(void) {
     vkb_release_all();
     vpad_release_all();
@@ -806,8 +690,8 @@ static void pointer(int type, int lx, int ly) {
 static void handle_event(const SDL_Event *e);
 
 void emu_handle_event(const SDL_Event *e) {
-    if (!running || link_state != LINK_NONE)
-        return;     // trình xem video / đang mở link: phím không vào game
+    if (!running)
+        return;
     handle_event(e);
     if (vm_wake)
         SDL_CondSignal(vm_wake);
@@ -944,10 +828,8 @@ bool emu_update(void) {
         unlock_vm();
     }
     link_update();
-    if (link_state == LINK_NONE) {
-        update_repeat();
-        vkb_update();
-    }
+    update_repeat();
+    vkb_update();
     bool dead = vm_dead, quit = exit_now || midp_exit_requested();
     if (!exit_now && !dead && !quit)
         return true;
@@ -1102,10 +984,6 @@ static void draw_stats(bool dirty) {
 static void draw_game(void);
 
 void emu_draw(void) {
-    if (link_state == LINK_VIDEO) {
-        video_screen_draw();
-        return;
-    }
     gfx_clear(COL_BG);
     if (!running)
         return;
@@ -1150,8 +1028,7 @@ static void draw_game(void) {
     vkb_draw();
     draw_stats(fb && dirty);
 
-    const char *note = link_state == LINK_OPENING ? tr(S_LINK_OPENING)
-                     : toast_until && !SDL_TICKS_PASSED(SDL_GetTicks(), toast_until) ? toast : NULL;
+    const char *note = toast_until && !SDL_TICKS_PASSED(SDL_GetTicks(), toast_until) ? toast : NULL;
     if (note) {
         int tw = gfx_text_width(FONT_NORMAL, note) + 80, th = 56;
         if (tw > SCREEN_W - 40)

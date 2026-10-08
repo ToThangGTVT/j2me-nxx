@@ -1,9 +1,0 @@
-Manifest-Version: 1.0
-MIDlet-Name: Video Test
-MIDlet-Vendor: J2ME-NX
-MIDlet-Version: 1.0
-MIDlet-1: Video tren Canvas, , vt.CanvasTest
-MIDlet-2: Video trong Form, , vt.FormTest
-MIDlet-3: platformRequest, , vt.LinkTest
-MicroEdition-Profile: MIDP-2.0
-MicroEdition-Configuration: CLDC-1.1

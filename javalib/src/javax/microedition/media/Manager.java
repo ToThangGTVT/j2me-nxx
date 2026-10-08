@@ -17,8 +17,7 @@ public final class Manager {
     }
 
     public static String[] getSupportedContentTypes(String protocol) {
-        return new String[] { "audio/midi", "audio/x-wav", "audio/mpeg", "audio/amr", "audio/mp4", "audio/aac",
-                "audio/3gpp", "audio/x-tone-seq", "video/3gpp", "video/mp4", "video/mpeg4" };
+        return new String[] { "audio/midi", "audio/x-wav", "audio/mpeg", "audio/x-tone-seq" };
     }
 
     public static String[] getSupportedProtocols(String contentType) {
@@ -31,15 +30,6 @@ public final class Manager {
         int q = l.indexOf('?');
         if (q >= 0) {
             l = l.substring(0, q);
-        }
-        if (l.endsWith(".3gp") || l.endsWith(".3g2")) {
-            return "video/3gpp";
-        }
-        if (l.endsWith(".mp4") || l.endsWith(".m4v")) {
-            return "video/mp4";
-        }
-        if (l.endsWith(".amr")) {
-            return "audio/amr";
         }
         if (l.endsWith(".mp3")) {
             return "audio/mpeg";
@@ -98,11 +88,10 @@ public final class Manager {
         while ((n = stream.read(buf, 0, buf.length)) > 0) {
             bo.write(buf, 0, n);
         }
-        byte[] data = bo.toByteArray();
-        if (j2menx.VideoPlayer.isVideo(data, type)) {
-            return new j2menx.VideoPlayer(data, type);
+        if (type != null && type.startsWith("video/")) {
+            throw new MediaException("Khong ho tro video");
         }
-        return new j2menx.AudioPlayer(data, type);
+        return new j2menx.AudioPlayer(bo.toByteArray(), type);
     }
 
     public static void playTone(int note, int duration, int volume) throws MediaException {

@@ -26,4 +26,4 @@ Launch **J2ME-NXX** from hbmenu.
 | Right stick | 2 4 6 8 |
 | − (twice) | Exit app |
 
-In the app list: **A** open, **X** settings, **−** per-app options (FPS, screen size, key layout), **Y** rescan, **R** upload apps / videos from your phone, **L** delete the selected file, **B** update (when a new version is available).
+In the app list: **A** open, **X** settings, **−** per-app options (FPS, screen size, key layout), **Y** rescan, **R** upload apps from your phone, **L** delete the selected file, **B** update (when a new version is available).

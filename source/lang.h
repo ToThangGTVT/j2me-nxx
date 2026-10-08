@@ -19,7 +19,6 @@ typedef enum {
     S_EMPTY_TITLE,
     S_EMPTY_COPY,
     S_EMPTY_SUBDIR,
-    S_EMPTY_VIDEO,
     S_EMPTY_RESCAN,
     // Thông báo ở thanh dưới
     S_ERROR_FMT,            // %s
@@ -157,15 +156,6 @@ typedef enum {
     S_ON,
     S_OFF,
     S_SETTINGS_HINTS,
-    S_VIDEO_TAG,
-    S_VIDEO_HINTS,
-    S_VIDEO_PAUSED,
-    S_VIDEO_ENDED,
-    S_VOLUME_FMT,           // %d
-    S_ERR_VIDEO,
-    S_ERR_NO_VIDEO_BUILD,
-    S_VIDEO_NO_OPTIONS,
-    S_LINK_OPENING,
     S_LINK_FAILED,
     S_BROWSER_NEEDS_APP,
     // Gửi game từ điện thoại (mã QR)
@@ -184,7 +174,6 @@ typedef enum {
     S_UPLOAD_DONE_STATUS,   // %d
     // Xoá file
     S_DELETE_GAME,
-    S_DELETE_VIDEO,
     S_DELETE_KEEP_SAVE,
     S_DELETE_HINTS,
     S_DELETED,              // %s

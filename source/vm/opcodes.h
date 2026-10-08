@@ -204,4 +204,21 @@ enum {
     OP_IFNONNULL = 0xc7,
     OP_GOTO_W = 0xc8,
     OP_JSR_W = 0xc9,
+
+    // Lệnh nhanh (không có trong JVM spec): trình thông dịch viết đè lên lệnh gốc sau lần chạy
+    // đầu, khi đã resolve xong. Độ dài lệnh giữ nguyên nên pc, bảng exception, số dòng không đổi.
+    OP_GETFIELD_Q = 0xcb,       // toán hạng = slot field (thay cho chỉ số constant pool)
+    OP_GETFIELD2_Q,             // field long / double
+    OP_PUTFIELD_Q,
+    OP_PUTFIELD2_Q,
+    OP_GETSTATIC_Q,             // toán hạng giữ chỉ số constant pool: field đã resolve, lớp đã khởi tạo
+    OP_GETSTATIC2_Q,
+    OP_PUTSTATIC_Q,
+    OP_PUTSTATIC2_Q,
+    OP_INVOKEVIRTUAL_Q,         // gọi qua vtable
+    OP_INVOKESPECIAL_Q,         // gọi thẳng method đã resolve, kiểm tra null
+    OP_INVOKESTATIC_Q,          // lớp đã khởi tạo
+    OP_NEW_Q,                   // lớp đã khởi tạo
+    OP_CHECKCAST_Q,
+    OP_INSTANCEOF_Q,
 };

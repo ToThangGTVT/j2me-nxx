@@ -400,6 +400,8 @@ void interp_run(VMThread *t, int budget) {
     uint8_t op;
     Value *sp, *locals;
     CPEntry *cp;
+    Method *target;             // invoke: method sẽ gọi, số slot tham số, độ dài lệnh
+    int nargs, len;
 
 #define LOAD()                                  \
     do {                                        \
@@ -508,6 +510,10 @@ void interp_run(VMThread *t, int budget) {
         SET(OP_ANEWARRAY) SET(OP_MULTIANEWARRAY) SET(OP_ARRAYLENGTH) SET(OP_ATHROW)
         SET(OP_CHECKCAST) SET(OP_INSTANCEOF) SET(OP_MONITORENTER) SET(OP_MONITOREXIT)
         SET(OP_WIDE)
+        SET(OP_GETFIELD_Q) SET(OP_GETFIELD2_Q) SET(OP_PUTFIELD_Q) SET(OP_PUTFIELD2_Q)
+        SET(OP_GETSTATIC_Q) SET(OP_GETSTATIC2_Q) SET(OP_PUTSTATIC_Q) SET(OP_PUTSTATIC2_Q)
+        SET(OP_INVOKEVIRTUAL_Q) SET(OP_INVOKESPECIAL_Q) SET(OP_INVOKESTATIC_Q)
+        SET(OP_NEW_Q) SET(OP_CHECKCAST_Q) SET(OP_INSTANCEOF_Q)
 #undef SET
     }
 
@@ -894,6 +900,10 @@ next:
                 RETRY();
             Value *v = &fl->owner->statics[fl->slot];
             bool wide = fl->desc[0] == 'J' || fl->desc[0] == 'D';
+            // Lớp đang chạy <clinit> trên chính thread này thì chưa viết đè: thread khác phải chờ
+            if (fl->owner->state == CLASS_INITIALIZED)
+                *insn = op == OP_GETSTATIC ? (wide ? OP_GETSTATIC2_Q : OP_GETSTATIC_Q)
+                                           : (wide ? OP_PUTSTATIC2_Q : OP_PUTSTATIC_Q);
             if (op == OP_GETSTATIC) {
                 sp[0] = *v;
                 sp += wide ? 2 : 1;
@@ -904,36 +914,74 @@ next:
             pc += 3;
             break;
         }
-        CASE(OP_GETFIELD) {
-            CPEntry *e = &cp[U2(pc + 1)];
-            Field *fl = e->resolved ? e->field : NULL;
-            if (!fl) {
-                SAVE_AT(insn);
-                if (!(fl = resolve_field(t, m->owner, U2(pc + 1))))
-                    goto exception;
-            }
+        CASE(OP_GETFIELD) CASE(OP_PUTFIELD) {
+            SAVE_AT(insn);
+            Field *fl = resolve_field(t, m->owner, U2(pc + 1));
+            if (!fl)
+                goto exception;
+            if (fl->slot > 0xffff)
+                THROW("java/lang/InternalError", "too many fields");
+            bool wide = fl->desc[0] == 'J' || fl->desc[0] == 'D';
+            pc[1] = (uint8_t)(fl->slot >> 8);
+            pc[2] = (uint8_t)fl->slot;
+            *pc = op == OP_GETFIELD ? (wide ? OP_GETFIELD2_Q : OP_GETFIELD_Q)
+                                    : (wide ? OP_PUTFIELD2_Q : OP_PUTFIELD_Q);
+            goto *dispatch[*pc];
+        }
+        CASE(OP_GETFIELD_Q) {
             Object *o = sp[-1].l;
             CHECK_NULL(o);
-            sp[-1] = OBJ_FIELDS(o)[fl->slot];
-            if (fl->desc[0] == 'J' || fl->desc[0] == 'D')
-                sp++;
+            sp[-1] = OBJ_FIELDS(o)[U2(pc + 1)];
             pc += 3;
             break;
         }
-        CASE(OP_PUTFIELD) {
-            CPEntry *e = &cp[U2(pc + 1)];
-            Field *fl = e->resolved ? e->field : NULL;
-            if (!fl) {
-                SAVE_AT(insn);
-                if (!(fl = resolve_field(t, m->owner, U2(pc + 1))))
-                    goto exception;
-            }
-            bool wide = fl->desc[0] == 'J' || fl->desc[0] == 'D';
-            Value v = sp[wide ? -2 : -1];
-            Object *o = sp[wide ? -3 : -2].l;
+        CASE(OP_GETFIELD2_Q) {
+            Object *o = sp[-1].l;
             CHECK_NULL(o);
-            OBJ_FIELDS(o)[fl->slot] = v;
-            sp -= wide ? 3 : 2;
+            sp[-1] = OBJ_FIELDS(o)[U2(pc + 1)];
+            sp++;
+            pc += 3;
+            break;
+        }
+        CASE(OP_PUTFIELD_Q) {
+            Object *o = sp[-2].l;
+            CHECK_NULL(o);
+            OBJ_FIELDS(o)[U2(pc + 1)] = sp[-1];
+            sp -= 2;
+            pc += 3;
+            break;
+        }
+        CASE(OP_PUTFIELD2_Q) {
+            Object *o = sp[-3].l;
+            CHECK_NULL(o);
+            OBJ_FIELDS(o)[U2(pc + 1)] = sp[-2];
+            sp -= 3;
+            pc += 3;
+            break;
+        }
+        CASE(OP_GETSTATIC_Q) {
+            Field *fl = cp[U2(pc + 1)].field;
+            *sp++ = fl->owner->statics[fl->slot];
+            pc += 3;
+            break;
+        }
+        CASE(OP_GETSTATIC2_Q) {
+            Field *fl = cp[U2(pc + 1)].field;
+            sp[0] = fl->owner->statics[fl->slot];
+            sp += 2;
+            pc += 3;
+            break;
+        }
+        CASE(OP_PUTSTATIC_Q) {
+            Field *fl = cp[U2(pc + 1)].field;
+            fl->owner->statics[fl->slot] = *--sp;
+            pc += 3;
+            break;
+        }
+        CASE(OP_PUTSTATIC2_Q) {
+            Field *fl = cp[U2(pc + 1)].field;
+            sp -= 2;
+            fl->owner->statics[fl->slot] = sp[0];
             pc += 3;
             break;
         }
@@ -948,23 +996,28 @@ next:
                 if (!(rm = resolve_method(t, m->owner, idx)))
                     goto exception;
             }
-            int len = op == OP_INVOKEINTERFACE ? 5 : 3;
-            int nargs = rm->arg_slots;
-            Method *target = rm;
+            len = op == OP_INVOKEINTERFACE ? 5 : 3;
+            nargs = rm->arg_slots;
+            target = rm;
 
             if (op == OP_INVOKESTATIC) {
                 if (rm->owner->state != CLASS_INITIALIZED && !class_ensure_init(t, rm->owner))
                     RETRY();
+                if (rm->owner->state == CLASS_INITIALIZED)
+                    *insn = OP_INVOKESTATIC_Q;
             } else {
                 Object *obj = sp[-nargs].l;
                 CHECK_NULL(obj);
                 if (op == OP_INVOKEVIRTUAL) {
                     if (rm->vtable_index >= 0 && !(rm->access & ACC_PRIVATE)) {
                         target = obj->cls->vtable[rm->vtable_index];
+                        *insn = OP_INVOKEVIRTUAL_Q;
                     } else if (!(rm->access & ACC_PRIVATE)) {
                         SAVE_AT(insn);
                         if (!(target = lookup_virtual(t, e, obj->cls, rm)))
                             goto exception;
+                    } else {
+                        *insn = OP_INVOKESPECIAL_Q;
                     }
                 } else if (op == OP_INVOKEINTERFACE) {
                     if (e->cache_cls == obj->cls) {
@@ -980,9 +1033,35 @@ next:
                            class_is_subclass(m->owner, rm->owner)) {
                     // invokespecial gọi super.method(): tìm từ lớp cha của lớp hiện tại
                     target = m->owner->super->vtable[rm->vtable_index];
+                } else {
+                    *insn = OP_INVOKESPECIAL_Q;
                 }
             }
-
+            goto invoke;
+        }
+        CASE(OP_INVOKEVIRTUAL_Q) {
+            Method *rm = cp[U2(pc + 1)].method;
+            nargs = rm->arg_slots;
+            len = 3;
+            Object *obj = sp[-nargs].l;
+            CHECK_NULL(obj);
+            target = obj->cls->vtable[rm->vtable_index];
+            goto invoke;
+        }
+        CASE(OP_INVOKESPECIAL_Q) {
+            target = cp[U2(pc + 1)].method;
+            nargs = target->arg_slots;
+            len = 3;
+            CHECK_NULL(sp[-nargs].l);
+            goto invoke;
+        }
+        CASE(OP_INVOKESTATIC_Q) {
+            target = cp[U2(pc + 1)].method;
+            nargs = target->arg_slots;
+            len = 3;
+            goto invoke;
+        }
+        invoke: {
             if (target->access & ACC_ABSTRACT) {
                 char msg[300];
                 snprintf(msg, sizeof(msg), "%s.%s%s", target->owner->name, target->name, target->desc);
@@ -1078,7 +1157,18 @@ next:
                 THROW("java/lang/InstantiationError", c->name);
             if (c->state != CLASS_INITIALIZED && !class_ensure_init(t, c))
                 RETRY();
+            if (c->state == CLASS_INITIALIZED)
+                *insn = OP_NEW_Q;
             Object *o = heap_alloc_object(t, c);
+            if (!o)
+                goto exception;
+            PUSHL(o);
+            pc += 3;
+            break;
+        }
+        CASE(OP_NEW_Q) {
+            SAVE_AT(insn);
+            Object *o = heap_alloc_object(t, cp[U2(pc + 1)].cls);
             if (!o)
                 goto exception;
             PUSHL(o);
@@ -1153,11 +1243,19 @@ next:
                 Class *c = resolve_class(t, m->owner, U2(pc + 1));
                 if (!c)
                     goto exception;
-                if (!class_instance_of(o->cls, c)) {
-                    char msg[300];
-                    snprintf(msg, sizeof(msg), "%s cannot be cast to %s", o->cls->name, c->name);
-                    THROW("java/lang/ClassCastException", msg);
-                }
+                *insn = OP_CHECKCAST_Q;
+                goto *dispatch[OP_CHECKCAST_Q];
+            }
+            pc += 3;
+            break;
+        }
+        CASE(OP_CHECKCAST_Q) {
+            Object *o = sp[-1].l;
+            Class *c = cp[U2(pc + 1)].cls;
+            if (o && o->cls != c && !class_instance_of(o->cls, c)) {
+                char msg[300];
+                snprintf(msg, sizeof(msg), "%s cannot be cast to %s", o->cls->name, c->name);
+                THROW("java/lang/ClassCastException", msg);
             }
             pc += 3;
             break;
@@ -1169,10 +1267,17 @@ next:
                 Class *c = resolve_class(t, m->owner, U2(pc + 1));
                 if (!c)
                     goto exception;
-                sp[-1].i = class_instance_of(o->cls, c) ? 1 : 0;
-            } else {
-                sp[-1].i = 0;
+                *insn = OP_INSTANCEOF_Q;
+                goto *dispatch[OP_INSTANCEOF_Q];
             }
+            sp[-1].i = 0;
+            pc += 3;
+            break;
+        }
+        CASE(OP_INSTANCEOF_Q) {
+            Object *o = sp[-1].l;
+            Class *c = cp[U2(pc + 1)].cls;
+            sp[-1].i = o && (o->cls == c || class_instance_of(o->cls, c)) ? 1 : 0;
             pc += 3;
             break;
         }

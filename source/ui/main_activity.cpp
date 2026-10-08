@@ -273,7 +273,7 @@ brls::View* MainActivity::createContentView()
         subtitle_label->setMargins(0, 0, 0, 16);
         subtitle_label->setVerticalAlign(brls::VerticalAlign::BOTTOM);
         subtitle_label->setAlignSelf(brls::AlignSelf::FLEX_END);
-        subtitle_label->setMarginBottom(9);
+        subtitle_label->setMarginBottom(12);
         ((brls::Box*)title->getParent())->addView(subtitle_label);
     }
 

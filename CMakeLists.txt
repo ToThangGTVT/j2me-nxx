@@ -94,8 +94,9 @@ add_subdirectory("${BOREALIS_DIR}" borealis EXCLUDE_FROM_ALL)
 if(PLATFORM_SWITCH)
     # Bản Switch của borealis chọn SDLVideoContext theo __SDL2__ (CMake của borealis chưa tự thêm)
     target_compile_definitions(borealis PUBLIC __SDL2__)
-    # borealis include <SDL2/SDL.h>; CMake của nó trông vào cờ của toolchain riêng (không dùng ở đây)
-    target_include_directories(borealis PUBLIC "${DEVKITPRO}/portlibs/switch/include")
+    # borealis include <SDL2/SDL.h>; CMake của nó trông vào cờ của toolchain riêng (không dùng ở đây).
+    # Để sau cùng (-isystem): portlibs có thể có tinyxml2 / fmt khác phiên bản với bản đi kèm borealis
+    target_include_directories(borealis SYSTEM AFTER PUBLIC "${DEVKITPRO}/portlibs/switch/include")
 endif()
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(borealis PRIVATE -O2)

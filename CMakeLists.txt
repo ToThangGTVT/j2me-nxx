@@ -137,7 +137,6 @@ add_executable(j2me-nxx
     source/gfx.c
     source/input.c
     source/game_list.c
-    source/menu.c
     source/emu.c
     source/manifest.c
     source/lang.c

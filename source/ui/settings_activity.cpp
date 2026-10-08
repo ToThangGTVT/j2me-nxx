@@ -99,7 +99,6 @@ SettingsActivity::SettingsActivity(const std::string& id, const std::string& tit
 
 SettingsActivity::~SettingsActivity()
 {
-    MainActivity::set_status(T(S_SETTINGS_SAVED));
     // Vừa bật kiểm tra bản mới: kiểm tra luôn
     if (!game_mode && settings()->check_update && update_state() == UPDATE_IDLE)
         update_check();

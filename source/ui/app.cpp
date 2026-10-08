@@ -226,8 +226,7 @@ int main(int argc, char* argv[])
         else
             ui::MainActivity::launch_game(argv[1], nullptr, argc > 2 ? atoi(argv[2]) : 1);
     }
-    if (!startup_note.empty())
-        ui::MainActivity::set_status(startup_note);
+    ui::notify(startup_note);
 
     brls::Application::getRunLoopEvent()->subscribe([]()
         {

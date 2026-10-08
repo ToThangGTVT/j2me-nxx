@@ -1,19 +1,12 @@
-## J2ME-NXX v0.7.0
+## J2ME-NXX v0.7.1
 
 💬 Join the [J2ME-NXX Discord](https://discord.gg/skHsYt8GAa) to chat, ask questions, report bugs and suggest features.
 
-### ✨ New
-- **Button mapping**: choose the phone key for each Switch button, globally or per app.
-- **On-screen keypad**: Nokia-style keypad on the touch screen, with a layout editor in **Settings > On-screen keypad layout**.
-
-### ⚡ Faster
-- Java interpreter roughly 2x faster.
-
-### 🐛 Fixed
-- **Show FPS** now shows the real RAM usage on Switch.
+### 🧪 Experimental
+- **AOT mode**: compiles Java bytecode to native ARM64 code for extra speed. Off by default; turn it on in **Settings > AOT (experimental)** or per app. Please report any app that breaks with it.
 
 ### Installation
-- **Zip** (recommended): extract `j2me-nxx-v0.7.0.zip` to the root of your SD card, then copy your `.jar` apps to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
+- **Zip** (recommended): extract `j2me-nxx-v0.7.1.zip` to the root of your SD card, then copy your `.jar` apps to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
 - **NRO only**: copy `j2me-nxx.nro` to `sdmc:/switch/`, replacing the old one.
 
 Already on v0.6.0 or newer: open J2ME-NXX and accept the update prompt (or press **B** in the app list). Coming from v0.5.0 or older: install this version by hand once.

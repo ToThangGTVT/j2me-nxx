@@ -289,6 +289,59 @@ public class Bench {
         return acc + (int) l + (int) f + (int) d;
     }
 
+    // Nhiều thread: producer / consumer qua wait / notify, kèm 1 thread tính toán không nhường lượt
+    static class Box {
+        private int value;
+        private boolean full;
+
+        synchronized void put(int v) throws InterruptedException {
+            while (full)
+                wait();
+            value = v;
+            full = true;
+            notifyAll();
+        }
+
+        synchronized int take() throws InterruptedException {
+            while (!full)
+                wait();
+            full = false;
+            notifyAll();
+            return value;
+        }
+    }
+
+    static int threads(final int n) {
+        final Box box = new Box();
+        final int[] busyResult = new int[1];
+        Thread producer = new Thread() {
+            public void run() {
+                try {
+                    for (int i = 0; i < n; i++)
+                        box.put(i * 3 + 1);
+                } catch (InterruptedException e) {
+                }
+            }
+        };
+        Thread busy = new Thread() {
+            public void run() {
+                busyResult[0] = loops(n * 20);
+            }
+        };
+        producer.start();
+        busy.start();
+        int acc = 0;
+        try {
+            for (int i = 0; i < n; i++)
+                acc = acc * 31 + box.take();
+            producer.join();
+            busy.join();
+        } catch (InterruptedException e) {
+            return -1;
+        }
+        return acc + busyResult[0];
+    }
+
     // --- điểm vào cho vmbench: kết quả để ở field result
 
     public static int result;
@@ -308,6 +361,7 @@ public class Bench {
         case 6: return library(n);
         case 7: return exceptions(n);
         case 8: return mixed(n);
+        case 9: return threads(n);
         }
         return -1;
     }

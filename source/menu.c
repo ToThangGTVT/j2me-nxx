@@ -6,6 +6,7 @@
 #include "gfx.h"
 #include "input.h"
 #include "lang.h"
+#include "update.h"
 
 #define HEADER_H    80
 #define FOOTER_H    72
@@ -28,6 +29,8 @@
 #define COL_WARN     RGB(0xff, 0xc1, 0x4d)
 
 static void format_size(long size, char *out, size_t len) {
+    if (size < 0)
+        size = 0;
     if (size >= 1024 * 1024)
         snprintf(out, len, "%.1f MB", size / (1024.0 * 1024.0));
     else
@@ -51,14 +54,33 @@ MenuAction menu_update(Menu *m, GameList *list) {
         }
         return MENU_NONE;
     }
+    if (m->confirm_delete) {
+        if (input_pressed(BTN_A)) {
+            m->confirm_delete = false;
+            return MENU_DELETE;
+        }
+        if (input_pressed(BTN_B) || input_pressed(BTN_PLUS))
+            m->confirm_delete = false;
+        return MENU_NONE;
+    }
     if (input_pressed(BTN_PLUS))
         return MENU_QUIT;
     if (input_pressed(BTN_Y))
         return MENU_RESCAN;
     if (input_pressed(BTN_X))
         return MENU_SETTINGS;
+    if (input_pressed(BTN_B) && update_available())
+        return MENU_UPDATE;
     if (input_pressed(BTN_MINUS) && list->count > 0)
         return MENU_GAME_OPTIONS;
+    if (input_pressed(BTN_R))
+        return MENU_UPLOAD;
+    if (input_pressed(BTN_L) && list->count > 0) {
+        char jad[600];
+        m->confirm_delete = true;
+        m->delete_has_jad = game_list_find_jad(&list->items[m->cursor], jad, sizeof(jad));
+        return MENU_NONE;
+    }
     if (list->count == 0)
         return MENU_NONE;
 
@@ -69,11 +91,11 @@ MenuAction menu_update(Menu *m, GameList *list) {
         m->cursor++;
     if (input_pressed(BTN_UP))
         m->cursor--;
-    if (input_pressed(BTN_RIGHT) || input_pressed(BTN_R)) {
+    if (input_pressed(BTN_RIGHT)) {
         m->cursor += LIST_ROWS;
         paging = true;
     }
-    if (input_pressed(BTN_LEFT) || input_pressed(BTN_L)) {
+    if (input_pressed(BTN_LEFT)) {
         m->cursor -= LIST_ROWS;
         paging = true;
     }
@@ -123,8 +145,17 @@ static void draw_header(const GameList *list, const char *games_dir) {
 
     char count[32];
     snprintf(count, sizeof(count), tr(S_GAME_COUNT), list->count);
-    gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, (HEADER_H - gfx_font_height(FONT_NORMAL)) / 2, 0, ALIGN_RIGHT,
-             COL_DIM, count);
+    int cw = gfx_text(FONT_NORMAL, SCREEN_W - LIST_X, (HEADER_H - gfx_font_height(FONT_NORMAL)) / 2, 0, ALIGN_RIGHT,
+                      COL_DIM, count);
+    if (update_available()) {
+        // Nhãn "có bản mới" bên trái số game
+        char badge[64];
+        snprintf(badge, sizeof(badge), tr(S_UPDATE_BADGE), update_latest_version());
+        int bw = gfx_text_width(FONT_SMALL, badge) + 32, bh = gfx_font_height(FONT_SMALL) + 14;
+        int bx = SCREEN_W - LIST_X - cw - 28 - bw, by = (HEADER_H - bh) / 2;
+        gfx_fill_rect(bx, by, bw, bh, COL_ACCENT);
+        gfx_text(FONT_SMALL, bx + bw / 2, by + 7, 0, ALIGN_CENTER, COL_BAR, badge);
+    }
 
     char line[600];
     snprintf(line, sizeof(line), tr(S_FOLDER), games_dir);
@@ -149,6 +180,8 @@ static void draw_empty(const char *games_dir) {
     gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_DIM, tr(S_EMPTY_VIDEO));
     y += gfx_font_height(FONT_NORMAL) + 28;
     gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_WARN, tr(S_EMPTY_RESCAN));
+    y += gfx_font_height(FONT_NORMAL) + 10;
+    gfx_text(FONT_NORMAL, SCREEN_W / 2, y, LIST_W, ALIGN_CENTER, COL_WARN, tr(S_EMPTY_UPLOAD));
 }
 
 // Video: ô tối có hình tam giác "phát"
@@ -272,7 +305,15 @@ static void draw_footer(const Menu *m, const GameList *list) {
     gfx_fill_rect(0, y0, SCREEN_W, 1, COL_TRACK);
 
     if (m->status[0]) {
-        gfx_text(FONT_NORMAL, LIST_X, text_y, 440, ALIGN_LEFT, COL_WARN, m->status);
+        // Chỗ trống bên trái dòng hướng dẫn phím; dài quá thì chữ nhỏ, xuống 2 dòng
+        int avail = SCREEN_W - 2 * LIST_X - gfx_text_width(FONT_NORMAL, tr(S_MENU_HINTS)) - 32;
+        if (gfx_text_width(FONT_NORMAL, m->status) <= avail) {
+            gfx_text(FONT_NORMAL, LIST_X, text_y, avail, ALIGN_LEFT, COL_WARN, m->status);
+        } else {
+            int lines = gfx_text_width(FONT_SMALL, m->status) <= avail ? 1 : 2;
+            gfx_text_wrapped(FONT_SMALL, LIST_X, y0 + (FOOTER_H - lines * gfx_font_height(FONT_SMALL)) / 2, avail,
+                             COL_WARN, m->status);
+        }
     } else {
         char pos[32];
         snprintf(pos, sizeof(pos), "%d / %d", list->count ? m->cursor + 1 : 0, list->count);
@@ -289,6 +330,43 @@ void menu_free_textures(GameList *list) {
             SDL_DestroyTexture(list->items[i].icon_tex);
         list->items[i].icon_tex = NULL;
     }
+}
+
+void menu_clamp_cursor(Menu *m, const GameList *list) {
+    if (m->cursor >= list->count)
+        m->cursor = list->count - 1;
+    if (m->cursor < 0)
+        m->cursor = 0;
+    if (m->scroll > m->cursor)
+        m->scroll = m->cursor;
+    if (m->scroll > 0 && m->scroll + LIST_ROWS > list->count)
+        m->scroll = list->count > LIST_ROWS ? list->count - LIST_ROWS : 0;
+}
+
+// Hỏi xoá file đang chọn
+static void draw_confirm_delete(const Menu *m, const GameList *list) {
+    const GameEntry *g = &list->items[m->cursor];
+    int w = 760, h = g->video ? 250 : 300;
+    int x = (SCREEN_W - w) / 2, y = (SCREEN_H - h) / 2;
+    gfx_fill_rect(0, 0, SCREEN_W, SCREEN_H, (SDL_Color){ 0, 0, 0, 160 });
+    gfx_fill_rect(x, y, w, h, COL_BAR);
+    gfx_fill_rect(x, y, w, 3, COL_WARN);
+    int cx = x + 32, cw = w - 64, cy = y + 28;
+    gfx_text(FONT_SMALL, cx, cy, cw, ALIGN_LEFT, COL_WARN, tr(g->video ? S_DELETE_VIDEO : S_DELETE_GAME));
+    cy += gfx_font_height(FONT_SMALL) + 8;
+    gfx_text(FONT_LARGE, cx, cy, cw, ALIGN_LEFT, COL_TEXT, g->title);
+    cy += gfx_font_height(FONT_LARGE) + 8;
+
+    char size[32], line[400];
+    format_size(g->size, size, sizeof(size));
+    snprintf(line, sizeof(line), "%s%s  -  %s", g->name, m->delete_has_jad ? " + .jad" : "", size);
+    gfx_text(FONT_SMALL, cx, cy, cw, ALIGN_LEFT, COL_DIM, line);
+    cy += gfx_font_height(FONT_SMALL) + 16;
+    if (!g->video)
+        gfx_text_wrapped(FONT_SMALL, cx, cy, cw, COL_DIM, tr(S_DELETE_KEEP_SAVE));
+
+    gfx_text(FONT_NORMAL, x + w - 32, y + h - 24 - gfx_font_height(FONT_NORMAL), 0, ALIGN_RIGHT, COL_TEXT,
+             tr(S_DELETE_HINTS));
 }
 
 static void draw_picker(const Menu *m, const GameList *list) {
@@ -323,4 +401,6 @@ void menu_draw(const Menu *m, GameList *list, const char *games_dir) {
     draw_footer(m, list);
     if (m->picking)
         draw_picker(m, list);
+    if (m->confirm_delete && list->count > 0)
+        draw_confirm_delete(m, list);
 }

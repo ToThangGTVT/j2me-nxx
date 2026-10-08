@@ -9,6 +9,9 @@ typedef enum {
     MENU_RESCAN,
     MENU_SETTINGS,
     MENU_GAME_OPTIONS,  // tuỳ chọn riêng của game menu.cursor
+    MENU_UPDATE,        // mở màn hình cập nhật (có bản mới)
+    MENU_UPLOAD,        // gửi game từ điện thoại (mã QR)
+    MENU_DELETE,        // đã xác nhận xoá file menu.cursor
     MENU_QUIT,
 } MenuAction;
 
@@ -19,10 +22,14 @@ typedef struct {
     bool picking;       // đang hiện hộp chọn MIDlet
     int pick;           // MIDlet đang chọn (0-based)
     int midlet;         // MIDlet sẽ chạy khi MENU_LAUNCH (từ 1)
+    bool confirm_delete;    // đang hỏi có xoá file đang chọn không
+    bool delete_has_jad;    // file đang hỏi xoá có kèm .jad
 } Menu;
 
 MenuAction menu_update(Menu *m, GameList *list);
 // Vẽ danh sách; đọc dần thông tin (MANIFEST, icon) của các game đang hiện
 void menu_draw(const Menu *m, GameList *list, const char *games_dir);
+// Sau khi danh sách đổi (vd xoá file): giữ con trỏ ở gần chỗ cũ
+void menu_clamp_cursor(Menu *m, const GameList *list);
 // Giải phóng texture icon trước khi quét lại / thoát
 void menu_free_textures(GameList *list);

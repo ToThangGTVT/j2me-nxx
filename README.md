@@ -1,5 +1,11 @@
 # j2me-nxx
 
+<p align="center"><a href="https://discord.gg/skHsYt8GAa"><img src="https://img.shields.io/badge/Discord-J2ME--NXX-5865F2?logo=discord&logoColor=white" alt="Discord"></a></p>
+
+> 💬 **Tham gia [Discord J2ME-NXX](https://discord.gg/skHsYt8GAa)** để thảo luận, hỏi đáp, báo lỗi, gửi file crash và góp ý tính năng mới.
+>
+> 💬 **Join the [J2ME-NXX Discord](https://discord.gg/skHsYt8GAa)** to chat, ask questions, report bugs, share crash files and suggest new features.
+
 *[English below](#english)*
 
 Trình giả lập J2ME (Java ME / MIDP 2.0) cho Nintendo Switch, viết bằng C trên devkitPro + SDL2.
@@ -12,7 +18,7 @@ Chạy file `.jar` của game điện thoại Java cũ trực tiếp trên Switc
 | `source/vm/` | Máy ảo Java tự viết: đọc class file, trình thông dịch bytecode (đủ ~200 opcode, kể cả `jsr/ret`), green thread + monitor, GC mark-sweep, đọc JAR (zip + zlib) |
 | `javalib/src/` | Thư viện CLDC 1.1 / MIDP 2.0 viết bằng Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, API Nokia (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | Native của MIDP: vẽ phần mềm (hình, ảnh PNG/JPEG/GIF/BMP, chữ qua SDL_ttf), hàng đợi sự kiện, RecordStore lưu ra thẻ SD, âm thanh (trộn WAV/MP3 + tổng hợp MIDI/tone), socket/HTTP/TLS |
-| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; font Google Sans (OFL) có đủ chữ tiếng Việt |
+| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), đều public domain; `tsf.h` (TinySoundFont, MIT); SoundFont `TimGM6mb.sf2` (GPL v2, nhúng vào binary); font Google Sans (OFL) có đủ chữ tiếng Việt |
 | `source/` | App: danh sách game, cài đặt, phiên chạy game (`emu.c`), giải mã video qua FFmpeg (`video_dec.c`), trình xem video (`video_screen.c`), lớp nền tảng Switch/desktop |
 | `tests/` | MIDlet để kiểm tra: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video trên Canvas, trong Form, `platformRequest`) |
 
@@ -72,6 +78,18 @@ GitHub Actions tự build mỗi lần push; push tag `v*` (vd `git tag v0.1.0 &&
 
 Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
+**Bàn phím ảo QWERTY**: bật **Cài đặt > Bong bóng bàn phím ảo** thì khi chơi có bong bóng nhỏ ở góc phải (kéo để di chuyển). Chạm vào bong bóng để mở bàn phím nổi có hàng số, chữ cái, `* # , . `, phím cách, Shift (chạm 2 lần = khoá chữ hoa; Shift + hàng số ra `! @ # $ ...`), Del (phím xoá `-8`) và Enter (phím Fire). Chữ và ký hiệu gửi đúng mã ký tự như máy có bàn phím QWERTY. Kéo thanh trên cùng để dời bàn phím, nút **×** thu về bong bóng.
+
+**Báo cáo crash**: mỗi lần app bị sập hoặc game Java lỗi (exception không ai bắt), J2ME-NXX ghi 1 file `sdmc:/switch/j2me-nxx/crash/crash-<ngày>-<giờ>.txt` gồm phiên bản, game đang chạy, lý do, stack trace Java, thanh ghi CPU + backtrace (khi app sập) và log gần nhất. Lần mở app sau sẽ báo tên file ở thanh dưới. Gửi file này kèm khi báo lỗi; địa chỉ dạng `j2me-nxx.elf + 0x...` đổi ra tên hàm bằng `aarch64-none-elf-addr2line -f -C -e j2me-nxx.elf <offset>` với file `.elf` đính kèm trong bản phát hành tương ứng.
+
+**Cập nhật**: mỗi lần mở app, J2ME-NXX hỏi GitHub Releases xem có bản mới không (tắt ở **Cài đặt > Tự kiểm tra bản mới**). Có bản mới thì hiện hộp thoại kèm ghi chú phát hành: **A** tải `j2me-nxx.nro` về (có thanh tiến trình, tốc độ, thời gian còn lại; **B** để huỷ), file cũ chỉ bị thay khi đã tải đủ và kiểm tra đúng là file `.nro`, xong bấm **A** để khởi động lại vào bản mới. Chọn "Để sau" thì danh sách game có nhãn "Bản mới", bấm **B** để cập nhật lúc khác.
+
+**SoundFont**: nhạc MIDI phát bằng SoundFont. App có sẵn `TimGM6mb` (~6 MB, GPL v2) nhúng trong file `.nro`, không cần chép gì thêm. Mặc định **tắt** (dùng bộ tổng hợp sóng), bật ở **Cài đặt > SoundFont MIDI**. Muốn dùng SoundFont General MIDI khác thì chép file `.sf2` vào `sdmc:/switch/j2me-nxx/soundfonts/` rồi chọn ở cùng mục đó: "Tự động" dùng file `.sf2` đầu tiên theo tên (không có thì dùng bản có sẵn), "TimGM6mb (có sẵn)" luôn dùng bản nhúng, "Tắt" dùng bộ tổng hợp sóng cũ (nhẹ hơn). File `.sf2` được nạp cả vào RAM, nên chọn file nhỏ (dưới ~50 MB).
+
+**Gửi game, video từ điện thoại**: ở danh sách game bấm **R**, Switch hiện mã QR. Điện thoại (cùng mạng Wi-Fi với Switch) quét mã để mở trang tải lên, chọn một hoặc nhiều file game `.jar` / `.jad` hoặc video, file được lưu thẳng vào thư mục `games` (có thanh tiến trình trên cả điện thoại và Switch). Không quét được mã thì gõ địa chỉ hiện bên cạnh (dạng `http://192.168.x.x:8080/`) vào trình duyệt. Bấm **B** để đóng, danh sách tự quét lại.
+
+**Xoá game, video**: chọn file trong danh sách rồi bấm **L**, hộp xác nhận hiện tên và dung lượng file, bấm **A** để xoá (kèm file `.jad` cùng tên nếu có), **B** để huỷ. Dữ liệu save và tuỳ chọn riêng của game vẫn được giữ lại, chép lại game là chơi tiếp được.
+
 **Xem video**: chép file `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... vào cùng thư mục `games`, chúng hiện trong danh sách với biểu tượng ▶. Khi xem: **A** phát / dừng, **trái / phải** tua 10 giây, **L / R** tua 1 phút, **lên / xuống** âm lượng, **B** thoát.
 
 Danh sách game hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng game (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
@@ -85,7 +103,7 @@ Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng c
 ## Trạng thái
 
 - Đã chạy: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (bàn phím ảo của Switch), RecordStore, Timer, thread / wait / notify.
-- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (tổng hợp bằng sóng cơ bản + trống, không cần soundfont), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A và tiếng trong 3GP/MP4 giải mã bằng FFmpeg.
+- Âm thanh: WAV (PCM 8/16-bit, IMA ADPCM), MP3, MIDI (phát bằng SoundFont `.sf2` qua TinySoundFont; không có file `.sf2` thì tổng hợp bằng sóng cơ bản + trống), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A và tiếng trong 3GP/MP4 giải mã bằng FFmpeg.
 - Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) từ JAR, `file://` hoặc `http://`; vẽ đè lên Canvas (`USE_DIRECT_VIDEO`, cả toàn màn hình) hoặc trong Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), lặp, tua. Chưa có camera (`capture://`).
 - `MIDlet.platformRequest`: link video (`http://`, `file:///`...) phát bằng trình xem video đè lên app (B để quay lại), trang web mở bằng trình duyệt có sẵn của Switch (cần chạy hbmenu ở chế độ full RAM). Dùng cho app như JTube (chọn Playback method: Via browser).
 - Mạng: `socket://`, `http://`, `https://`, `ssl://` (TLS qua mbedTLS, không kiểm tra chứng chỉ), `datagram://` (UDP).
@@ -104,7 +122,7 @@ Bản desktop đọc vài biến môi trường để chạy kịch bản (tính
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
-`J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách game) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 22050Hz) ra file, `J2ME_NX_SCREEN=settings` mở thẳng màn hình cài đặt.
+`J2ME_NX_TAPS="1000:640:500"` chạm chuột tại (x, y) trên màn hình app 1280x720, `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách game) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 48000Hz) ra file, `J2ME_NX_SCREEN=settings` mở thẳng màn hình cài đặt, `J2ME_NX_FAKE_VERSION=0.1.0` giả làm bản cũ để thử cập nhật (bản desktop chỉ tải `.nro` về thư mục dữ liệu, hoặc `J2ME_NX_UPDATE_PATH`).
 
 ---
 
@@ -120,7 +138,7 @@ It runs `.jar` files of old Java phone games directly on the Switch (homebrew `.
 | `source/vm/` | Custom Java VM: class file loader, bytecode interpreter (all ~200 opcodes, including `jsr/ret`), green threads + monitors, mark-sweep GC, JAR reader (zip + zlib) |
 | `javalib/src/` | CLDC 1.1 / MIDP 2.0 library written in Java: `java.lang/util/io`, `lcdui`, `lcdui.game`, `rms`, `media`, Nokia API (`FullCanvas`, `DirectGraphics`) |
 | `source/midp/` | MIDP natives: software rendering (shapes, PNG/JPEG/GIF/BMP images, text via SDL_ttf), event queue, RecordStore saved to the SD card, audio (WAV/MP3 mixing + MIDI/tone synthesis), socket/HTTP/TLS |
-| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; Google Sans font (OFL) with full Vietnamese coverage |
+| `source/third_party/` | `stb_image.h` (JPEG/GIF/BMP), `dr_mp3.h` (MP3), both public domain; `tsf.h` (TinySoundFont, MIT); `TimGM6mb.sf2` SoundFont (GPL v2, embedded in the binary); Google Sans font (OFL) with full Vietnamese coverage |
 | `source/` | App: game list, settings, game session (`emu.c`), FFmpeg video decoding (`video_dec.c`), video player (`video_screen.c`), Switch/desktop platform layer |
 | `tests/` | Test MIDlets: `demo-midlet` (Canvas, Sprite, Form, List, Alert, RMS), `audio-midlet` (MIDI, WAV, MP3, tone), `net-midlet` (socket, HTTP), `https-midlet` (HTTPS, ssl://), `m3g-midlet` (3D), `video-midlet` (video on a Canvas, in a Form, `platformRequest`) |
 
@@ -180,6 +198,18 @@ GitHub Actions builds on every push; pushing a `v*` tag (e.g. `git tag v0.1.0 &&
 
 The touch screen is mapped to pointer events.
 
+**QWERTY virtual keyboard**: enable **Settings > Virtual keyboard bubble** to get a small bubble in the bottom-right corner while playing (drag to move). Tap it to open a floating keyboard with a number row, letters, `* # , .`, space, Shift (double-tap = caps lock; Shift + number row gives `! @ # $ ...`), Del (clear key `-8`) and Enter (Fire). Letters and symbols are sent as character codes like on QWERTY phones. Drag the top bar to move the keyboard; **×** collapses it back to the bubble.
+
+**Crash reports**: whenever the app crashes or a Java game fails (uncaught exception), J2ME-NXX writes one file `sdmc:/switch/j2me-nxx/crash/crash-<date>-<time>.txt` with the version, running game, reason, Java stack trace, CPU registers + backtrace (for app crashes) and the latest log lines. The next launch shows the file name in the bottom bar. Attach it when reporting a bug; addresses like `j2me-nxx.elf + 0x...` can be turned into function names with `aarch64-none-elf-addr2line -f -C -e j2me-nxx.elf <offset>` using the `.elf` attached to the matching release.
+
+**Updates**: each time the app starts, J2ME-NXX asks GitHub Releases whether a newer version exists (turn off in **Settings > Check for updates**). If there is one, a dialog shows the release notes: **A** downloads `j2me-nxx.nro` (with a progress bar, speed and time left; **B** cancels), the old file is only replaced once the download is complete and verified to be an `.nro`, then **A** restarts into the new version. Choosing "Later" leaves a "New version" badge in the game list; press **B** there to update later.
+
+**SoundFont**: MIDI music is played with a SoundFont. `TimGM6mb` (~6 MB, GPL v2) is embedded in the `.nro`, so nothing extra needs to be copied. It is **off** by default (wave synth); turn it on in **Settings > MIDI SoundFont**. To use another General MIDI SoundFont, copy a `.sf2` file to `sdmc:/switch/j2me-nxx/soundfonts/` and pick it in the same setting: "Auto" uses the first `.sf2` file by name (or the built-in one if there is none), "TimGM6mb (built-in)" always uses the embedded one, "Off" uses the old wave synth (lighter). The whole `.sf2` is loaded into RAM, so prefer small files (under ~50 MB).
+
+**Sending games and videos from your phone**: press **R** in the game list and the Switch shows a QR code. Scan it with a phone on the same Wi-Fi network to open the upload page, then pick one or more `.jar` / `.jad` games or videos; they are saved straight into the `games` folder (with progress on both the phone and the Switch). If scanning does not work, type the address shown next to the code (like `http://192.168.x.x:8080/`) into the browser. Press **B** to close; the list is rescanned automatically.
+
+**Deleting games and videos**: select a file in the list and press **L**; a confirmation shows its name and size. Press **A** to delete it (along with the matching `.jad`, if any) or **B** to cancel. Save data and per-game options are kept, so copying the game back lets you continue where you left off.
+
 **Watching videos**: copy `.3gp`, `.mp4`, `.avi`, `.mkv`, `.flv`, `.mpg`, `.wmv`... files into the same `games` folder; they show up in the list with a ▶ icon. While watching: **A** play / pause, **left / right** seek 10 s, **L / R** seek 1 min, **up / down** volume, **B** exit.
 
 The game list shows the name, vendor, version and icon read from each game's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
@@ -193,7 +223,7 @@ Screen size is chosen in this order: the game's own options > `Nokia-MIDlet-Orig
 ### Status
 
 - Working: Canvas / GameCanvas, Sprite / TiledLayer / LayerManager, Image (PNG, JPEG, GIF, BMP), Font, Form / List / Alert / TextBox (Switch software keyboard), RecordStore, Timer, threads / wait / notify.
-- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (synthesized with basic waveforms + drums, no soundfont needed), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A and the audio track of 3GP/MP4 are decoded with FFmpeg.
+- Audio: WAV (8/16-bit PCM, IMA ADPCM), MP3, MIDI (played with a `.sf2` SoundFont via TinySoundFont; without one, synthesized with basic waveforms + drums), ToneControl, `Manager.playTone`, `com.nokia.mid.sound.Sound`. AMR, AAC, M4A and the audio track of 3GP/MP4 are decoded with FFmpeg.
 - Video (MMAPI `VideoControl`): 3GP / MP4 (H.263, MPEG-4, H.264...) from the JAR, `file://` or `http://`; drawn over a Canvas (`USE_DIRECT_VIDEO`, including full screen) or inside a Form (`USE_GUI_PRIMITIVE`), `getSnapshot` (PNG), looping, seeking. No camera (`capture://`) yet.
 - `MIDlet.platformRequest`: video links (`http://`, `file:///`...) play in the video player on top of the app (B to go back), web pages open in the Switch's built-in browser (requires hbmenu in full RAM mode). Useful for apps like JTube (set Playback method to Via browser).
 - Networking: `socket://`, `http://`, `https://`, `ssl://` (TLS via mbedTLS, certificates are not verified), `datagram://` (UDP).
@@ -212,4 +242,4 @@ The desktop build reads a few environment variables to run a script (times in ms
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
-`J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (game list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 22050 Hz) to a file, `J2ME_NX_SCREEN=settings` opens the settings screen directly.
+`J2ME_NX_TAPS="1000:640:500"` clicks at (x, y) on the 1280x720 app screen, `J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (game list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 48000 Hz) to a file, `J2ME_NX_SCREEN=settings` opens the settings screen directly, `J2ME_NX_FAKE_VERSION=0.1.0` pretends to be an older version to test updating (the desktop build only downloads the `.nro` into the data folder, or `J2ME_NX_UPDATE_PATH`).

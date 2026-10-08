@@ -192,18 +192,61 @@ void format_trace(Object *trace, char *out, size_t size) {
     }
 }
 
-void exception_describe(VMThread *t, Object *ex) {
-    (void)t;
-    if (!ex)
-        return;
+char vm_uncaught_text[4096];
+
+const char *vm_last_uncaught(void) {
+    return vm_uncaught_text;
+}
+
+// "Lớp: thông điệp" + stack trace
+static void exception_text(Object *ex, char *out, size_t size) {
     char cname[200], msg[256] = "";
     java_name(ex->cls->name, cname, sizeof(cname));
     if (FS_Throwable_detailMessage >= 0 && OBJ_FIELDS(ex)[FS_Throwable_detailMessage].l)
         jstring_to_cstr(OBJ_FIELDS(ex)[FS_Throwable_detailMessage].l, msg, sizeof(msg));
-    char *trace = malloc(8192);
-    format_trace(FS_Throwable_trace >= 0 ? OBJ_FIELDS(ex)[FS_Throwable_trace].l : NULL, trace, 8192);
-    vm_log("%s%s%s\n%s", cname, msg[0] ? ": " : "", msg, trace);
-    free(trace);
+    int n = snprintf(out, size, "%s%s%s\n", cname, msg[0] ? ": " : "", msg);
+    if (n > 0 && (size_t)n < size)
+        format_trace(FS_Throwable_trace >= 0 ? OBJ_FIELDS(ex)[FS_Throwable_trace].l : NULL, out + n, size - (size_t)n);
+}
+
+void exception_describe(VMThread *t, Object *ex) {
+    (void)t;
+    if (!ex)
+        return;
+    char *text = malloc(8192);
+    if (!text)
+        return;
+    exception_text(ex, text, 8192);
+    vm_log("%s", text);
+    free(text);
+}
+
+void vm_describe_current(char *out, size_t size) {
+    VMThread *t = thread_current();
+    if (!t || !t->frames) {
+        snprintf(out, size, "(khong co thread Java nao dang chay)\n");
+        return;
+    }
+    size_t pos = 0;
+    int w = snprintf(out, size, "Java thread %d, %d frame:\n", t->id, t->frame_count);
+    pos = w > 0 ? (size_t)w : 0;
+    for (int i = t->frame_count - 1; i >= 0 && i >= t->frame_count - 32 && pos + 1 < size; i--) {
+        Method *m = t->frames[i].m;
+        if (!m || !m->owner)
+            continue;
+        char cname[200];
+        java_name(m->owner->name, cname, sizeof(cname));
+        uint8_t *pc = t->frames[i].pc;
+        int line = pc && m->code && pc >= m->code && pc < m->code + m->code_len ? method_line(m, pc) : -1;
+        if (line >= 0)
+            w = snprintf(out + pos, size - pos, "\tat %s.%s%s (%s:%d)\n", cname, m->name, m->desc,
+                         m->owner->source_file ? m->owner->source_file : "?", line);
+        else
+            w = snprintf(out + pos, size - pos, "\tat %s.%s%s\n", cname, m->name, m->desc);
+        if (w < 0)
+            break;
+        pos += (size_t)w;
+    }
 }
 
 static void frame_pop(VMThread *t) {
@@ -1127,6 +1170,9 @@ exception:
         Object *ex = t->exception;
         vm_log("Uncaught exception trong thread %d:", t->id);
         exception_describe(t, ex);
+        int n = snprintf(vm_uncaught_text, sizeof(vm_uncaught_text), "Thread %d: ", t->id);
+        if (n > 0 && (size_t)n < sizeof(vm_uncaught_text))
+            exception_text(ex, vm_uncaught_text + n, sizeof(vm_uncaught_text) - (size_t)n);
         t->exception = NULL;
         t->uncaught = ex;
         thread_terminate(t);

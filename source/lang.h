@@ -33,6 +33,8 @@ typedef enum {
     S_ERR_VM,               // %s
     S_ERR_MIDLET,           // %s
     S_GAME_ENDED,
+    S_GAME_CRASHED,         // %s
+    S_APP_CRASHED_BEFORE,   // %s
     // Trong game
     S_EXIT_CONFIRM,
     S_SCREEN_INFO_FPS,      // %d %d %d
@@ -81,6 +83,31 @@ typedef enum {
     S_FONT_SCALE_HINT,
     S_SMOOTH_TEXT,
     S_SMOOTH_TEXT_HINT,
+    S_CHECK_UPDATE,
+    S_CHECK_UPDATE_HINT,
+    S_UPDATE_BADGE,         // %s
+    S_UPDATE_TITLE,         // %s
+    S_UPDATE_CURRENT,       // %s
+    S_UPDATE_PROMPT_HINTS,
+    S_UPDATE_FAILED,        // %s
+    S_UPDATE_FAILED_HINTS,
+    S_UPDATE_DOWNLOADING,   // %s
+    S_UPDATE_CANCELLING,
+    S_UPDATE_ETA,           // %d %02d
+    S_UPDATE_KEEP_OPEN,
+    S_UPDATE_CANCEL_HINT,
+    S_UPDATE_DONE,          // %s
+    S_UPDATE_DONE_INFO,
+    S_UPDATE_DONE_HINTS,
+    S_UPDATE_DONE_DESKTOP,
+    S_UPDATE_CLOSE_HINT,
+    S_VKB_BUBBLE,
+    S_VKB_BUBBLE_HINT,
+    S_SOUNDFONT,
+    S_SOUNDFONT_HINT,
+    S_SOUNDFONT_AUTO,       // %s
+    S_SOUNDFONT_NONE,
+    S_SOUNDFONT_BUILTIN,
     S_SYSTEM_FONT,
     S_SYSTEM_FONT_HINT,
     S_ON,
@@ -97,6 +124,38 @@ typedef enum {
     S_LINK_OPENING,
     S_LINK_FAILED,
     S_BROWSER_NEEDS_APP,
+    // Gửi game từ điện thoại (mã QR)
+    S_EMPTY_UPLOAD,
+    S_UPLOAD_TITLE,
+    S_UPLOAD_STEP1,
+    S_UPLOAD_STEP2,
+    S_UPLOAD_STEP3,
+    S_UPLOAD_WAITING,
+    S_UPLOAD_RECEIVING,     // %s
+    S_UPLOAD_RECEIVED,      // %d %s
+    S_UPLOAD_NO_NET,
+    S_UPLOAD_SERVER_FAILED, // %s
+    S_UPLOAD_WRITE_FAILED,
+    S_UPLOAD_HINTS,
+    S_UPLOAD_DONE_STATUS,   // %d
+    // Xoá file
+    S_DELETE_GAME,
+    S_DELETE_VIDEO,
+    S_DELETE_KEEP_SAVE,
+    S_DELETE_HINTS,
+    S_DELETED,              // %s
+    S_DELETE_FAILED,        // %s
+    // Trang web trên điện thoại
+    S_WEB_TITLE,
+    S_WEB_INTRO,
+    S_WEB_CHOOSE,
+    S_WEB_WAITING,
+    S_WEB_SENDING,
+    S_WEB_DONE,
+    S_WEB_FAILED,
+    S_WEB_NETWORK,
+    S_WEB_WRONG_TYPE,
+    S_WEB_ALL_DONE,
     S_COUNT,
 } StrId;
 

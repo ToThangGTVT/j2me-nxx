@@ -19,7 +19,7 @@ if(NOT J2ME_NX_DESKTOP AND NOT CMAKE_TOOLCHAIN_FILE)
     endif()
 endif()
 
-project(j2me-nxx VERSION 0.5.0 LANGUAGES C CXX)
+project(j2me-nxx VERSION 0.6.5 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -75,6 +75,13 @@ add_custom_command(
     COMMENT "Nhung font giao dien"
     VERBATIM)
 
+# SoundFont General MIDI có sẵn (TimGM6mb, GPL v2) nhúng vào binary bằng .incbin
+set(SOUNDFONT_SF2 "${CMAKE_SOURCE_DIR}/source/third_party/soundfont/TimGM6mb.sf2")
+set(SOUNDFONT_C   "${CMAKE_SOURCE_DIR}/source/third_party/soundfont/soundfont_data.c")
+set_source_files_properties("${SOUNDFONT_C}" PROPERTIES
+    COMPILE_DEFINITIONS "SOUNDFONT_FILE=\"${SOUNDFONT_SF2}\""
+    OBJECT_DEPENDS "${SOUNDFONT_SF2}")
+
 # ---------------------------------------------------------------------------
 
 add_executable(j2me-nxx
@@ -92,8 +99,16 @@ add_executable(j2me-nxx
     source/keymap.c
     source/settings.c
     source/settings_screen.c
+    source/qr.c
+    source/upload.c
+    source/upload_screen.c
     source/video_dec.c
     source/video_screen.c
+    source/vkb.c
+    source/http.c
+    source/crash.c
+    source/update.c
+    source/update_screen.c
     source/vm/class.c
     source/vm/heap.c
     source/vm/interp.c
@@ -113,6 +128,7 @@ add_executable(j2me-nxx
     source/midp/video.c
     source/third_party/stb_image.c
     source/third_party/dr_mp3.c
+    "${SOUNDFONT_C}"
     "${CLASSLIB_C}"
     "${UI_FONT_C}"
 )

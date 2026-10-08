@@ -1,20 +1,20 @@
-## J2ME-NXX v0.5.0
+## J2ME-NXX v0.6.5
 
-The app is now called **J2ME-NXX**, and everything lives in its own folder `sdmc:/switch/j2me-nxx/`.
+💬 Join the [J2ME-NXX Discord](https://discord.gg/skHsYt8GAa) to chat, ask questions, report bugs and suggest features.
 
-### ⚠️ Breaking changes
-- **New folder.** Games are read from `sdmc:/switch/j2me-nxx/games/`. The old `sdmc:/switch/j2me-nx/games/` folder is no longer scanned: move your `.jar` files over.
-- **Saves and settings start fresh.** Saves (`rms/`), game files (`files/`), `settings.ini` and `log.txt` are now under `sdmc:/switch/j2me-nxx/`. Data from `sdmc:/switch/j2me-nx/` is not migrated.
-- Per-game options moved from `games/<name>.ini` to `options/<name>.ini`, so the `games` folder only holds your games.
-- The file is now `j2me-nxx.nro`. Delete the old `sdmc:/switch/j2me-nx.nro` (and the `sdmc:/switch/j2me-nx/` folder once your games are moved) so hbmenu does not show two apps.
+### ✨ New
+- **Send games and videos from your phone.** Press **R** in the game list and the Switch shows a QR code. Scan it with a phone on the same Wi-Fi to open an upload page, pick one or more `.jar` / `.jad` games or videos, and they are saved straight into the `games` folder, with progress on both the phone and the Switch. The list is rescanned when you close the screen. If scanning does not work, type the address shown next to the code (like `http://192.168.x.x:8080/`) into the phone's browser.
+- **Delete games and videos.** Select a file and press **L**, then **A** to confirm. The matching `.jad` is deleted too. Save data and per-game options are kept, so copying the game back lets you continue where you left off.
 
-### ✨ Changed
-- The fake demo game list is gone. With no games yet, the list shows how to add them: the folder to copy `.jar` files into, subfolders, video files, and **Y** to rescan.
-- The `games` folder is created on first launch; the zip no longer ships a placeholder text file.
+### 🔧 Changed
+- **Settings scroll.** The settings list now scrolls with a scrollbar instead of squeezing every row onto one screen.
+- **L / R** no longer page through the game list (they now delete / send files). Use **left / right** to page.
 
 ### Installation
-- **Zip** (recommended): extract `j2me-nxx-v0.5.0.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
-- **NRO only**: copy `j2me-nxx.nro` to `sdmc:/switch/`; the `games` folder is created on first launch.
+- **Zip** (recommended): extract `j2me-nxx-v0.6.5.zip` to the root of your SD card, then copy your `.jar` games to `sdmc:/switch/j2me-nxx/games/` (subfolders are supported).
+- **NRO only**: copy `j2me-nxx.nro` to `sdmc:/switch/`, replacing the old one.
+
+Already on v0.6.0 or newer: open J2ME-NXX and accept the update prompt (or press **B** in the game list). Coming from v0.5.0 or older: install this version by hand once.
 
 Launch **J2ME-NXX** from hbmenu.
 
@@ -31,4 +31,4 @@ Launch **J2ME-NXX** from hbmenu.
 | Right stick | 2 4 6 8 |
 | − (twice) | Exit game |
 
-In the game list: **X** settings, **−** per-game options (FPS, screen size, key layout), **Y** rescan.
+In the game list: **X** settings, **−** per-game options (FPS, screen size, key layout), **Y** rescan, **R** send games / videos from your phone, **L** delete the selected file, **B** update (when a new version is available).

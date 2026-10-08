@@ -290,6 +290,10 @@ jlong vm_time_ms(void);
 
 void vm_log(const char *fmt, ...);
 const char *vm_last_error(void);
+// Lỗi Java không ai bắt gần nhất (tên lớp, thông điệp, stack trace); "" nếu chưa có
+const char *vm_last_uncaught(void);
+// Ngăn xếp Java của thread đang chạy (để ghi vào báo cáo crash)
+void vm_describe_current(char *out, size_t size);
 
 // System.getProperty
 void vm_set_property(const char *key, const char *value);

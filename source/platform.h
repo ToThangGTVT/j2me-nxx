@@ -31,11 +31,17 @@ typedef enum {
 } OpenUrlResult;
 OpenUrlResult platform_open_url(const char *url);
 
+// Địa chỉ IPv4 của máy trong mạng LAN (để điện thoại kết nối tới). false nếu chưa có mạng
+bool platform_local_ip(char *out, size_t size);
+
 // RAM của cả app (byte). total = 0 nếu không biết (desktop)
 void platform_mem_usage(size_t *used, size_t *total);
 
 // Font giao diện (Google Sans nhúng); lỗi thì dùng font hệ thống
 TTF_Font *platform_open_font(int ptsize);
+
+// Font icon nút (NintendoExt) của Switch; desktop trả về NULL
+TTF_Font *platform_open_icon_font(int ptsize);
 
 // Font hệ thống cho chữ trong game, theo thứ tự ưu tiên: Switch dùng shared font các thứ tiếng
 // (Nhật/Âu-Mỹ, Trung giản thể, Trung phồn thể, Hàn...), desktop dùng font có sẵn trên máy.

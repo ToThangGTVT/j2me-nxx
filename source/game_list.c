@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 
 #include "manifest.h"
+#include "platform.h"
 #include "third_party/stb_image.h"
 #include "vm/zip.h"
 
@@ -23,14 +24,16 @@ static bool has_jar_ext(const char *name) {
     return n > 4 && strcasecmp(name + n - 4, ".jar") == 0;
 }
 
-static bool has_video_ext(const char *name) {
-    static const char *exts[] = { ".3gp", ".3g2", ".mp4", ".m4v", ".mov", ".avi", ".mkv", ".webm",
-                                  ".flv", ".mpg", ".mpeg", ".ts", ".wmv", ".asf" };
+const char *const game_list_video_exts[] = { ".3gp", ".3g2", ".mp4", ".m4v", ".mov", ".avi", ".mkv",
+                                              ".webm", ".flv", ".mpg", ".mpeg", ".ts", ".wmv", ".asf" };
+const int game_list_video_ext_count = (int)(sizeof(game_list_video_exts) / sizeof(game_list_video_exts[0]));
+
+bool game_list_is_video(const char *name) {
     const char *dot = strrchr(name, '.');
     if (!dot)
         return false;
-    for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++) {
-        if (strcasecmp(dot, exts[i]) == 0)
+    for (int i = 0; i < game_list_video_ext_count; i++) {
+        if (strcasecmp(dot, game_list_video_exts[i]) == 0)
             return true;
     }
     return false;
@@ -73,7 +76,7 @@ static void scan_dir(GameList *list, const char *root, const char *rel, int dept
                 scan_dir(list, root, child_rel, depth + 1);
             continue;
         }
-        bool video = has_video_ext(ent->d_name);
+        bool video = game_list_is_video(ent->d_name);
         if (!has_jar_ext(ent->d_name) && !video)
             continue;
         GameEntry *g = &list->items[list->count++];
@@ -111,6 +114,9 @@ void game_list_scan(GameList *list, const char *dir) {
 
     // Tạo sẵn thư mục để người dùng biết chép game vào đâu
     make_dirs(dir);
+    char sf_dir[512];   // chỗ chép file SoundFont .sf2
+    snprintf(sf_dir, sizeof(sf_dir), "%s/soundfonts", platform_data_dir());
+    mkdir(sf_dir, 0777);
     scan_dir(list, dir, "", 0);
 
     qsort(list->items, list->count, sizeof(GameEntry), cmp_entries);
@@ -201,4 +207,31 @@ void game_list_free(GameList *list) {
     free(list->items);
     list->items = NULL;
     list->count = 0;
+}
+
+bool game_list_find_jad(const GameEntry *g, char *out, size_t size) {
+    if (g->video)
+        return false;
+    static const char *exts[] = { ".jad", ".JAD" };
+    for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++) {
+        snprintf(out, size, "%s", g->path);
+        char *dot = strrchr(out, '.');
+        if (!dot || (size_t)(dot - out) + 5 > size)
+            return false;
+        strcpy(dot, exts[i]);
+        struct stat st;
+        if (stat(out, &st) == 0 && S_ISREG(st.st_mode))
+            return true;
+    }
+    return false;
+}
+
+bool game_list_delete(const GameEntry *g) {
+    char jad[600];
+    bool has_jad = game_list_find_jad(g, jad, sizeof(jad));
+    if (remove(g->path) != 0)
+        return false;
+    if (has_jad)
+        remove(jad);
+    return true;
 }

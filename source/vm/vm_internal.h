@@ -45,3 +45,6 @@ extern int FS_Thread_vmThread, FS_Thread_target, FS_Thread_name;
 extern int FS_Throwable_detailMessage, FS_Throwable_trace;
 extern int FS_Class_vmClass;
 void field_slots_init(void);
+
+// interp.c: lỗi Java không ai bắt gần nhất (vm_last_uncaught)
+extern char vm_uncaught_text[4096];

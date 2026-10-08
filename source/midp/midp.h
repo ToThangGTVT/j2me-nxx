@@ -99,6 +99,10 @@ void midp_fileio_register(void);
 void midp_audio_register(void);
 void midp_audio_poll(void);         // gọi mỗi frame: báo END_OF_MEDIA
 void midp_audio_shutdown(void);
+// SoundFont (.sf2) cho MIDI / tone: đường dẫn file, MIDP_SOUNDFONT_BUILTIN = bản nhúng trong binary,
+// NULL hoặc "" = bộ tổng hợp sóng. Gọi trước khi game chạy, giữ lại giữa các game.
+#define MIDP_SOUNDFONT_BUILTIN ":builtin"
+void midp_audio_set_soundfont(const char *path);
 // Tạm đóng thiết bị âm thanh (khi trình xem video đè lên game). Gọi khi luồng VM đang dừng.
 void midp_audio_suspend(bool suspend);
 

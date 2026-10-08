@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "crash.h"
 #include "gfx.h"
 #include "input.h"
 #include "keymap.h"
@@ -14,6 +15,7 @@
 #include "platform.h"
 #include "settings.h"
 #include "video_screen.h"
+#include "vkb.h"
 #include "vm/vm.h"
 #include "vm/zip.h"
 
@@ -230,6 +232,7 @@ static void link_title(char *out, size_t size) {
 
 static void link_stop(void);
 static void release_all_keys(void);
+static void vkb_send(int type, int code);
 
 static void start_video(VideoDec *d) {
     // Tiếng của game tạm đóng: Switch không mở được 2 thiết bị âm thanh cùng lúc
@@ -379,9 +382,34 @@ static uint8_t *host_read_resource(const char *name, size_t *size) {
 }
 
 static void host_log(const char *msg) {
+    crash_log(msg);
     if (log_file) {
         fprintf(log_file, "%s\n", msg);
         fflush(log_file);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Báo cáo crash (crash.c)
+
+static bool crash_reported;     // lần chơi này đã ghi báo cáo
+
+// Game Java có exception không ai bắt: ghi 1 báo cáo cho lần chơi này
+static bool report_java_crash(char *name, size_t size) {
+    if (crash_reported || !vm_last_uncaught()[0])
+        return false;
+    crash_reported = true;
+    return crash_write_report("Game Java bi loi (exception khong ai bat)", vm_last_uncaught(), name, size);
+}
+
+// Không chạy được game: ghi báo cáo, thêm tên file vào thông báo lỗi
+static void report_start_error(const char *title, char *err, size_t err_size) {
+    char detail[4096 + 300], name[64];
+    snprintf(detail, sizeof(detail), "%s\n\n%s", vm_last_error(), vm_last_uncaught());
+    crash_reported = true;
+    if (crash_write_report(title, detail, name, sizeof(name))) {
+        size_t n = strlen(err);
+        snprintf(err + n, err_size - n, " (crash/%s)", name);
     }
 }
 
@@ -484,6 +512,8 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     log_file = fopen(log_path, "w");
     if (log_file)
         fprintf(log_file, "J2ME-NXX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
+    crash_set_game(jar_path, cls);
+    crash_reported = false;
     prof_start();
 
     GameSettings gs;
@@ -508,9 +538,14 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     midp_register_natives();
     if (!vm_init(&host)) {
         snprintf(err, err_size, tr(S_ERR_VM), vm_last_error());
+        report_start_error("Khong khoi dong duoc may ao Java", err, err_size);
         emu_stop();
         return false;
     }
+    char sf2[600];
+    SoundFontChoice sf = settings_soundfont(sf2, sizeof(sf2));
+    midp_audio_set_soundfont(sf == SOUNDFONT_FILE ? sf2 : sf == SOUNDFONT_BUILTIN ? MIDP_SOUNDFONT_BUILTIN : NULL);
+    vkb_start(settings()->vkb_bubble, vkb_send);
 
     // Font hệ thống: tự khử răng cưa và vẽ ở cỡ gần độ phân giải màn hình (hệ số nguyên nhỏ nhất >= tỉ lệ
     // phóng). Chữ mịn thường chỉ khử răng cưa ở độ phân giải của game.
@@ -544,6 +579,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     };
     if (!midp_start(&mc, cls)) {
         snprintf(err, err_size, tr(S_ERR_MIDLET), vm_last_error());
+        report_start_error("Khong chay duoc MIDlet", err, err_size);
         emu_stop();
         return false;
     }
@@ -597,6 +633,10 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
 void emu_stop(void) {
     vm_thread_stop();
     link_stop();
+    if (running) {
+        char name[64];
+        report_java_crash(name, sizeof(name));
+    }
     if (running || syslib || game) {
         vm_shutdown();
         midp_shutdown();
@@ -619,6 +659,7 @@ void emu_stop(void) {
     if (log_file)
         fclose(log_file);
     log_file = NULL;
+    crash_set_game(NULL, NULL);
 }
 
 bool emu_running(void) {
@@ -648,8 +689,18 @@ static void key_change(int code, bool down) {
     }
 }
 
+// Phím từ bàn phím ảo QWERTY (chữ, số, ký hiệu gửi đúng mã ký tự như máy có bàn phím QWERTY)
+static void vkb_send(int type, int code) {
+    code = keymap_translate(keymap, code);
+    if (type == MIDP_EV_KEY_REPEATED)
+        midp_post_event_async(type, code, 0);
+    else
+        midp_post_key(code, type == MIDP_EV_KEY_PRESSED);
+}
+
 // Nhả mọi phím đang giữ (trước khi trình xem video lấy hết phím)
 static void release_all_keys(void) {
+    vkb_release_all();
     for (int i = 0; i < KEY_SLOTS; i++) {
         if (key_held[i]) {
             midp_post_key(keymap_translate(keymap, i - 16), false);
@@ -796,20 +847,27 @@ static void handle_event(const SDL_Event *e) {
     case SDL_FINGERDOWN:
     case SDL_FINGERUP:
     case SDL_FINGERMOTION: {
+        int lx = (int)(e->tfinger.x * SCREEN_W), ly = (int)(e->tfinger.y * SCREEN_H);
+        if (vkb_pointer(e->tfinger.fingerId,
+                        e->type == SDL_FINGERDOWN ? VKB_DOWN : e->type == SDL_FINGERUP ? VKB_UP : VKB_MOVE, lx, ly))
+            break;
         int type = e->type == SDL_FINGERDOWN ? MIDP_EV_POINTER_PRESSED
                  : e->type == SDL_FINGERUP ? MIDP_EV_POINTER_RELEASED : MIDP_EV_POINTER_DRAGGED;
-        pointer(type, (int)(e->tfinger.x * SCREEN_W), (int)(e->tfinger.y * SCREEN_H));
+        pointer(type, lx, ly);
         break;
     }
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:
         if (e->button.which == SDL_TOUCH_MOUSEID || e->button.button != SDL_BUTTON_LEFT)
             break;
+        if (vkb_pointer(-1, e->type == SDL_MOUSEBUTTONDOWN ? VKB_DOWN : VKB_UP, e->button.x, e->button.y))
+            break;
         pointer(e->type == SDL_MOUSEBUTTONDOWN ? MIDP_EV_POINTER_PRESSED : MIDP_EV_POINTER_RELEASED,
                 e->button.x, e->button.y);
         break;
     case SDL_MOUSEMOTION:
-        if (e->motion.which != SDL_TOUCH_MOUSEID && (e->motion.state & SDL_BUTTON_LMASK))
+        if (e->motion.which != SDL_TOUCH_MOUSEID && (e->motion.state & SDL_BUTTON_LMASK) &&
+            !vkb_pointer(-1, VKB_MOVE, e->motion.x, e->motion.y))
             pointer(MIDP_EV_POINTER_DRAGGED, e->motion.x, e->motion.y);
         break;
     default:
@@ -887,18 +945,21 @@ bool emu_update(void) {
         unlock_vm();
     }
     link_update();
-    if (link_state == LINK_NONE)
+    if (link_state == LINK_NONE) {
         update_repeat();
+        vkb_update();
+    }
     bool dead = vm_dead, quit = exit_now || midp_exit_requested();
-    if (exit_now) {
+    if (!exit_now && !dead && !quit)
+        return true;
+    if (exit_now)
         exit_msg[0] = '\0';
-        return false;
-    }
-    if (dead) {
+    else if (dead)
         snprintf(exit_msg, sizeof(exit_msg), "%s", tr(S_GAME_ENDED));
-        return false;
-    }
-    return !quit;
+    char name[64];
+    if (report_java_crash(name, sizeof(name)))
+        snprintf(exit_msg, sizeof(exit_msg), tr(S_GAME_CRASHED), name);
+    return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -912,14 +973,14 @@ bool emu_update(void) {
 static void draw_help(void) {
     const char *lines[][2] = {
         { "D-pad / L-stick", tr(S_HELP_DPAD) },
-        { "A", "Fire (5)" },
-        { "B / R", tr(S_HELP_SOFT_RIGHT) },
-        { "L / +", tr(S_HELP_SOFT_LEFT) },
-        { "Y / X", "* / #" },
-        { "ZL / ZR", "1 / 3" },
+        { ICON_A, "Fire (5)" },
+        { ICON_B " / " ICON_R, tr(S_HELP_SOFT_RIGHT) },
+        { ICON_L " / " ICON_PLUS, tr(S_HELP_SOFT_LEFT) },
+        { ICON_Y " / " ICON_X, "* / #" },
+        { ICON_ZL " / " ICON_ZR, "1 / 3" },
         { "R-stick", "2 4 6 8" },
         { tr(S_HELP_STICK_CLICK), "5 / 0" },
-        { "-", tr(S_HELP_EXIT) },
+        { ICON_MINUS, tr(S_HELP_EXIT) },
     };
     int panel_w = dst.x;
     if (panel_w < 200)
@@ -1050,6 +1111,7 @@ static void draw_game(void) {
     }
     if (settings()->show_help)
         draw_help();
+    vkb_draw();
     draw_stats(fb && dirty);
 
     const char *note = link_state == LINK_OPENING ? tr(S_LINK_OPENING)

@@ -18,7 +18,11 @@
 #include "menu.h"
 #include "platform.h"
 #include "settings.h"
+#include "crash.h"
 #include "settings_screen.h"
+#include "update.h"
+#include "update_screen.h"
+#include "upload_screen.h"
 #include "video_screen.h"
 
 // Test desktop: J2ME_NX_APPSHOT=<file.bmp> chụp màn hình app sau 1.5 giây (J2ME_NX_APPSHOT_MS để đổi); trả về true khi đã chụp
@@ -63,6 +67,27 @@ static void debug_press(void) {
         if (*p == ',')
             p++;
     }
+    // J2ME_NX_TAPS="1000:640:500,..." chạm chuột trái tại (x, y) theo mốc ms, nhả sau 80ms
+    spec = SDL_getenv("J2ME_NX_TAPS");
+    for (const char *p = spec; p && *p;) {
+        unsigned at;
+        int x, y, n = 0;
+        if (sscanf(p, "%u:%d:%d%n", &at, &x, &y, &n) != 3)
+            break;
+        for (int phase = 0; phase < 2; phase++) {
+            Uint32 t = at + (phase ? 80 : 0);
+            if (t > last && t <= now) {
+                SDL_Event e = { .type = phase ? SDL_MOUSEBUTTONUP : SDL_MOUSEBUTTONDOWN };
+                e.button.button = SDL_BUTTON_LEFT;
+                e.button.x = x;
+                e.button.y = y;
+                SDL_PushEvent(&e);
+            }
+        }
+        p += n;
+        if (*p == ',')
+            p++;
+    }
     last = now;
 #endif
 }
@@ -95,10 +120,22 @@ int main(int argc, char *argv[]) {
         goto out;
     }
     input_init();
+    crash_init();
     settings_load();
+    {
+        char name[64];
+        if (crash_take_previous(name, sizeof(name)))
+            snprintf(menu.status, sizeof(menu.status), tr(S_APP_CRASHED_BEFORE), name);
+    }
     game_list_scan(&list, games_dir);
+    update_init(argc > 0 ? argv[0] : NULL);
+    if (settings()->check_update)
+        update_check();
     bool in_settings = false;
     bool in_video = false;
+    bool in_update = false;
+    bool in_upload = false;
+    bool update_prompted = false;   // đã tự hiện hộp thoại "có bản mới" (1 lần mỗi lần mở app)
 #ifndef __SWITCH__
     // Desktop: J2ME_NX_SCREEN=settings mở thẳng màn hình cài đặt (để test giao diện)
     const char *start_screen = SDL_getenv("J2ME_NX_SCREEN");
@@ -164,6 +201,40 @@ int main(int argc, char *argv[]) {
             video_screen_close();
         }
 
+        if (in_update) {
+            bool quit = false;
+            in_update = update_screen_update(&quit);
+            if (quit)
+                running = false;
+            if (in_update) {
+                menu_draw(&menu, &list, games_dir);
+                update_screen_draw();
+                if (debug_appshot())
+                    running = false;
+                gfx_present();
+                continue;
+            }
+        }
+
+        if (in_upload) {
+            in_upload = upload_screen_update();
+            if (in_upload) {
+                menu_draw(&menu, &list, games_dir);
+                upload_screen_draw();
+                if (debug_appshot())
+                    running = false;
+                gfx_present();
+                continue;
+            }
+            int received = upload_screen_close();
+            if (received > 0) {
+                menu_free_textures(&list);
+                game_list_scan(&list, games_dir);
+                menu.cursor = menu.scroll = 0;
+                snprintf(menu.status, sizeof(menu.status), tr(S_UPLOAD_DONE_STATUS), received);
+            }
+        }
+
         if (in_settings) {
             in_settings = settings_screen_update();
             if (in_settings) {
@@ -174,6 +245,16 @@ int main(int argc, char *argv[]) {
                 continue;
             }
             snprintf(menu.status, sizeof(menu.status), "%s", tr(S_SETTINGS_SAVED));
+            if (settings()->check_update && update_state() == UPDATE_IDLE)
+                update_check();
+        }
+
+        // Kiểm tra xong, có bản mới: hỏi 1 lần khi đang ở danh sách game
+        if (!update_prompted && update_state() == UPDATE_AVAILABLE) {
+            update_prompted = true;
+            update_screen_open();
+            in_update = true;
+            continue;
         }
 
         switch (menu_update(&menu, &list)) {
@@ -189,6 +270,27 @@ int main(int argc, char *argv[]) {
         case MENU_SETTINGS:
             settings_screen_open();
             in_settings = true;
+            break;
+        case MENU_UPDATE:
+            update_screen_open();
+            in_update = true;
+            break;
+        case MENU_DELETE: {
+            GameEntry *g = &list.items[menu.cursor];
+            char title[128];
+            snprintf(title, sizeof(title), "%s", g->title);
+            bool ok = game_list_delete(g);
+            snprintf(menu.status, sizeof(menu.status), tr(ok ? S_DELETED : S_DELETE_FAILED), title);
+            if (ok) {
+                menu_free_textures(&list);
+                game_list_scan(&list, games_dir);
+                menu_clamp_cursor(&menu, &list);
+            }
+            break;
+        }
+        case MENU_UPLOAD:
+            upload_screen_open(games_dir);
+            in_upload = true;
             break;
         case MENU_GAME_OPTIONS:
             if (list.items[menu.cursor].video) {
@@ -224,6 +326,8 @@ int main(int argc, char *argv[]) {
         gfx_present();
     }
 
+    update_shutdown();
+    upload_screen_close();
     video_screen_close();
     emu_stop();
     menu_free_textures(&list);

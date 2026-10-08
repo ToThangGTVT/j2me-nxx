@@ -1,4 +1,5 @@
-// Âm thanh cho javax.microedition.media: trộn WAV, tổng hợp MIDI / tone bằng phần mềm qua SDL audio
+// Âm thanh cho javax.microedition.media: trộn WAV, tổng hợp MIDI / tone bằng phần mềm qua SDL audio.
+// Có SoundFont (.sf2) thì MIDI / tone phát bằng TinySoundFont, không thì dùng bộ tổng hợp sóng cơ bản.
 #include "midp.h"
 
 #include <math.h>
@@ -8,13 +9,17 @@
 #include <SDL.h>
 
 #include "../third_party/dr_mp3.h"
+#define TSF_IMPLEMENTATION
+#include "../third_party/tsf.h"
 #include "../video_dec.h"
 #include "../vm/vm.h"
 
-#define RATE        22050
+#define RATE        48000       // tần số gốc của Switch; thấp hơn thì SoundFont bị rè (răng cưa)
 #define MAX_PLAYERS 32
 #define MAX_VOICES  24
 #define BLOCK       64          // số mẫu giữa 2 lần xử lý sự kiện MIDI
+#define SF_VOICES   64          // số voice tối đa mỗi player khi dùng SoundFont (cấp sẵn, không malloc khi trộn)
+#define SF_GAIN     0.3f
 
 typedef enum {
     KIND_NONE,
@@ -72,14 +77,20 @@ typedef struct {
     uint64_t total_samples;     // độ dài bài (mẫu)
     MidiChannel chans[16];
     Voice voices[MAX_VOICES];
+    tsf *sf;                    // != NULL: phát bằng SoundFont (bản sao dùng chung mẫu với sf_base)
 } Player;
 
 static SDL_AudioDeviceID dev;
 static bool suspended, reopen_after_suspend;
 #ifndef __SWITCH__
-static FILE *dump;  // J2ME_NX_AUDIO_DUMP=<file>: ghi PCM 16-bit mono 22050Hz để kiểm tra
+static FILE *dump;  // J2ME_NX_AUDIO_DUMP=<file>: ghi PCM 16-bit mono 48000Hz để kiểm tra
 #endif
 static Player players[MAX_PLAYERS + 1];     // chỉ số 0 không dùng; MAX_PLAYERS dành cho playTone
+static tsf *sf_base;                        // SoundFont đã nạp (giữ qua các lần chơi game)
+static char sf_path[512];
+
+// TimGM6mb nhúng bằng .incbin (third_party/soundfont/soundfont_data.c)
+extern const unsigned char builtin_sf2[], builtin_sf2_end[];
 
 // ---------------------------------------------------------------------------
 // Synth
@@ -154,6 +165,10 @@ static Voice *alloc_voice(Player *p) {
 }
 
 static void note_on(Player *p, int ch, int note, int vel) {
+    if (p->sf) {
+        tsf_channel_note_on(p->sf, ch, note, vel / 127.0f);
+        return;
+    }
     Voice *v = alloc_voice(p);
     memset(v, 0, sizeof(*v));
     v->active = true;
@@ -192,6 +207,10 @@ static void note_on(Player *p, int ch, int note, int vel) {
 }
 
 static void note_off(Player *p, int ch, int note) {
+    if (p->sf) {
+        tsf_channel_note_off(p->sf, ch, note);
+        return;
+    }
     for (int i = 0; i < MAX_VOICES; i++) {
         Voice *v = &p->voices[i];
         if (v->active && v->held && v->ch == ch && v->note == note) {
@@ -203,6 +222,11 @@ static void note_off(Player *p, int ch, int note) {
 }
 
 static void all_notes_off(Player *p) {
+    if (p->sf) {
+        for (int c = 0; c < 16; c++)
+            tsf_channel_note_off_all(p->sf, c);
+        return;
+    }
     for (int i = 0; i < MAX_VOICES; i++) {
         if (p->voices[i].active) {
             p->voices[i].held = false;
@@ -212,13 +236,44 @@ static void all_notes_off(Player *p) {
     }
 }
 
+static void set_program(Player *p, int ch, int program) {
+    p->chans[ch].program = (uint8_t)program;
+    if (p->sf)
+        tsf_channel_set_presetnumber(p->sf, ch, program, ch == 9);
+}
+
 static void reset_channels(Player *p) {
     for (int c = 0; c < 16; c++) {
-        p->chans[c].program = 0;
         p->chans[c].volume = 100;
         p->chans[c].expression = 127;
         p->chans[c].bend = 0;
+        if (p->sf) {
+            // Kênh đã cấp sẵn lúc tạo player: các hàm dưới không malloc (gọi được trong callback)
+            tsf_channel_midi_control(p->sf, c, 121, 0);
+            tsf_channel_set_pitchwheel(p->sf, c, 8192);
+        }
+        set_program(p, c, 0);
     }
+}
+
+// Gắn SoundFont cho player MIDI mới; thiếu bộ nhớ thì dùng bộ tổng hợp sóng
+static void sf_attach(Player *p) {
+    if (!sf_base || p->sf)
+        return;
+    tsf *f = tsf_copy(sf_base);
+    if (!f)
+        return;
+    if (!tsf_set_max_voices(f, SF_VOICES)) {
+        tsf_close(f);
+        return;
+    }
+    for (int c = 0; c < 16; c++)
+        tsf_channel_set_presetnumber(f, c, 0, c == 9);
+    if (!f->channels || f->channels->channelNum < 16) {
+        tsf_close(f);
+        return;
+    }
+    p->sf = f;
 }
 
 static inline float voice_sample(Player *p, Voice *v) {
@@ -230,7 +285,7 @@ static inline float voice_sample(Player *p, Voice *v) {
             // Kick / tom: sine hạ tần số dần
             s = sinf((float)(v->phase * 2 * M_PI));
             v->phase += v->inc;
-            v->inc *= 0.99985;
+            v->inc *= 1.0 - 0.00015 * 22050.0 / RATE;  // hạ tần số như nhau ở mọi tần số mẫu
             s = s * 0.9f + n * 0.1f;
         } else if (v->drum_freq == 0) {
             s = n * 0.8f + sinf((float)(v->phase * 2 * M_PI)) * 0.3f;
@@ -298,6 +353,14 @@ static void midi_event(Player *p, const MidiEvent *e) {
         return;
     }
     int ch = e->status & 15;
+    if (p->sf) {
+        switch (e->status & 0xF0) {
+        case 0xB0: tsf_channel_midi_control(p->sf, ch, e->d1, e->d2); return;
+        case 0xC0: set_program(p, ch, e->d1); return;
+        case 0xE0: tsf_channel_set_pitchwheel(p->sf, ch, (e->d2 << 7) | e->d1); return;
+        default: break;     // note on / off: qua note_on / note_off
+        }
+    }
     switch (e->status & 0xF0) {
     case 0x80: note_off(p, ch, e->d1); break;
     case 0x90:
@@ -319,7 +382,7 @@ static void midi_event(Player *p, const MidiEvent *e) {
             p->chans[ch].bend = 0;
         }
         break;
-    case 0xC0: p->chans[ch].program = e->d1; break;
+    case 0xC0: set_program(p, ch, e->d1); break;
     case 0xE0: {
         p->chans[ch].bend = ((e->d2 << 7) | e->d1) - 8192;
         for (int i = 0; i < MAX_VOICES; i++) {
@@ -341,6 +404,8 @@ static double ticks_per_sample(const Player *p) {
 }
 
 static bool any_voice(const Player *p) {
+    if (p->sf)
+        return tsf_active_voice_count(p->sf) > 0;
     for (int i = 0; i < MAX_VOICES; i++) {
         if (p->voices[i].active)
             return true;
@@ -370,13 +435,24 @@ static void render_midi(Player *p, float *buf, int n) {
                         p->loops--;
                     all_notes_off(p);
                     seq_rewind(p);
-                } else if (!any_voice(p)) {
+                } else if (p->sf || !any_voice(p)) {
+                    // SoundFont: báo hết bài đúng lúc, phần ngân (release) vẫn phát tiếp
                     p->playing = false;
                     p->ended = true;
                 }
             }
             p->tick += ticks_per_sample(p) * len;
             p->sample_pos += (uint64_t)len;
+        }
+        if (p->sf) {
+            if (p->volume > 0) {
+                tsf_set_volume(p->sf, p->volume / 100.0f * SF_GAIN);
+                tsf_render_float(p->sf, buf + off, len, 1);
+            } else {
+                float tmp[BLOCK];   // im lặng nhưng vẫn chạy voice cho đúng thời gian
+                tsf_render_float(p->sf, tmp, len, 0);
+            }
+            continue;
         }
         for (int i = 0; i < MAX_VOICES; i++) {
             Voice *v = &p->voices[i];
@@ -428,8 +504,11 @@ static void audio_callback(void *userdata, Uint8 *stream, int bytes) {
         }
         for (int i = 0; i < len; i++) {
             float s = mix[i];
-            if (s > 1.0f) s = 1.0f;
-            if (s < -1.0f) s = -1.0f;
+            // Nén mềm phần vượt 0.75 thay vì cắt cứng (nốt SoundFont đánh mạnh / nhiều player cùng lúc)
+            if (s > 0.75f)
+                s = 0.75f + 0.25f * tanhf((s - 0.75f) * 4.0f);
+            else if (s < -0.75f)
+                s = -0.75f - 0.25f * tanhf((-s - 0.75f) * 4.0f);
             out[i] = (int16_t)(s * 32767.0f);
         }
 #ifndef __SWITCH__
@@ -485,6 +564,7 @@ static void unlock(void) {
 }
 
 static void player_free(Player *p) {
+    tsf_close(p->sf);
     free(p->pcm);
     free(p->events);
     memset(p, 0, sizeof(*p));
@@ -783,6 +863,7 @@ static bool load_midi(Player *p, const uint8_t *d, size_t size) {
     if (!p->events)
         return false;
     qsort(p->events, p->event_count, sizeof(MidiEvent), cmp_event);
+    sf_attach(p);
     p->kind = KIND_MIDI;
     seq_rewind(p);
     p->total_samples = midi_length_samples(p);
@@ -870,11 +951,12 @@ static bool load_tone(Player *p, const int8_t *seq, int len) {
     if (!p->events)
         return false;
     qsort(p->events, p->event_count, sizeof(MidiEvent), cmp_event);
+    sf_attach(p);
     p->kind = KIND_MIDI;
     p->division = 0;
     seq_rewind(p);
     for (int c = 0; c < 16; c++)
-        p->chans[c].program = 80;   // square lead, giống tiếng chuông điện thoại
+        set_program(p, c, 80);      // square lead, giống tiếng chuông điện thoại
     p->total_samples = (uint64_t)(tp.time_ms * RATE / 1000.0);
     return true;
 }
@@ -1061,9 +1143,10 @@ static NativeResult A_playTone0(VMThread *t, Value *args, Value *ret) {
         p->kind = KIND_MIDI;
         p->volume = 100;
         p->loops = 1;
+        sf_attach(p);
         reset_channels(p);
         for (int c = 0; c < 16; c++)
-            p->chans[c].program = 80;
+            set_program(p, c, 80);
     }
     // Phát ngay 1 nốt; tự tắt nhờ sequence 1 sự kiện note off
     free(p->events);
@@ -1113,6 +1196,32 @@ void midp_audio_register(void) {
     native_register(A, "duration0", "(I)J", A_duration0);
     native_register(A, "close0", "(I)V", A_close0);
     native_register(A, "playTone0", "(III)V", A_playTone0);
+}
+
+void midp_audio_set_soundfont(const char *path) {
+    if (!path)
+        path = "";
+    if (sf_base && strcmp(path, sf_path) == 0)
+        return;
+    // Gọi trước khi game chạy: không còn player nào dùng bản cũ
+    tsf_close(sf_base);
+    sf_base = NULL;
+    snprintf(sf_path, sizeof(sf_path), "%s", path);
+    if (!*path)
+        return;
+    uint32_t t0 = SDL_GetTicks();
+    if (strcmp(path, MIDP_SOUNDFONT_BUILTIN) == 0)
+        sf_base = tsf_load_memory(builtin_sf2, (int)(builtin_sf2_end - builtin_sf2));
+    else
+        sf_base = tsf_load_filename(path);
+    if (!sf_base) {
+        vm_log("Khong nap duoc SoundFont %s", path);
+        sf_path[0] = 0;
+        return;
+    }
+    tsf_set_output(sf_base, TSF_MONO, RATE, 0.0f);
+    vm_log("SoundFont %s: %d preset, %u ms", strcmp(path, MIDP_SOUNDFONT_BUILTIN) ? path : "TimGM6mb (co san)",
+           tsf_get_presetcount(sf_base), SDL_GetTicks() - t0);
 }
 
 void midp_audio_suspend(bool s) {

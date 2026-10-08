@@ -15,7 +15,10 @@
 #define FOOTER_H    72
 #define LIST_X      40
 #define LIST_TOP    110
-#define ROW_H       60
+#define ROW_H       56
+#define HINT_H      90      // chỗ cho chú thích của mục đang chọn, dưới danh sách
+#define LIST_ROWS   ((SCREEN_H - FOOTER_H - LIST_TOP - HINT_H) / ROW_H)
+#define SCROLLBAR_W 6
 
 #define COL_BG       RGB(0x24, 0x26, 0x2b)
 #define COL_BAR      RGB(0x18, 0x19, 0x1d)
@@ -23,6 +26,7 @@
 #define COL_TEXT     RGB(0xee, 0xee, 0xee)
 #define COL_DIM      RGB(0x9a, 0x9f, 0xa8)
 #define COL_ROW_SEL  RGB(0x33, 0x3a, 0x48)
+#define COL_TRACK    RGB(0x34, 0x37, 0x3e)
 
 typedef enum {
     ITEM_FPS,
@@ -38,14 +42,20 @@ typedef enum {
     ITEM_SMOOTH_TEXT,
     ITEM_SYSTEM_FONT,
     ITEM_FONT_SCALE,
+    ITEM_SOUNDFONT,
+    ITEM_VKB_BUBBLE,
+    ITEM_CHECK_UPDATE,
 } ItemId;
 
 static int cursor;
+static int scroll;              // mục đầu tiên đang hiện
 static bool game_mode;
 static bool custom;             // đang ở chế độ nhập kích thước tuỳ chỉnh
 static char game_id[128];
 static char game_title[128];
 static GameSettings game;
+static char soundfonts[SOUNDFONT_MAX][128];  // file .sf2 tìm thấy lúc mở màn hình
+static int soundfont_count;
 
 // Con trỏ tới kích thước đang chỉnh (cài đặt chung hoặc của game)
 static int *cur_w(void) { return game_mode ? &game.screen_w : &settings()->screen_w; }
@@ -71,12 +81,15 @@ static void sync_custom(void) {
 
 void settings_screen_open(void) {
     cursor = 0;
+    scroll = 0;
     game_mode = false;
     sync_custom();
+    soundfont_count = settings_list_soundfonts(soundfonts, SOUNDFONT_MAX);
 }
 
 void settings_screen_open_game(const char *id, const char *title) {
     cursor = 0;
+    scroll = 0;
     game_mode = true;
     snprintf(game_id, sizeof(game_id), "%s", id);
     snprintf(game_title, sizeof(game_title), "%s", title);
@@ -107,6 +120,9 @@ static int visible_items(ItemId *out) {
         out[n++] = ITEM_SCALE;
         out[n++] = ITEM_SHOW_HELP;
         out[n++] = ITEM_SHOW_FPS;
+        out[n++] = ITEM_VKB_BUBBLE;
+        out[n++] = ITEM_SOUNDFONT;
+        out[n++] = ITEM_CHECK_UPDATE;
         out[n++] = ITEM_LANGUAGE;
     }
     return n;
@@ -137,6 +153,24 @@ static void change_font_scale(int dir) {
     }
     int i = (cur + dir + n) % n;
     *v = (game_mode && i == 0) ? -1 : SETTINGS_FONT_SCALE_CHOICES[i - base];
+}
+
+// SoundFont: [Tắt] [Tự động] [Có sẵn] + các file .sf2
+static void change_soundfont(int dir) {
+    static const char *fixed[] = { "-", "", "builtin" };
+    char *v = settings()->soundfont;
+    int n = 3 + soundfont_count;
+    int cur = 0;
+    for (int i = 0; i < 3; i++) {
+        if (strcmp(v, fixed[i]) == 0)
+            cur = i;
+    }
+    for (int i = 0; i < soundfont_count; i++) {
+        if (strcmp(v, soundfonts[i]) == 0)
+            cur = 3 + i;
+    }
+    int i = (cur + dir + n) % n;
+    snprintf(v, sizeof(settings()->soundfont), "%s", i < 3 ? fixed[i] : soundfonts[i - 3]);
 }
 
 static void change_fps(int dir) {
@@ -262,6 +296,18 @@ bool settings_screen_update(void) {
     case ITEM_SHOW_FPS:
         if (dir || a)
             settings()->show_fps = !settings()->show_fps;
+        break;
+    case ITEM_CHECK_UPDATE:
+        if (dir || a)
+            settings()->check_update = !settings()->check_update;
+        break;
+    case ITEM_VKB_BUBBLE:
+        if (dir || a)
+            settings()->vkb_bubble = !settings()->vkb_bubble;
+        break;
+    case ITEM_SOUNDFONT:
+        if (dir || a)
+            change_soundfont(dir ? dir : 1);
         break;
     case ITEM_SCALE:
         if (dir || a)
@@ -399,6 +445,28 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
         *hint = tr(S_SHOW_HELP_HINT);
         snprintf(value, size, "%s", tr(s->show_help ? S_ON : S_OFF));
         break;
+    case ITEM_CHECK_UPDATE:
+        *label = tr(S_CHECK_UPDATE);
+        *hint = tr(S_CHECK_UPDATE_HINT);
+        snprintf(value, size, "%s", tr(s->check_update ? S_ON : S_OFF));
+        break;
+    case ITEM_VKB_BUBBLE:
+        *label = tr(S_VKB_BUBBLE);
+        *hint = tr(S_VKB_BUBBLE_HINT);
+        snprintf(value, size, "%s", tr(s->vkb_bubble ? S_ON : S_OFF));
+        break;
+    case ITEM_SOUNDFONT:
+        *label = tr(S_SOUNDFONT);
+        *hint = tr(S_SOUNDFONT_HINT);
+        if (strcmp(s->soundfont, "-") == 0)
+            snprintf(value, size, "%s", tr(S_SOUNDFONT_NONE));
+        else if (strcmp(s->soundfont, "builtin") == 0)
+            snprintf(value, size, "%s", tr(S_SOUNDFONT_BUILTIN));
+        else if (!*s->soundfont)
+            snprintf(value, size, tr(S_SOUNDFONT_AUTO), soundfont_count ? soundfonts[0] : "TimGM6mb");
+        else
+            snprintf(value, size, "%.95s", s->soundfont);
+        break;
     case ITEM_SHOW_FPS:
         *label = tr(S_SHOW_FPS);
         *hint = tr(S_SHOW_FPS_HINT);
@@ -442,29 +510,44 @@ void settings_screen_draw(void) {
     int n = visible_items(items);
     if (cursor >= n)
         cursor = n - 1;
-    // Nhiều mục (cài đặt chung + kích thước tuỳ chỉnh) thì co dòng lại, chừa chỗ cho chú thích
-    int row_h = (SCREEN_H - FOOTER_H - LIST_TOP - 70) / n;
-    if (row_h > ROW_H)
-        row_h = ROW_H;
+    // Nhiều mục hơn số dòng hiện được thì cuộn theo con trỏ
+    int rows = n < LIST_ROWS ? n : LIST_ROWS;
+    if (cursor < scroll)
+        scroll = cursor;
+    else if (cursor >= scroll + rows)
+        scroll = cursor - rows + 1;
+    if (scroll > n - rows)
+        scroll = n - rows;
+    if (scroll < 0)
+        scroll = 0;
+    int row_w = n > rows ? list_w - SCROLLBAR_W - 12 : list_w;
+    int row_h = ROW_H;
     int font_y = (row_h - gfx_font_height(FONT_NORMAL)) / 2;
     const char *sel_hint = "";
-    for (int i = 0; i < n; i++) {
-        int y = LIST_TOP + i * row_h;
+    for (int i = scroll; i < scroll + rows; i++) {
+        int y = LIST_TOP + (i - scroll) * row_h;
         bool sel = i == cursor;
         const char *label = "", *hint = "";
         char value[96] = "";
         item_text(items[i], &label, &hint, value, sizeof(value));
         if (sel) {
-            gfx_fill_rect(LIST_X, y, list_w, row_h, COL_ROW_SEL);
+            gfx_fill_rect(LIST_X, y, row_w, row_h, COL_ROW_SEL);
             gfx_fill_rect(LIST_X, y, 6, row_h, COL_ACCENT);
             sel_hint = hint;
         }
         gfx_text(FONT_NORMAL, LIST_X + 28, y + font_y, 0, ALIGN_LEFT, COL_TEXT, label);
         char shown[128];
         snprintf(shown, sizeof(shown), sel ? "<  %s  >" : "%s", value);
-        gfx_text(FONT_NORMAL, LIST_X + list_w - 24, y + font_y, 0, ALIGN_RIGHT, sel ? COL_ACCENT : COL_DIM, shown);
+        gfx_text(FONT_NORMAL, LIST_X + row_w - 24, y + font_y, 0, ALIGN_RIGHT, sel ? COL_ACCENT : COL_DIM, shown);
     }
-    gfx_text_wrapped(FONT_SMALL, LIST_X + 28, LIST_TOP + n * row_h + 16, list_w - 56, COL_DIM, sel_hint);
+    if (n > rows) {
+        int track_x = LIST_X + list_w - SCROLLBAR_W, track_h = rows * row_h;
+        int thumb_h = track_h * rows / n;
+        int thumb_y = LIST_TOP + (track_h - thumb_h) * scroll / (n - rows);
+        gfx_fill_rect(track_x, LIST_TOP, SCROLLBAR_W, track_h, COL_TRACK);
+        gfx_fill_rect(track_x, thumb_y, SCROLLBAR_W, thumb_h, COL_ACCENT);
+    }
+    gfx_text_wrapped(FONT_SMALL, LIST_X + 28, LIST_TOP + rows * row_h + 16, list_w - 56, COL_DIM, sel_hint);
 
     draw_preview(SCREEN_W - LIST_X - 260, LIST_TOP, 260, 400);
 

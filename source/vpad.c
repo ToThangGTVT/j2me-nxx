@@ -12,6 +12,7 @@
 #define STICK_DEAD  0.25f   // vùng chết của cần điều khiển, theo bán kính
 #define KNOB        0.42f   // bán kính núm, theo bán kính cần
 #define MAX_TOUCH   10
+#define SUB_OVERLAP 6
 
 #define COL_KEY     RGB(0x30, 0x34, 0x3c)
 #define COL_KNOB    RGB(0x5a, 0x60, 0x6c)
@@ -142,11 +143,12 @@ void vpad_draw_item(const VpadLayout *l, VpadItem i, bool down, int kx, int ky, 
                                                                                                    : FONT_SMALL;
     int fh = gfx_font_height(f), sh = gfx_font_height(FONT_SMALL);
     // Chữ nhỏ dưới số chỉ khi phím đủ cao
-    bool show_sub = *sub && f == FONT_LARGE && fh + sh - 14 <= h - 8;
-    int ty = show_sub ? y + (h - (fh + sh - 14)) / 2 : y + (h - fh) / 2;
+    // Dòng chữ nhỏ đè lên phần trống dưới chân số (SUB_OVERLAP px) cho cụm gọn
+    bool show_sub = *sub && f == FONT_LARGE && fh + sh - SUB_OVERLAP <= h;
+    int ty = show_sub ? y + (h - (fh + sh - SUB_OVERLAP)) / 2 : y + (h - fh) / 2;
     gfx_text(f, x + w / 2, ty, w - 4, ALIGN_CENTER, text, items[i].label);
     if (show_sub)
-        gfx_text(FONT_SMALL, x + w / 2, ty + fh - 14, w - 4, ALIGN_CENTER, with_alpha(COL_DIM, a), sub);
+        gfx_text(FONT_SMALL, x + w / 2, ty + fh - SUB_OVERLAP, w - 4, ALIGN_CENTER, with_alpha(COL_DIM, a), sub);
 }
 
 // ---------------------------------------------------------------------------

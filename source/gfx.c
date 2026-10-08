@@ -37,6 +37,7 @@ static TTF_Font *fonts[FONT_COUNT];
 static TTF_Font *icon_fonts[FONT_COUNT];   // NintendoExt, NULL trên desktop
 static TTF_Font *label_fonts[FONT_COUNT];  // chữ nhỏ trong icon tự vẽ
 static TextCacheEntry text_cache[TEXT_CACHE_SIZE];
+static SDL_Texture *circle_tex;             // hình tròn trắng khử răng cưa, cho góc bo và hình tròn
 
 bool gfx_init(const char *title) {
     window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -78,6 +79,9 @@ void gfx_exit(void) {
         free(text_cache[i].text);
     }
     memset(text_cache, 0, sizeof(text_cache));
+    if (circle_tex)
+        SDL_DestroyTexture(circle_tex);
+    circle_tex = NULL;
 
     for (int i = 0; i < FONT_COUNT; i++) {
         if (fonts[i])
@@ -116,6 +120,67 @@ void gfx_fill_rect(int x, int y, int w, int h, SDL_Color c) {
     SDL_Rect r = { x, y, w, h };
     SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, c.a);
     SDL_RenderFillRect(renderer, &r);
+}
+
+#define CIRCLE_TEX 256
+
+static SDL_Texture *circle(void) {
+    if (circle_tex)
+        return circle_tex;
+    static uint32_t px[CIRCLE_TEX * CIRCLE_TEX];
+    float r = CIRCLE_TEX / 2.0f;
+    for (int y = 0; y < CIRCLE_TEX; y++) {
+        for (int x = 0; x < CIRCLE_TEX; x++) {
+            float dx = x + 0.5f - r, dy = y + 0.5f - r;
+            float cov = r - sqrtf(dx * dx + dy * dy) + 0.5f;
+            cov = cov < 0 ? 0 : cov > 1 ? 1 : cov;
+            px[y * CIRCLE_TEX + x] = ((uint32_t)(cov * 255 + 0.5f) << 24) | 0xFFFFFF;
+        }
+    }
+    circle_tex = gfx_texture_argb(px, CIRCLE_TEX, CIRCLE_TEX);
+    if (circle_tex)
+        SDL_SetTextureScaleMode(circle_tex, SDL_ScaleModeLinear);
+    return circle_tex;
+}
+
+// Một phần tư hình tròn (qx, qy: 0 = nửa trái / trên, 1 = nửa phải / dưới) vào ô r x r
+static void quarter(SDL_Texture *t, int x, int y, int r, int qx, int qy) {
+    int h = CIRCLE_TEX / 2;
+    SDL_Rect src = { qx * h, qy * h, h, h };
+    SDL_Rect d = { x, y, r, r };
+    SDL_RenderCopy(renderer, t, &src, &d);
+}
+
+void gfx_fill_round_rect(int x, int y, int w, int h, int r, SDL_Color c) {
+    if (r > w / 2)
+        r = w / 2;
+    if (r > h / 2)
+        r = h / 2;
+    SDL_Texture *t = r > 0 ? circle() : NULL;
+    if (!t) {
+        gfx_fill_rect(x, y, w, h, c);
+        return;
+    }
+    SDL_SetTextureColorMod(t, c.r, c.g, c.b);
+    SDL_SetTextureAlphaMod(t, c.a);
+    quarter(t, x, y, r, 0, 0);
+    quarter(t, x + w - r, y, r, 1, 0);
+    quarter(t, x, y + h - r, r, 0, 1);
+    quarter(t, x + w - r, y + h - r, r, 1, 1);
+    // Các mảnh không chồng nhau để màu trong suốt đều
+    gfx_fill_rect(x + r, y, w - 2 * r, h, c);
+    gfx_fill_rect(x, y + r, r, h - 2 * r, c);
+    gfx_fill_rect(x + w - r, y + r, r, h - 2 * r, c);
+}
+
+void gfx_fill_circle(int cx, int cy, int r, SDL_Color c) {
+    SDL_Texture *t = circle();
+    if (!t)
+        return;
+    SDL_SetTextureColorMod(t, c.r, c.g, c.b);
+    SDL_SetTextureAlphaMod(t, c.a);
+    SDL_Rect d = { cx - r, cy - r, 2 * r, 2 * r };
+    SDL_RenderCopy(renderer, t, NULL, &d);
 }
 
 SDL_Texture *gfx_texture_argb(const uint32_t *pixels, int w, int h) {
@@ -415,6 +480,9 @@ static TextCacheEntry *text_get(FontId font, SDL_Color c, const char *text) {
 int gfx_text(FontId font, int x, int y, int max_w, TextAlign align, SDL_Color c, const char *text) {
     if (!text || !*text)
         return 0;
+    // Chữ trong suốt: dùng chung texture chữ đặc, mờ đi bằng alpha mod
+    Uint8 alpha = c.a;
+    c.a = 255;
     TextCacheEntry *e = text_get(font, c, text);
     if (!e)
         return 0;
@@ -430,6 +498,7 @@ int gfx_text(FontId font, int x, int y, int max_w, TextAlign align, SDL_Color c,
 
     SDL_Rect src = { 0, 0, w, e->h };
     SDL_Rect dst = { x, y, w, e->h };
+    SDL_SetTextureAlphaMod(e->tex, alpha);
     SDL_RenderCopy(renderer, e->tex, &src, &dst);
     return w;
 }

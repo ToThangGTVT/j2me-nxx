@@ -124,6 +124,26 @@ typedef enum {
     S_UPDATE_CLOSE_HINT,
     S_VKB_BUBBLE,
     S_VKB_BUBBLE_HINT,
+    // Phím ảo trên màn hình
+    S_VPAD,
+    S_VPAD_HINT,
+    S_VPAD_HINT_APP,
+    S_VPAD_LAYOUT,
+    S_VPAD_LAYOUT_HINT,
+    S_VPAD_CUSTOMIZED,      // %s
+    S_VPAD_STICK,
+    S_VPAD_KEY_FMT,         // %s
+    S_VPAD_PICK,
+    S_VPAD_HIDE,
+    S_VPAD_SHOW,
+    S_VPAD_RADIUS,          // %d
+    S_VPAD_OPACITY,         // %d
+    S_VPAD_SNAP,            // %s
+    S_VPAD_RESET,
+    S_VPAD_RESET_CONFIRM,
+    S_VPAD_DONE,
+    S_VPAD_GAME_AREA,       // %d %d
+    S_VPAD_EDIT_HELP,
     S_SOUNDFONT,
     S_SOUNDFONT_HINT,
     S_SOUNDFONT_AUTO,       // %s

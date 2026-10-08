@@ -32,9 +32,14 @@ static bool debug_appshot(void) {
     const char *appshot = SDL_getenv("J2ME_NX_APPSHOT");
     const char *at = SDL_getenv("J2ME_NX_APPSHOT_MS");
     if (appshot && SDL_GetTicks() > (Uint32)(at ? atoi(at) : 1500)) {
-        SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, SCREEN_W, SCREEN_H, 32, SDL_PIXELFORMAT_ARGB8888);
-        SDL_Rect vp = { 0, 0, SCREEN_W, SCREEN_H };
+        // Màn hình Retina: điểm ảnh thật nhiều hơn 1280x720, đọc cả khung rồi lưu theo cỡ thật
+        int w = SCREEN_W, h = SCREEN_H;
+        SDL_GetRendererOutputSize(gfx_renderer(), &w, &h);
+        SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+        SDL_RenderSetLogicalSize(gfx_renderer(), 0, 0);
+        SDL_Rect vp = { 0, 0, w, h };
         SDL_RenderReadPixels(gfx_renderer(), &vp, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
+        SDL_RenderSetLogicalSize(gfx_renderer(), SCREEN_W, SCREEN_H);
         SDL_SaveBMP(surf, appshot);
         SDL_FreeSurface(surf);
         return true;
@@ -84,6 +89,38 @@ static void debug_press(void) {
                 e.button.y = y;
                 SDL_PushEvent(&e);
             }
+        }
+        p += n;
+        if (*p == ',')
+            p++;
+    }
+    // J2ME_NX_DRAGS="1000:x0:y0:x1:y1,..." kéo chuột trái từ (x0, y0) tới (x1, y1) trong 300ms theo mốc ms
+    spec = SDL_getenv("J2ME_NX_DRAGS");
+    for (const char *p = spec; p && *p;) {
+        unsigned at;
+        int x0, y0, x1, y1, n = 0;
+        if (sscanf(p, "%u:%d:%d:%d:%d%n", &at, &x0, &y0, &x1, &y1, &n) != 5)
+            break;
+        // Nhấn, 3 bước di chuyển, nhả
+        for (int step = 0; step <= 4; step++) {
+            Uint32 t = at + step * 100;
+            if (t <= last || t > now)
+                continue;
+            int k = step > 3 ? 3 : step;
+            SDL_Event e;
+            SDL_zero(e);
+            if (step == 0 || step == 4) {
+                e.type = step ? SDL_MOUSEBUTTONUP : SDL_MOUSEBUTTONDOWN;
+                e.button.button = SDL_BUTTON_LEFT;
+                e.button.x = step ? x1 : x0;
+                e.button.y = step ? y1 : y0;
+            } else {
+                e.type = SDL_MOUSEMOTION;
+                e.motion.state = SDL_BUTTON_LMASK;
+                e.motion.x = x0 + (x1 - x0) * k / 3;
+                e.motion.y = y0 + (y1 - y0) * k / 3;
+            }
+            SDL_PushEvent(&e);
         }
         p += n;
         if (*p == ',')

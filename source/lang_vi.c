@@ -131,6 +131,29 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_VKB_BUBBLE]     = "Bong bóng bàn phím ảo",
     [S_VKB_BUBBLE_HINT] = "Khi chạy có bong bóng nhỏ trên màn hình cảm ứng (kéo để di chuyển). Chạm vào để mở bàn phím "
                           "QWERTY nổi có hàng số, gõ chữ cho ứng dụng; nút × thu bàn phím về bong bóng.",
+    [S_VPAD]           = "Phím ảo trên màn hình",
+    [S_VPAD_HINT]      = "Khi chạy hiện bàn phím điện thoại trên màn hình cảm ứng: cần điều khiển (đi theo ánh xạ của "
+                         "stick trái), phím mềm, Fire, phím số. Mỗi ứng dụng bật / tắt riêng được trong Tuỳ chọn ứng dụng.",
+    [S_VPAD_HINT_APP]  = "Bàn phím điện thoại trên màn hình cảm ứng khi chạy ứng dụng này. Bố cục chỉnh trong Cài đặt chung.",
+    [S_VPAD_LAYOUT]    = "Bố cục phím ảo",
+    [S_VPAD_LAYOUT_HINT] = "Kéo từng phím để đổi vị trí, kéo chấm ở góc để đổi kích thước; chỉnh bo góc, độ rõ, ẩn phím "
+                           "không dùng. Phím để sát nhau thì tự hít vào nhau. Nhấn " ICON_A " để mở.",
+    [S_VPAD_CUSTOMIZED] = "%s, đã chỉnh",
+    [S_VPAD_STICK]     = "Cần điều khiển",
+    [S_VPAD_KEY_FMT]   = "Phím %s",
+    [S_VPAD_PICK]      = "Chạm vào một phím để chỉnh",
+    [S_VPAD_HIDE]      = "Ẩn",
+    [S_VPAD_SHOW]      = "Hiện",
+    [S_VPAD_RADIUS]    = "Bo góc %d",
+    [S_VPAD_OPACITY]   = "Độ rõ %d%%",
+    [S_VPAD_SNAP]      = "Hít: %s",
+    [S_VPAD_RESET]     = "Mặc định",
+    [S_VPAD_RESET_CONFIRM] = "Chạm Mặc định lần nữa để đặt lại toàn bộ bố cục",
+    [S_VPAD_DONE]      = "Xong",
+    [S_VPAD_GAME_AREA] = "Màn hình ứng dụng %dx%d",
+    [S_VPAD_EDIT_HELP] = "Kéo phím để di chuyển, kéo chấm ở góc để đổi kích thước. Tay cầm: " ICON_L "/" ICON_R
+                         " chọn phím, D-pad di chuyển, " ICON_X "/" ICON_Y " to / nhỏ, " ICON_A " ẩn / hiện, " ICON_B
+                         " xong.",
     [S_SOUNDFONT]      = "SoundFont MIDI",
     [S_SOUNDFONT_HINT] = "Phát nhạc MIDI bằng SoundFont cho giống nhạc cụ thật: có sẵn TimGM6mb, hoặc chép file .sf2 vào "
                          "sdmc:/switch/j2me-nxx/soundfonts/. Tắt: bộ tổng hợp sóng, nhẹ hơn.",

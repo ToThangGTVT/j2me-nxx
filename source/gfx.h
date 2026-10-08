@@ -47,6 +47,9 @@ SDL_Renderer *gfx_renderer(void);
 void gfx_clear(SDL_Color c);
 void gfx_present(void);
 void gfx_fill_rect(int x, int y, int w, int h, SDL_Color c);
+// Hình chữ nhật bo góc bán kính r / hình tròn, khử răng cưa, màu trong suốt đều
+void gfx_fill_round_rect(int x, int y, int w, int h, int r, SDL_Color c);
+void gfx_fill_circle(int cx, int cy, int r, SDL_Color c);
 
 int gfx_font_height(FontId font);
 int gfx_text_width(FontId font, const char *text);

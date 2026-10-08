@@ -11,6 +11,7 @@
 #include "lang.h"
 #include "platform.h"
 #include "settings.h"
+#include "vpad_screen.h"
 
 #define HEADER_H    80
 #define FOOTER_H    72
@@ -40,6 +41,8 @@ typedef enum {
     ITEM_SHOW_FPS,
     ITEM_KEYMAP,
     ITEM_KEYBINDS,
+    ITEM_VPAD,
+    ITEM_VPAD_LAYOUT,
     ITEM_SCALE,
     ITEM_SMOOTH_TEXT,
     ITEM_SYSTEM_FONT,
@@ -48,6 +51,7 @@ typedef enum {
     ITEM_VKB_BUBBLE,
     ITEM_CHECK_UPDATE,
 } ItemId;
+#define ITEM_COUNT (ITEM_CHECK_UPDATE + 1)
 
 static int cursor;
 static int scroll;              // mục đầu tiên đang hiện
@@ -59,6 +63,7 @@ static GameSettings game;
 static char soundfonts[SOUNDFONT_MAX][128];  // file .sf2 tìm thấy lúc mở màn hình
 static int soundfont_count;
 static bool in_keybinds;        // đang ở màn hình ánh xạ phím
+static bool in_vpad;            // đang ở màn hình chỉnh bố cục phím ảo
 
 // Con trỏ tới kích thước đang chỉnh (cài đặt chung hoặc của game)
 static int *cur_w(void) { return game_mode ? &game.screen_w : &settings()->screen_w; }
@@ -87,6 +92,7 @@ void settings_screen_open(void) {
     scroll = 0;
     game_mode = false;
     in_keybinds = false;
+    in_vpad = false;
     sync_custom();
     soundfont_count = settings_list_soundfonts(soundfonts, SOUNDFONT_MAX);
 }
@@ -96,6 +102,7 @@ void settings_screen_open_game(const char *id, const char *title) {
     scroll = 0;
     game_mode = true;
     in_keybinds = false;
+    in_vpad = false;
     snprintf(game_id, sizeof(game_id), "%s", id);
     snprintf(game_title, sizeof(game_title), "%s", title);
     game_settings_load(game_id, &game);
@@ -116,6 +123,9 @@ static int visible_items(ItemId *out) {
     }
     out[n++] = ITEM_KEYMAP;
     out[n++] = ITEM_KEYBINDS;
+    out[n++] = ITEM_VPAD;
+    if (!game_mode)
+        out[n++] = ITEM_VPAD_LAYOUT;
     out[n++] = ITEM_FONT_SCALE;
     out[n++] = ITEM_SYSTEM_FONT;
     // Font hệ thống luôn mịn: bỏ mục chữ mịn (đặt sau để bật/tắt không làm nhảy con trỏ)
@@ -248,6 +258,8 @@ static void edit_number(int *value, const char *title) {
 void settings_screen_handle_event(const SDL_Event *e) {
     if (in_keybinds)
         keybind_screen_handle_event(e);
+    if (in_vpad)
+        vpad_screen_handle_event(e);
 }
 
 static void open_keybinds(void) {
@@ -264,6 +276,10 @@ bool settings_screen_update(void) {
         in_keybinds = keybind_screen_update();
         return true;
     }
+    if (in_vpad) {
+        in_vpad = vpad_screen_update();
+        return true;
+    }
     if (input_pressed(BTN_B) || input_pressed(BTN_X) || input_pressed(BTN_PLUS) || input_pressed(BTN_MINUS)) {
         if (game_mode)
             game_settings_save(game_id, &game);
@@ -272,7 +288,7 @@ bool settings_screen_update(void) {
         return false;
     }
 
-    ItemId items[16];
+    ItemId items[ITEM_COUNT];
     int n = visible_items(items);
     if (cursor >= n)
         cursor = n - 1;
@@ -361,6 +377,20 @@ bool settings_screen_update(void) {
         if (dir > 0 || a)
             open_keybinds();
         break;
+    case ITEM_VPAD:
+        if (dir || a) {
+            if (game_mode)      // Mặc định -> Bật -> Tắt
+                game.vpad = game.vpad < 0 ? 1 : game.vpad == 1 ? 0 : -1;
+            else
+                settings()->vpad = !settings()->vpad;
+        }
+        break;
+    case ITEM_VPAD_LAYOUT:
+        if (dir > 0 || a) {
+            vpad_screen_open(&settings()->vpad_layout);
+            in_vpad = true;
+        }
+        break;
     case ITEM_KEYMAP:
         if (dir || a) {
             // Chế độ game có thêm "Mặc định" (-1)
@@ -446,6 +476,22 @@ static void item_text(ItemId item, const char **label, const char **hint, char *
             snprintf(value, size, "%s", tr(game_mode ? S_KEYBIND_INHERIT : S_KEYBIND_DEFAULT));
         break;
     }
+    case ITEM_VPAD:
+        *label = tr(S_VPAD);
+        *hint = tr(game_mode ? S_VPAD_HINT_APP : S_VPAD_HINT);
+        if (game_mode && game.vpad < 0)
+            snprintf(value, size, tr(S_DEFAULT_FMT), tr(s->vpad ? S_ON : S_OFF));
+        else
+            snprintf(value, size, "%s", tr((game_mode ? game.vpad == 1 : s->vpad) ? S_ON : S_OFF));
+        break;
+    case ITEM_VPAD_LAYOUT:
+        *label = tr(S_VPAD_LAYOUT);
+        *hint = tr(S_VPAD_LAYOUT_HINT);
+        if (vpad_layout_changed(&s->vpad_layout))
+            snprintf(value, size, tr(S_VPAD_CUSTOMIZED), vpad_style_name(s->vpad_layout.style));
+        else
+            snprintf(value, size, "%s", vpad_style_name(s->vpad_layout.style));
+        break;
     case ITEM_SCALE:
         *label = tr(S_SCALE_MODE);
         *hint = tr(S_SCALE_HINT);
@@ -536,6 +582,10 @@ void settings_screen_draw(void) {
         keybind_screen_draw();
         return;
     }
+    if (in_vpad) {
+        vpad_screen_draw();
+        return;
+    }
     gfx_clear(COL_BG);
 
     gfx_fill_rect(0, 0, SCREEN_W, HEADER_H, COL_BAR);
@@ -548,7 +598,7 @@ void settings_screen_draw(void) {
 
     // Cột trái: các mục; cột phải: xem trước tỉ lệ màn hình
     int list_w = SCREEN_W - 2 * LIST_X - 300;
-    ItemId items[16];
+    ItemId items[ITEM_COUNT];
     int n = visible_items(items);
     if (cursor >= n)
         cursor = n - 1;
@@ -579,7 +629,8 @@ void settings_screen_draw(void) {
         }
         gfx_text(FONT_NORMAL, LIST_X + 28, y + font_y, 0, ALIGN_LEFT, COL_TEXT, label);
         char shown[128];
-        snprintf(shown, sizeof(shown), !sel ? "%s" : items[i] == ITEM_KEYBINDS ? "%s  >" : "<  %s  >", value);
+        bool opens = items[i] == ITEM_KEYBINDS || items[i] == ITEM_VPAD_LAYOUT;
+        snprintf(shown, sizeof(shown), !sel ? "%s" : opens ? "%s  >" : "<  %s  >", value);
         gfx_text(FONT_NORMAL, LIST_X + row_w - 24, y + font_y, 0, ALIGN_RIGHT, sel ? COL_ACCENT : COL_DIM, shown);
     }
     if (n > rows) {

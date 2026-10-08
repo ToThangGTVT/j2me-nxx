@@ -131,6 +131,29 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_VKB_BUBBLE]     = "Virtual keyboard bubble",
     [S_VKB_BUBBLE_HINT] = "Shows a small bubble on the touch screen while running (drag to move). Tap it to open a "
                           "floating QWERTY keyboard with a number row for typing in apps; × collapses it back.",
+    [S_VPAD]           = "On-screen keypad",
+    [S_VPAD_HINT]      = "Shows a phone keypad on the touch screen while running: a joystick (follows the left stick "
+                         "mapping), soft keys, Fire and number keys. Each app can turn it on or off in App options.",
+    [S_VPAD_HINT_APP]  = "Phone keypad on the touch screen while this app runs. The layout is set in the global settings.",
+    [S_VPAD_LAYOUT]    = "On-screen keypad layout",
+    [S_VPAD_LAYOUT_HINT] = "Drag each key to move it, drag the corner dot to resize; set rounded corners, opacity and hide "
+                           "keys you don't need. Keys placed next to each other snap together. Press " ICON_A " to open.",
+    [S_VPAD_CUSTOMIZED] = "%s, customized",
+    [S_VPAD_STICK]     = "Joystick",
+    [S_VPAD_KEY_FMT]   = "Key %s",
+    [S_VPAD_PICK]      = "Tap a key to edit it",
+    [S_VPAD_HIDE]      = "Hide",
+    [S_VPAD_SHOW]      = "Show",
+    [S_VPAD_RADIUS]    = "Corner %d",
+    [S_VPAD_OPACITY]   = "Opacity %d%%",
+    [S_VPAD_SNAP]      = "Snap: %s",
+    [S_VPAD_RESET]     = "Default",
+    [S_VPAD_RESET_CONFIRM] = "Tap Default again to reset the whole layout",
+    [S_VPAD_DONE]      = "Done",
+    [S_VPAD_GAME_AREA] = "App screen %dx%d",
+    [S_VPAD_EDIT_HELP] = "Drag a key to move it, drag the corner dot to resize. Controller: " ICON_L "/" ICON_R
+                         " pick key, D-pad move, " ICON_X "/" ICON_Y " bigger / smaller, " ICON_A " hide / show, " ICON_B
+                         " done.",
     [S_SOUNDFONT]      = "MIDI SoundFont",
     [S_SOUNDFONT_HINT] = "Play MIDI music with a SoundFont for real-instrument sound: TimGM6mb is built in, or copy a .sf2 "
                          "file to sdmc:/switch/j2me-nxx/soundfonts/. Off: wave synth, lighter.",

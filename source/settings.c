@@ -50,6 +50,7 @@ bool settings_valid_screen(int w, int h) {
 
 bool settings_load(void) {
     keybind_reset(current.keybinds);
+    vpad_layout_default(&current.vpad_layout);
     char path[512];
     snprintf(path, sizeof(path), "%s/settings.ini", platform_data_dir());
     FILE *f = fopen(path, "r");
@@ -59,8 +60,23 @@ bool settings_load(void) {
     while (fgets(line, sizeof(line), f)) {
         int v, w, h, b;
         char id[16];
+        VpadKey k;
+        int hidden;
         if (sscanf(line, "fps_limit=%d", &v) == 1 && v >= 0 && v <= 240)
             current.fps_limit = v;
+        else if (sscanf(line, "vpad=%d", &v) == 1)
+            current.vpad = v != 0;
+        else if (sscanf(line, "vpad_opacity=%d", &v) == 1 && v >= VPAD_OPACITY_MIN && v <= VPAD_OPACITY_MAX)
+            current.vpad_layout.opacity = v;
+        else if (sscanf(line, "vpad_snap=%d", &v) == 1)
+            current.vpad_layout.snap = v != 0;
+        else if (sscanf(line, "vpad_%15[a-z_0-9]=%d,%d,%d,%d,%d,%d", id, &k.x, &k.y, &k.w, &k.h, &k.r, &hidden) == 7 &&
+                 (b = vpad_item_from_id(id)) >= 0 && vpad_key_valid(&k)) {
+            k.hidden = hidden != 0;
+            if (b == VP_STICK)
+                k.h = k.w;
+            current.vpad_layout.keys[b] = k;
+        }
         else if (sscanf(line, "key_%15[a-z_]=%d", id, &v) == 2 && (b = keybind_from_id(id)) >= 0 && keybind_valid(v))
             current.keybinds[b] = v;
         else if (sscanf(line, "screen=%dx%d", &w, &h) == 2 && settings_valid_screen(w, h)) {
@@ -116,6 +132,15 @@ bool settings_save(void) {
     fprintf(f, "check_update=%d\n", current.check_update ? 1 : 0);
     fprintf(f, "vkb_bubble=%d\n", current.vkb_bubble ? 1 : 0);
     fprintf(f, "soundfont=%s\n", current.soundfont);
+    fprintf(f, "vpad=%d\n", current.vpad ? 1 : 0);
+    fprintf(f, "vpad_opacity=%d\n", current.vpad_layout.opacity);
+    fprintf(f, "vpad_snap=%d\n", current.vpad_layout.snap ? 1 : 0);
+    // Chỉ ghi phím ảo đã đổi khác bố cục mặc định
+    for (int i = 0; i < VP_COUNT; i++) {
+        const VpadKey *k = &current.vpad_layout.keys[i];
+        if (vpad_key_changed(&current.vpad_layout, i))
+            fprintf(f, "vpad_%s=%d,%d,%d,%d,%d,%d\n", vpad_item_id(i), k->x, k->y, k->w, k->h, k->r, k->hidden ? 1 : 0);
+    }
     // Chỉ ghi nút đã đổi khác mặc định
     for (int b = 0; b < BIND_COUNT; b++) {
         if (current.keybinds[b] != keybind_default(b))
@@ -174,6 +199,7 @@ void game_settings_load(const char *game, GameSettings *out) {
     out->smooth_text = -1;
     out->system_font = -1;
     out->font_scale = -1;
+    out->vpad = -1;
     for (int b = 0; b < BIND_COUNT; b++)
         out->keybinds[b] = BIND_INHERIT;
     char path[512];
@@ -193,6 +219,8 @@ void game_settings_load(const char *game, GameSettings *out) {
             out->keymap = v;
         else if (sscanf(line, "smooth_text=%d", &v) == 1 && v >= -1 && v <= 1)
             out->smooth_text = v;
+        else if (sscanf(line, "vpad=%d", &v) == 1 && v >= -1 && v <= 1)
+            out->vpad = v;
         else if (sscanf(line, "system_font=%d", &v) == 1 && v >= -1 && v <= 1)
             out->system_font = v;
         else if (sscanf(line, "font_scale=%d", &v) == 1 && (v == -1 || (v >= 50 && v <= 400)))
@@ -214,7 +242,7 @@ bool game_settings_save(const char *game, const GameSettings *gs) {
     game_path(game, path, sizeof(path));
     // Toàn mặc định thì xoá file cho gọn
     if (gs->fps_limit < 0 && gs->screen_w == 0 && gs->keymap < 0 && gs->smooth_text < 0 &&
-        gs->system_font < 0 && gs->font_scale < 0 && keybind_changed(gs->keybinds, true) == 0) {
+        gs->system_font < 0 && gs->font_scale < 0 && gs->vpad < 0 && keybind_changed(gs->keybinds, true) == 0) {
         remove(path);
         return true;
     }
@@ -228,6 +256,7 @@ bool game_settings_save(const char *game, const GameSettings *gs) {
     fprintf(f, "smooth_text=%d\n", gs->smooth_text);
     fprintf(f, "system_font=%d\n", gs->system_font);
     fprintf(f, "font_scale=%d\n", gs->font_scale);
+    fprintf(f, "vpad=%d\n", gs->vpad);
     for (int b = 0; b < BIND_COUNT; b++) {
         if (gs->keybinds[b] != BIND_INHERIT)
             fprintf(f, "key_%s=%d\n", keybind_id(b), gs->keybinds[b]);

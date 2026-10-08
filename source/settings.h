@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "keybind.h"
+#include "vpad.h"
 #include <stddef.h>
 
 typedef struct {
@@ -21,6 +22,8 @@ typedef struct {
     bool vkb_bubble;        // bong bóng bàn phím ảo QWERTY khi chơi
     char soundfont[128];    // file .sf2 trong <data_dir>/soundfonts; "" = tự động, "builtin" = bản có sẵn, "-" = tắt
     int keybinds[BIND_COUNT];   // nút Switch -> phím điện thoại (keybind.h)
+    bool vpad;              // phím ảo trên màn hình khi chạy (vpad.h)
+    VpadLayout vpad_layout;
 } Settings;
 
 typedef struct {
@@ -31,6 +34,7 @@ typedef struct {
     int system_font;        // -1 = theo cài đặt chung, 0 tắt, 1 bật
     int font_scale;         // -1 = theo cài đặt chung
     int keybinds[BIND_COUNT];   // BIND_INHERIT = theo cài đặt chung
+    int vpad;               // phím ảo: -1 = theo cài đặt chung, 0 tắt, 1 bật
 } GameSettings;
 
 typedef struct {

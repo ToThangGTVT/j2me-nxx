@@ -108,6 +108,8 @@ add_executable(j2me-nxx
     source/video_dec.c
     source/video_screen.c
     source/vkb.c
+    source/vpad.c
+    source/vpad_screen.c
     source/http.c
     source/crash.c
     source/update.c

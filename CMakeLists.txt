@@ -312,6 +312,7 @@ add_executable(j2me-nxx
     source/settings.c
     source/qr.c
     source/upload.c
+    source/touch.c
     source/vkb.c
     source/vpad.c
     source/vpad_screen.c

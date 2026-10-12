@@ -3,6 +3,8 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include "touch.h"
+
 namespace ui
 {
 
@@ -49,11 +51,21 @@ void notify(const std::string& text)
 
 static SdlEventHandler handler;
 
-static int event_watch(void*, SDL_Event* e)
+static void deliver(SDL_Event* e)
 {
     input_handle_event(e);
     if (handler)
         handler(e);
+}
+
+static int event_watch(void*, SDL_Event* e)
+{
+#ifdef __SWITCH__
+    // Chạm của SDL bản Switch sai mã ngón (phím ảo kẹt): dùng touch_poll trong sdl_events_pump
+    if (e->type == SDL_FINGERDOWN || e->type == SDL_FINGERUP || e->type == SDL_FINGERMOTION)
+        return 0;
+#endif
+    deliver(e);
     return 0;
 }
 
@@ -68,6 +80,7 @@ void sdl_events_pump()
     // Sự kiện đi qua event_watch khi SDL đưa vào hàng đợi; hàng đợi thì bỏ đi
     SDL_PumpEvents();
     SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+    touch_poll(deliver);
 #endif
 }
 

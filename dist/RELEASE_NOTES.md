@@ -1,4 +1,4 @@
-## J2ME-NXX v0.8.4
+## J2ME-NXX v0.8.5
 
 - New Switch-style interface (borealis), with touch support.
 - Video playback removed; the `.nro` is much smaller.
@@ -6,3 +6,4 @@
 - Fixed in-app updates failing with "cannot replace the .nro file".
 - Fixed a crash when restarting after an update (or returning to hbmenu) after using AOT.
 - Crash reports for fatal errors (`sdmc:/switch/j2me-nxx/crash/`).
+- Fixed on-screen keys (e.g. Fire) getting stuck pressed when tapped rapidly.

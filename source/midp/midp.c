@@ -28,6 +28,7 @@ static VMThread *event_waiter;
 static SDL_mutex *q_lock, *fb_lock;
 static jlong last_flush_ms;
 static int flush_gap_max;           // khoảng cách lớn nhất giữa 2 khung hình game (ms)
+static uint32_t flush_hash;         // mã băm khung hình gần nhất
 
 static uint32_t *framebuffer;
 static int fb_w, fb_h;
@@ -112,6 +113,11 @@ int midp_take_frame_gap_max(void) {
     return v;
 }
 
+jlong midp_last_flush_ms(uint32_t *hash) {
+    *hash = flush_hash;
+    return last_flush_ms;
+}
+
 bool midp_exit_requested(void) {
     return exit_requested;
 }
@@ -186,6 +192,10 @@ static NativeResult Display_flush0(VMThread *t, Value *args, Value *ret) {
         return NATIVE_OK;
     SDL_LockMutex(fb_lock);
     memcpy(framebuffer, ARRAY_DATA(arr, uint32_t), (size_t)w * h * 4);
+    uint32_t hash = 2166136261u;
+    for (int i = 0, n = w * h; i < n; i++)
+        hash = (hash ^ framebuffer[i]) * 16777619u;
+    flush_hash = hash;
     if (cfg.text_hires >= 2 && !fb_hi) {
         int k = cfg.text_hires;
         fb_hi = malloc((size_t)w * k * h * k * 4);

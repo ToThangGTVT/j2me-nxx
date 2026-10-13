@@ -290,6 +290,12 @@ void vm_prof_open(void *file);      // FILE *
 bool vm_prof_on(void);
 void vm_prof_log(const char *fmt, ...);
 void vm_prof_flush(void);
+// Log khựng (luôn bật, đọc từ luồng khác để biết VM đang kẹt ở đâu)
+extern Method *volatile vm_native_now;  // native đang chạy (NULL = đang chạy bytecode / rảnh)
+extern volatile bool vm_gc_running;
+double vm_take_gc_ms(void);             // tổng ms GC kể từ lần gọi trước
+// Trạng thái từng thread + 3 frame trên cùng, mỗi thread 1 dòng. Chỉ gọi trên luồng VM
+void vm_dump_threads(void (*out)(const char *line));
 // Thời điểm sớm nhất (ms) có thread thức dậy, hoặc -1 nếu không có thread hẹn giờ
 jlong vm_next_wakeup(void);
 bool vm_has_runnable(void);

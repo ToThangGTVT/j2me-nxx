@@ -94,7 +94,10 @@ static int rt_native(VMThread *t, Frame *f, Method *target, uint8_t *insn, int l
     f->pc = insn;
     f->sp = sp;
     int fc = t->frame_count;
-    switch (target->native(t, args, &ret)) {
+    vm_native_now = target;
+    NativeResult nr = target->native(t, args, &ret);
+    vm_native_now = NULL;
+    switch (nr) {
     case NATIVE_OK:
         if (target->ret_type == 'J' || target->ret_type == 'D') {
             args[0] = ret;

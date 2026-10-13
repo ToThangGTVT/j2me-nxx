@@ -1,5 +1,6 @@
 #include "emu.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +70,170 @@ static volatile bool vm_dead;
 static volatile int pub_cpu;
 static volatile double pub_vm_max;
 
+// ---------------------------------------------------------------------------
+// Log khựng (luôn bật, ghi vào log.txt): khựng thi thoảng trên Switch khó bắt bằng log hiệu năng.
+// - luồng VM: 1 lượt chạy quá STALL_MS (kèm GC), game ngừng vẽ giữa lúc đang hoạt hình (kèm trạng thái thread)
+// - luồng chính: 1 khung hình quá STALL_MS, chia theo phần (phím, chờ khoá, vẽ, giao diện + chờ vsync)
+// - luồng canh: đang kẹt quá STALL_WATCH_MS thì ghi chỗ đang kẹt (native nào, GC, phần nào của luồng chính)
+#define STALL_MS 200
+#define STALL_WATCH_MS 400
+#define STALL_MAX_LINES 500
+enum { PH_UI, PH_UPDATE, PH_FB_WAIT, PH_DRAW, PH_COUNT };
+static const char *const PHASE_NAMES[] = { "giao dien / cho vsync", "xu ly phim", "cho khoa khung hinh", "ve" };
+static SDL_mutex *stall_lock;
+static int stall_lines;
+static Uint64 stall_t0;
+static PlatformThread *watch_thread;
+static volatile bool watch_stop;
+static volatile Uint64 vm_slice_at;    // lúc bắt đầu lượt VM đang chạy (0 = không chạy)
+static volatile Uint64 main_beat;      // lúc luồng chính vẽ xong khung hình gần nhất
+static volatile int main_phase;
+static double ph_ms[PH_COUNT];                // thời gian từng phần của khung hình đang vẽ (luồng chính)
+static Uint64 ph_at;
+
+static double ticks_ms(Uint64 a, Uint64 b) {
+    return (double)(b - a) * 1000.0 / (double)SDL_GetPerformanceFrequency();
+}
+
+static void stall_log(const char *fmt, ...) {
+    char buf[600];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    vm_prof_log("KHUNG %s", buf);
+    SDL_LockMutex(stall_lock);
+    if (log_file && stall_lines < STALL_MAX_LINES) {
+        double t = ticks_ms(stall_t0, SDL_GetPerformanceCounter()) / 1000.0;
+        fprintf(log_file, "[khung %.3fs] %s\n", t, buf);
+        if (++stall_lines == STALL_MAX_LINES)
+            fprintf(log_file, "[khung] du %d dong, ngung ghi\n", STALL_MAX_LINES);
+        fflush(log_file);
+    }
+    SDL_UnlockMutex(stall_lock);
+}
+
+static void stall_line(const char *line) {
+    stall_log("  %s", line);
+}
+
+// Luồng chính chuyển sang phần khác: cộng thời gian phần vừa xong
+static void phase(int ph) {
+    Uint64 now = SDL_GetPerformanceCounter();
+    if (ph_at)
+        ph_ms[main_phase] += ticks_ms(ph_at, now);
+    ph_at = now;
+    main_phase = ph;
+}
+
+static int watch_main(void *arg) {
+    (void)arg;
+    Uint64 told_slice = 0, told_beat = 0;
+    while (!watch_stop) {
+        SDL_Delay(50);
+        Uint64 now = SDL_GetPerformanceCounter();
+        Uint64 s = vm_slice_at;
+        if (s && s != told_slice && ticks_ms(s, now) > STALL_WATCH_MS) {
+            told_slice = s;
+            Method *m = vm_native_now;
+            if (vm_gc_running)
+                stall_log("VM dang ket %.0f ms: GC", ticks_ms(s, now));
+            else if (m)
+                stall_log("VM dang ket %.0f ms: native %s.%s", ticks_ms(s, now), m->owner->name, m->name);
+            else
+                stall_log("VM dang ket %.0f ms: bytecode", ticks_ms(s, now));
+        }
+        Uint64 b = main_beat;
+        if (b && b != told_beat && ticks_ms(b, now) > STALL_WATCH_MS) {
+            told_beat = b;
+            stall_log("luong chinh dang ket %.0f ms: %s", ticks_ms(b, now), PHASE_NAMES[main_phase]);
+        }
+    }
+    return 0;
+}
+
+// Game vẫn đẩy khung hình (FPS đủ) mà nội dung đứng yên, trong khi trước đó đang chuyển động
+static void stall_check_static(jlong lf, uint32_t hash, bool new_frame) {
+    static uint32_t last_hash;
+    static jlong changed_at, change_gap = 1000000;
+    static int same;
+    static bool told;
+    if (!lf) {
+        changed_at = 0;
+        change_gap = 1000000;
+        told = false;
+        return;
+    }
+    if (!new_frame)
+        return;
+    if (hash != last_hash) {
+        if (told)
+            stall_log("hinh dung %lld ms roi doi lai (game van ve %d khung)", (long long)(lf - changed_at), same);
+        change_gap = changed_at ? lf - changed_at : 1000000;
+        last_hash = hash;
+        changed_at = lf;
+        same = 0;
+        told = false;
+    } else if (++same >= 10 && !told && change_gap < 200 && lf - changed_at > 1000) {
+        told = true;
+        stall_log("hinh dung %lld ms du game van ve %d khung, thread:", (long long)(lf - changed_at), same);
+        vm_dump_threads(stall_line);
+    }
+}
+
+// Luồng VM, sau mỗi lượt
+static void stall_check_vm(double slice_ms) {
+    static jlong seen, gap_prev = 1000000;
+    static bool told;
+    double gc = vm_take_gc_ms();
+    if (slice_ms > STALL_MS) {
+        stall_log("VM chay lien %.0f ms (GC %.0f ms), thread:", slice_ms, gc);
+        vm_dump_threads(stall_line);
+    }
+    // Game đang hoạt hình (2 khung hình trước cách nhau < 150ms) mà ngừng vẽ
+    uint32_t hash;
+    jlong lf = midp_last_flush_ms(&hash), now = vm_time_ms();
+    stall_check_static(lf, hash, lf != seen);
+    if (!lf) {
+        seen = 0;
+        gap_prev = 1000000;
+        told = false;
+    } else if (lf != seen) {
+        if (seen && gap_prev < 150 && lf - seen > STALL_MS)
+            stall_log("game khong ve %lld ms", (long long)(lf - seen));
+        gap_prev = seen ? lf - seen : 1000000;
+        seen = lf;
+        told = false;
+    } else if (!told && gap_prev < 150 && now - lf > 500) {
+        told = true;
+        stall_log("game chua ve %lld ms, thread:", (long long)(now - lf));
+        vm_dump_threads(stall_line);
+    }
+}
+
+static void stall_start(void) {
+    if (!stall_lock)
+        stall_lock = SDL_CreateMutex();
+    stall_lines = 0;
+    stall_t0 = SDL_GetPerformanceCounter();
+    vm_slice_at = 0;
+    main_beat = 0;
+    main_phase = PH_UI;
+    memset(ph_ms, 0, sizeof(ph_ms));
+    ph_at = 0;
+    vm_take_gc_ms();
+    watch_stop = false;
+    watch_thread = platform_thread_start(watch_main, NULL);
+}
+
+static void stall_stop(void) {
+    if (!watch_thread)
+        return;
+    watch_stop = true;
+    platform_thread_join(watch_thread);
+    watch_thread = NULL;
+}
+
 static struct {
     bool pending, done;
     const char *title, *text;
@@ -100,8 +265,11 @@ static int vm_thread_main(void *arg) {
         midp_poll_events();
         midp_audio_poll();
         Uint64 t0 = SDL_GetPerformanceCounter();
+        vm_slice_at = t0;
         VMRunResult r = vm_run_slice(VM_SLICE_MS);
+        vm_slice_at = 0;
         double ms = (SDL_GetPerformanceCounter() - t0) * 1000.0 / SDL_GetPerformanceFrequency();
+        stall_check_vm(ms);
         stat_vm_sum += ms;
         if (ms > stat_vm_max)
             stat_vm_max = ms;
@@ -401,6 +569,11 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     mkdir(platform_data_dir(), 0777);
     char log_path[600];
     snprintf(log_path, sizeof(log_path), "%s/log.txt", platform_data_dir());
+    // Giữ log lần chơi trước (khựng / lỗi thường chỉ để ý sau khi đã mở lại game)
+    char prev_path[600];
+    snprintf(prev_path, sizeof(prev_path), "%s/log-prev.txt", platform_data_dir());
+    remove(prev_path);
+    rename(log_path, prev_path);
     log_file = fopen(log_path, "w");
     if (log_file)
         fprintf(log_file, "J2ME-NXX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
@@ -510,6 +683,10 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     main_waiting = 0;
     memset(&kb, 0, sizeof(kb));
     vm_set_preempt_flag(&main_waiting);
+    if (log_file)
+        fprintf(log_file, "man %dx%d  fps %d  aot %d  scale %d  chu net cao %d  soundfont %d\n", scr_w, scr_h,
+                fps_limit, host.aot, settings()->scale_mode, hires_k, (int)sf);
+    stall_start();
     vm_thread = platform_thread_start(vm_thread_main, NULL);
     if (!vm_thread) {
         vm_set_preempt_flag(NULL);
@@ -523,6 +700,7 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
 
 void emu_stop(void) {
     vm_thread_stop();
+    stall_stop();
     link_stop();
     if (running) {
         char name[64];
@@ -565,6 +743,10 @@ bool emu_exit_out_of_memory(void) {
 // ---------------------------------------------------------------------------
 // Phím
 
+#ifndef __SWITCH__
+static void record_key(int code, bool down);
+#endif
+
 static void key_change(int code, bool down) {
     if (!code)
         return;
@@ -575,9 +757,15 @@ static void key_change(int code, bool down) {
         if (key_held[i]++ == 0) {
             midp_post_key(keymap_translate(keymap, code), true);
             key_repeat_at[i] = SDL_GetTicks() + REPEAT_DELAY_MS;
+#ifndef __SWITCH__
+            record_key(code, true);
+#endif
         }
     } else if (key_held[i] > 0 && --key_held[i] == 0) {
         midp_post_key(keymap_translate(keymap, code), false);
+#ifndef __SWITCH__
+        record_key(code, false);
+#endif
     }
 }
 
@@ -768,10 +956,31 @@ static void handle_event(const SDL_Event *e) {
 
 #ifndef __SWITCH__
 // Kịch bản test tự động (chỉ bản desktop), theo mốc ms tính từ lúc game chạy:
-//   J2ME_NX_KEYS="1500:-6,2000:-2"        bấm + nhả phím J2ME
+//   J2ME_NX_KEYS="1500:-6,2000:-2:800"    bấm + nhả phím J2ME (mặc định giữ 120ms, số thứ 3 = ms giữ)
+//   J2ME_NX_RECORD=/tmp/keys.txt          ghi phím người chơi bấm theo đúng định dạng J2ME_NX_KEYS
 //   J2ME_NX_SHOTS="1000:/tmp/a.bmp,..."   chụp màn hình J2ME ra BMP
 //   J2ME_NX_QUIT=5000                     thoát app
 static Uint32 script_start;
+
+static void record_key(int code, bool down) {
+    static FILE *f;
+    static Uint32 at[KEY_SLOTS];
+    static bool first = true;
+    const char *path = SDL_getenv("J2ME_NX_RECORD");
+    if (!path || !script_start)
+        return;
+    if (!f && !(f = fopen(path, "w")))
+        return;
+    Uint32 t = SDL_GetTicks() - script_start;
+    int i = KEY_INDEX(code);
+    if (down) {
+        at[i] = t;
+        return;
+    }
+    fprintf(f, "%s%u:%d:%u", first ? "" : ",", at[i], code, t - at[i]);
+    first = false;
+    fflush(f);
+}
 
 static void script_step(void) {
     if (!script_start)
@@ -782,16 +991,18 @@ static void script_step(void) {
     const char *shots = SDL_getenv("J2ME_NX_SHOTS");
     const char *quit = SDL_getenv("J2ME_NX_QUIT");
     for (const char *p = keys; p && *p;) {
-        unsigned at;
+        unsigned at, hold = 120;
         int code, n = 0;
         if (sscanf(p, "%u:%d%n", &at, &code, &n) != 2)
             break;
-        // Giữ phím 120ms như bấm tay (nhiều game đọc trạng thái phím trong vòng lặp vẽ)
+        p += n;
+        // Mặc định giữ phím 120ms như bấm tay (nhiều game đọc trạng thái phím trong vòng lặp vẽ)
+        if (*p == ':' && sscanf(p, ":%u%n", &hold, &n) == 1)
+            p += n;
         if (at > last && at <= t)
             midp_post_key(keymap_translate(keymap, code), true);
-        if (at + 120 > last && at + 120 <= t)
+        if (at + hold > last && at + hold <= t)
             midp_post_key(keymap_translate(keymap, code), false);
-        p += n;
         if (*p == ',')
             p++;
     }
@@ -831,6 +1042,7 @@ static void script_step(void) {
 bool emu_update(void) {
     if (!running)
         return false;
+    phase(PH_UPDATE);
 #ifndef __SWITCH__
     script_step();
 #endif
@@ -851,9 +1063,11 @@ bool emu_update(void) {
         platform_mem_usage(&used, &total);
         host_log("Het RAM, dong ung dung");
         vm_log("RAM %zu/%zuM, Java %zuK", used >> 20, total >> 20, heap_used() / 1024);
+        phase(PH_UI);
         return false;
     }
     bool dead = vm_dead, quit = exit_now || midp_exit_requested();
+    phase(PH_UI);
     if (!exit_now && !dead && !quit)
         return true;
     if (exit_now)
@@ -1011,14 +1225,27 @@ void emu_draw(void) {
     if (!running)
         return;
     draw_game();
+    // Khung hình kéo dài (tính từ lần vẽ trước): ghi từng phần, phần còn lại là giao diện + chờ vsync
+    phase(PH_UI);
+    Uint64 now = SDL_GetPerformanceCounter(), prev = main_beat;
+    main_beat = now;
+    if (prev) {
+        double gap = ticks_ms(prev, now);
+        if (gap > STALL_MS)
+            stall_log("khung hinh %.0f ms: xu ly phim %.0f, cho khoa khung hinh %.0f, ve %.0f, giao dien / vsync %.0f",
+                      gap, ph_ms[PH_UPDATE], ph_ms[PH_FB_WAIT], ph_ms[PH_DRAW], ph_ms[PH_UI]);
+    }
+    memset(ph_ms, 0, sizeof(ph_ms));
 }
 
 static void draw_game(void) {
     int w, h;
     bool dirty;
+    phase(PH_FB_WAIT);
     Uint64 tl0 = SDL_GetPerformanceCounter();
     const uint32_t *fb = midp_framebuffer_lock(&w, &h, &dirty);
     Uint64 tl1 = SDL_GetPerformanceCounter();
+    phase(PH_DRAW);
     if (fb && dirty) {
         int k = 0;
         const uint32_t *hi = hires_img ? midp_framebuffer_hires(&k) : NULL;

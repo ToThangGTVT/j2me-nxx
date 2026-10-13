@@ -76,6 +76,9 @@ void midp_framebuffer_unlock(void);
 const uint32_t *midp_framebuffer_hires(int *k);
 // Khoảng cách lớn nhất giữa 2 khung hình game kể từ lần gọi trước (ms)
 int midp_take_frame_gap_max(void);
+// vm_time_ms() lúc game đẩy khung hình gần nhất (0 = chưa có) và mã băm nội dung khung hình đó
+// (tìm "hình đứng mà FPS vẫn đủ"). Chỉ gọi trên luồng VM
+int64_t midp_last_flush_ms(uint32_t *hash);
 bool midp_exit_requested(void);
 
 // m3g.c

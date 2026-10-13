@@ -208,10 +208,19 @@ static double now_ms(void) {
     return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
 }
 
+volatile bool vm_gc_running;
+static double gc_ms;
+
+double vm_take_gc_ms(void) {
+    double v = gc_ms;
+    gc_ms = 0;
+    return v;
+}
+
 void heap_gc(void) {
     gc_requested = false;
-    bool prof = vm_prof_on();
-    double t0 = prof ? now_ms() : 0;
+    vm_gc_running = true;
+    double t0 = now_ms();
     size_t before = obj_count;
 
     for (size_t i = 0; i < root_count; i++)
@@ -249,9 +258,10 @@ void heap_gc(void) {
 
     alloc_since_gc = 0;
     gc_threshold = used_bytes > GC_MIN_THRESHOLD ? used_bytes : GC_MIN_THRESHOLD;
-    if (prof)
-        vm_prof_log("gc %.1f ms  objs %zu -> %zu  live %zuK",
-                now_ms() - t0, before, obj_count, used_bytes / 1024);
+    double ms = now_ms() - t0;
+    gc_ms += ms;
+    vm_gc_running = false;
+    vm_prof_log("gc %.1f ms  objs %zu -> %zu  live %zuK", ms, before, obj_count, used_bytes / 1024);
 }
 
 void heap_gc_if_needed(void) {

@@ -723,7 +723,9 @@ next:
                 Value ret;
                 ret.j = 0;
                 int fc = t->frame_count;
+                vm_native_now = target;
                 NativeResult r = target->native(t, args, &ret);
+                vm_native_now = NULL;
                 switch (r) {
                 case NATIVE_OK:
                     sp = args;

@@ -5,66 +5,6 @@
 namespace ui
 {
 
-#define QR_PX    340    // cạnh tối đa của mã QR (kể cả viền trắng)
-#define QR_QUIET 3      // viền trắng quanh mã, tính theo ô
-
-class QrView : public brls::View
-{
-  public:
-    explicit QrView(const char* text)
-    {
-        size = qr_encode(text, modules);
-        int cells = size + 2 * QR_QUIET;
-        cell      = size > 0 ? QR_PX / cells : 0;
-        this->setDimensions(cells * cell, cells * cell);
-    }
-
-    void draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style,
-              brls::FrameContext* ctx) override
-    {
-        if (size <= 0)
-            return;
-        nvgShapeAntiAlias(vg, 0);
-        nvgBeginPath(vg);
-        nvgRect(vg, x, y, width, height);
-        nvgFillColor(vg, nvgRGB(255, 255, 255));
-        nvgFill(vg);
-        // Gộp các ô tối liền nhau trên một hàng thành một hình chữ nhật
-        float ox = x + QR_QUIET * cell, oy = y + QR_QUIET * cell;
-        nvgBeginPath(vg);
-        for (int r = 0; r < size; r++)
-        {
-            for (int c = 0; c < size;)
-            {
-                if (!modules[r * size + c])
-                {
-                    c++;
-                    continue;
-                }
-                int c0 = c;
-                while (c < size && modules[r * size + c])
-                    c++;
-                nvgRect(vg, ox + c0 * cell, oy + r * cell, (c - c0) * cell, cell);
-            }
-        }
-        nvgFillColor(vg, nvgRGB(0, 0, 0));
-        nvgFill(vg);
-        nvgShapeAntiAlias(vg, 1);
-    }
-
-  private:
-    uint8_t modules[QR_MAX_SIZE * QR_MAX_SIZE];
-    int size = 0;
-    int cell = 0;
-};
-
-static std::string mb(int64_t bytes)
-{
-    char out[32];
-    snprintf(out, sizeof(out), "%.1f MB", bytes / (1024.0 * 1024.0));
-    return out;
-}
-
 UploadActivity::UploadActivity(const std::string& dir, std::function<void(int)> closed)
     : dir(dir)
     , closed(std::move(closed))
@@ -163,7 +103,7 @@ void UploadActivity::refresh()
         set_text(status, trf(S_UPLOAD_RECEIVING, st.current));
         status->setTextColor(brls::Application::getTheme()["brls/text"]);
         bar->value = st.total > 0 ? (float)((double)st.done / (double)st.total) : -1;
-        set_text(bytes, mb(st.done) + " / " + mb(st.total));
+        set_text(bytes, format_mb(st.done) + " / " + format_mb(st.total));
     }
     else if (st.received > 0)
     {

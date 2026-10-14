@@ -1,37 +1,17 @@
 #include "upload.h"
 
-#include <arpa/inet.h>
 #include <errno.h>
-#include <netinet/in.h>
-#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <SDL.h>
 
 #include "lang.h"
-#include "platform.h"
-
-#ifdef MSG_NOSIGNAL
-#define SEND_FLAGS MSG_NOSIGNAL
-#else
-#define SEND_FLAGS 0
-#endif
-
-#define PORT_FIRST  8080
-#define PORT_TRIES  10
-#define IO_TIMEOUT_MS 15000     // điện thoại im lặng lâu hơn thì bỏ kết nối
-#define HEADER_MAX  8192
-#define CHUNK       (64 * 1024)
+#include "websrv.h"
 
 static char games_dir[512];
-static int listen_fd = -1;
-static SDL_Thread *thread;
-static SDL_atomic_t stop_flag;
 static SDL_mutex *lock;
 static UploadStatus status;
 
@@ -86,81 +66,6 @@ static const char page_tail[] =
     "x.onloadend=function(){busy=0;next()};x.send(it.f)}"
     "</script></body></html>";
 
-// ---- Gửi / nhận có thời hạn ----
-
-static bool stopping(void) {
-    return SDL_AtomicGet(&stop_flag) != 0;
-}
-
-static bool send_all(int fd, const char *buf, size_t len) {
-    while (len > 0) {
-        struct pollfd p = { fd, POLLOUT, 0 };
-        if (poll(&p, 1, IO_TIMEOUT_MS) <= 0)
-            return false;
-        ssize_t n = send(fd, buf, len, SEND_FLAGS);
-        if (n <= 0)
-            return false;
-        buf += n;
-        len -= (size_t)n;
-    }
-    return true;
-}
-
-// > 0: số byte, 0: điện thoại đóng kết nối, < 0: lỗi / quá hạn / đang tắt server
-static int recv_some(int fd, char *buf, int len) {
-    for (int waited = 0; waited < IO_TIMEOUT_MS && !stopping(); waited += 200) {
-        struct pollfd p = { fd, POLLIN, 0 };
-        int r = poll(&p, 1, 200);
-        if (r < 0)
-            return -1;
-        if (r > 0) {
-            ssize_t n = recv(fd, buf, (size_t)len, 0);
-            return n < 0 ? -1 : (int)n;
-        }
-    }
-    return -1;
-}
-
-static void send_response(int fd, int code, const char *type, const char *body, size_t len) {
-    const char *reason = code == 200 ? "OK" : code == 404 ? "Not Found" : code == 411 ? "Length Required"
-                       : code == 400 ? "Bad Request" : "Internal Server Error";
-    char head[256];
-    int n = snprintf(head, sizeof(head),
-                     "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %zu\r\n"
-                     "Cache-Control: no-store\r\nConnection: close\r\n\r\n",
-                     code, reason, type, len);
-    if (send_all(fd, head, (size_t)n))
-        send_all(fd, body, len);
-}
-
-// Chuỗi JSON: thoát " \ và ký tự điều khiển
-static void json_str(char *out, size_t size, const char *s) {
-    size_t o = 0;
-    if (o + 1 < size)
-        out[o++] = '"';
-    for (; *s && o + 7 < size; s++) {
-        unsigned char c = (unsigned char)*s;
-        if (c == '"' || c == '\\') {
-            out[o++] = '\\';
-            out[o++] = (char)c;
-        } else if (c < 0x20) {
-            o += (size_t)snprintf(out + o, size - o, "\\u%04x", c);
-        } else {
-            out[o++] = (char)c;
-        }
-    }
-    if (o + 1 < size)
-        out[o++] = '"';
-    out[o] = '\0';
-}
-
-static void send_json(int fd, int code, bool ok, const char *error) {
-    char err[256], body[320];
-    json_str(err, sizeof(err), error ? error : "");
-    int n = snprintf(body, sizeof(body), "{\"ok\":%s,\"error\":%s}", ok ? "true" : "false", err);
-    send_response(fd, code, "application/json", body, (size_t)n);
-}
-
 static void send_page(int fd) {
     static const struct { const char *key; StrId id; } keys[] = {
         { "title", S_WEB_TITLE },     { "intro", S_WEB_INTRO },     { "choose", S_WEB_CHOOSE },
@@ -173,7 +78,7 @@ static void send_page(int fd) {
     strs[o++] = '{';
     for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
         char v[512];
-        json_str(v, sizeof(v), tr(keys[i].id));
+        web_json_str(v, sizeof(v), tr(keys[i].id));
         o += (size_t)snprintf(strs + o, sizeof(strs) - o, "%s%s:%s", i ? "," : "", keys[i].key, v);
         if (o >= sizeof(strs) - 2)
             return;
@@ -185,50 +90,18 @@ static void send_page(int fd) {
     strs[o] = '\0';
 
     size_t len = sizeof(page_head) - 1 + o + sizeof(page_tail) - 1;
-    char head[256];
-    int n = snprintf(head, sizeof(head),
-                     "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %zu\r\n"
-                     "Cache-Control: no-store\r\nConnection: close\r\n\r\n",
-                     len);
-    if (send_all(fd, head, (size_t)n) && send_all(fd, page_head, sizeof(page_head) - 1) && send_all(fd, strs, o))
-        send_all(fd, page_tail, sizeof(page_tail) - 1);
+    if (web_send_head(fd, 200, "text/html; charset=utf-8", (int64_t)len, NULL) &&
+        web_send_all(fd, page_head, sizeof(page_head) - 1) && web_send_all(fd, strs, o))
+        web_send_all(fd, page_tail, sizeof(page_tail) - 1);
 }
 
 // ---- Nhận file ----
 
-static int hex_val(char c) {
-    if (c >= '0' && c <= '9')
-        return c - '0';
-    if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
-    return -1;
-}
-
-static void url_decode(char *out, size_t size, const char *s, size_t len) {
-    size_t o = 0;
-    for (size_t i = 0; i < len && o + 1 < size; i++) {
-        if (s[i] == '%' && i + 2 < len && hex_val(s[i + 1]) >= 0 && hex_val(s[i + 2]) >= 0) {
-            out[o++] = (char)(hex_val(s[i + 1]) * 16 + hex_val(s[i + 2]));
-            i += 2;
-        } else {
-            out[o++] = s[i] == '+' ? ' ' : s[i];
-        }
-    }
-    out[o] = '\0';
-}
-
 // Lấy tên file an toàn từ ?name=...: bỏ thư mục, chỉ nhận game .jar / .jad
 static bool file_name_from_query(const char *path, char *out, size_t size) {
-    const char *q = strstr(path, "?name=");
-    if (!q)
-        q = strstr(path, "&name=");
-    if (!q)
-        return false;
-    q += 6;
     char raw[512];
-    url_decode(raw, sizeof(raw), q, strcspn(q, "&"));
+    if (!web_query(path, "name", raw, sizeof(raw)))
+        return false;
     const char *base = raw;
     for (const char *p = raw; *p; p++) {
         if (*p == '/' || *p == '\\')
@@ -247,17 +120,6 @@ static bool file_name_from_query(const char *path, char *out, size_t size) {
     return true;
 }
 
-// Bỏ phần thân còn lại, để điện thoại đọc được câu trả lời lỗi
-static void drain(int fd, int64_t left) {
-    char buf[4096];
-    while (left > 0) {
-        int n = recv_some(fd, buf, left < (int64_t)sizeof(buf) ? (int)left : (int)sizeof(buf));
-        if (n <= 0)
-            return;
-        left -= n;
-    }
-}
-
 static void set_error(const char *msg) {
     SDL_LockMutex(lock);
     snprintf(status.error, sizeof(status.error), "%s", msg);
@@ -265,11 +127,19 @@ static void set_error(const char *msg) {
     SDL_UnlockMutex(lock);
 }
 
-static void handle_upload(int fd, const char *path, int64_t length, const char *body, int body_len) {
+static void on_progress(int64_t done, void *arg) {
+    (void)arg;
+    SDL_LockMutex(lock);
+    status.done = done;
+    SDL_UnlockMutex(lock);
+}
+
+static void handle_upload(WebRequest *req) {
+    int fd = req->fd;
     char name[128];
-    if (!file_name_from_query(path, name, sizeof(name))) {
-        drain(fd, length - body_len);
-        send_json(fd, 400, false, tr(S_WEB_WRONG_TYPE));
+    if (!file_name_from_query(req->path, name, sizeof(name))) {
+        web_drain(fd, req->length - req->body_len);
+        web_send_json(fd, 400, false, tr(S_WEB_WRONG_TYPE));
         return;
     }
     char final_path[768], tmp_path[800];
@@ -277,8 +147,8 @@ static void handle_upload(int fd, const char *path, int64_t length, const char *
     snprintf(tmp_path, sizeof(tmp_path), "%s.part", final_path);
     FILE *f = fopen(tmp_path, "wb");
     if (!f) {
-        drain(fd, length - body_len);
-        send_json(fd, 500, false, strerror(errno));
+        web_drain(fd, req->length - req->body_len);
+        web_send_json(fd, 500, false, strerror(errno));
         set_error(strerror(errno));
         return;
     }
@@ -286,45 +156,21 @@ static void handle_upload(int fd, const char *path, int64_t length, const char *
     SDL_LockMutex(lock);
     snprintf(status.current, sizeof(status.current), "%s", name);
     status.done = 0;
-    status.total = length;
+    status.total = req->length;
     status.error[0] = '\0';
     SDL_UnlockMutex(lock);
 
-    static char buf[CHUNK];
-    int64_t got = 0;
-    bool ok = true;
-    if (body_len > 0) {
-        int n = body_len < length ? body_len : (int)length;
-        ok = fwrite(body, 1, (size_t)n, f) == (size_t)n;
-        got = n;
-    }
-    while (ok && got < length) {
-        int want = length - got < CHUNK ? (int)(length - got) : CHUNK;
-        int n = recv_some(fd, buf, want);
-        if (n <= 0) {
-            ok = false;
-            break;
-        }
-        if (fwrite(buf, 1, (size_t)n, f) != (size_t)n) {
-            ok = false;
-            break;
-        }
-        got += n;
-        SDL_LockMutex(lock);
-        status.done = got;
-        SDL_UnlockMutex(lock);
-    }
-    bool write_err = ferror(f) != 0;
+    WebRecvResult r = web_recv_to_file(req, f, on_progress, NULL);
+    bool write_err = r == WEB_RECV_WRITE || ferror(f) != 0;
     if (fclose(f) != 0)
         write_err = true;
-    if (!ok || write_err) {
+    if (r != WEB_RECV_OK || write_err) {
         remove(tmp_path);
         const char *msg = write_err ? tr(S_UPLOAD_WRITE_FAILED) : tr(S_WEB_NETWORK);
         set_error(msg);
-        if (got < length && !write_err)
+        if (r == WEB_RECV_NET)
             return;     // mất kết nối: không còn ai nhận câu trả lời
-        drain(fd, length - got);
-        send_json(fd, 500, false, msg);
+        web_send_json(fd, 500, false, msg);
         return;
     }
     // Ghi đè file cũ cùng tên (rename trên thẻ SD của Switch không thay file đã có)
@@ -332,7 +178,7 @@ static void handle_upload(int fd, const char *path, int64_t length, const char *
     if (rename(tmp_path, final_path) != 0) {
         remove(tmp_path);
         set_error(tr(S_UPLOAD_WRITE_FAILED));
-        send_json(fd, 500, false, tr(S_UPLOAD_WRITE_FAILED));
+        web_send_json(fd, 500, false, tr(S_UPLOAD_WRITE_FAILED));
         return;
     }
     SDL_LockMutex(lock);
@@ -340,127 +186,34 @@ static void handle_upload(int fd, const char *path, int64_t length, const char *
     snprintf(status.last, sizeof(status.last), "%s", name);
     status.current[0] = '\0';
     SDL_UnlockMutex(lock);
-    send_json(fd, 200, true, NULL);
+    web_send_json(fd, 200, true, NULL);
 }
 
-static void handle_client(int fd) {
-    char req[HEADER_MAX + 1];
-    int len = 0;
-    char *end = NULL;
-    while (!end) {
-        if (len >= HEADER_MAX)
-            return;
-        int n = recv_some(fd, req + len, HEADER_MAX - len);
-        if (n <= 0)
-            return;
-        len += n;
-        req[len] = '\0';
-        end = strstr(req, "\r\n\r\n");
-    }
-    *end = '\0';
-    char *body = end + 4;
-    int body_len = len - (int)(body - req);
-
-    char method[8], path[1024];
-    if (sscanf(req, "%7s %1023s", method, path) != 2)
-        return;
-    int64_t length = -1;
-    for (char *line = strstr(req, "\r\n"); line; line = strstr(line + 2, "\r\n")) {
-        if (strncasecmp(line + 2, "Content-Length:", 15) == 0)
-            length = strtoll(line + 17, NULL, 10);
-    }
-
-    if (strcmp(method, "GET") == 0 && (strcmp(path, "/") == 0 || strncmp(path, "/?", 2) == 0)) {
-        send_page(fd);
-    } else if (strcmp(method, "POST") == 0 && strncmp(path, "/upload", 7) == 0) {
-        if (length < 0)
-            send_json(fd, 411, false, "Content-Length");
+static void handle_request(WebRequest *req) {
+    if (strcmp(req->method, "GET") == 0 && (strcmp(req->path, "/") == 0 || strncmp(req->path, "/?", 2) == 0)) {
+        send_page(req->fd);
+    } else if (strcmp(req->method, "POST") == 0 && strncmp(req->path, "/upload", 7) == 0) {
+        if (req->length < 0)
+            web_send_json(req->fd, 411, false, "Content-Length");
         else
-            handle_upload(fd, path, length, body, body_len);
+            handle_upload(req);
     } else {
-        send_response(fd, 404, "text/plain", "Not found", 9);
+        web_send_response(req->fd, 404, "text/plain", "Not found", 9);
     }
-}
-
-static int server_thread(void *arg) {
-    (void)arg;
-    while (!stopping()) {
-        struct pollfd p = { listen_fd, POLLIN, 0 };
-        if (poll(&p, 1, 200) <= 0)
-            continue;
-        int c = accept(listen_fd, NULL, NULL);
-        if (c < 0)
-            continue;
-#ifdef SO_NOSIGPIPE
-        int one = 1;
-        setsockopt(c, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
-#endif
-        handle_client(c);
-        shutdown(c, SHUT_RDWR);
-        close(c);
-    }
-    return 0;
 }
 
 bool upload_start(const char *dir, char *url, size_t url_size, char *err, size_t err_size) {
     upload_stop();
-    char ip[64];
-    if (!platform_local_ip(ip, sizeof(ip))) {
-        snprintf(err, err_size, "%s", tr(S_UPLOAD_NO_NET));
-        return false;
-    }
     snprintf(games_dir, sizeof(games_dir), "%s", dir);
     mkdir(games_dir, 0777);
-
-    listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listen_fd < 0) {
-        snprintf(err, err_size, tr(S_UPLOAD_SERVER_FAILED), strerror(errno));
-        return false;
-    }
-    int one = 1;
-    setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-    int port = 0;
-    for (int i = 0; i < PORT_TRIES && !port; i++) {
-        struct sockaddr_in a;
-        memset(&a, 0, sizeof(a));
-        a.sin_family = AF_INET;
-        a.sin_addr.s_addr = htonl(INADDR_ANY);
-        a.sin_port = htons((uint16_t)(PORT_FIRST + i));
-        if (bind(listen_fd, (struct sockaddr *)&a, sizeof(a)) == 0)
-            port = PORT_FIRST + i;
-    }
-    if (!port || listen(listen_fd, 4) != 0) {
-        snprintf(err, err_size, tr(S_UPLOAD_SERVER_FAILED), strerror(errno));
-        close(listen_fd);
-        listen_fd = -1;
-        return false;
-    }
-
     if (!lock)
         lock = SDL_CreateMutex();
     memset(&status, 0, sizeof(status));
-    SDL_AtomicSet(&stop_flag, 0);
-    thread = SDL_CreateThread(server_thread, "upload", NULL);
-    if (!thread) {
-        snprintf(err, err_size, tr(S_UPLOAD_SERVER_FAILED), SDL_GetError());
-        close(listen_fd);
-        listen_fd = -1;
-        return false;
-    }
-    snprintf(url, url_size, "http://%s:%d/", ip, port);
-    return true;
+    return web_start(handle_request, url, url_size, err, err_size);
 }
 
 void upload_stop(void) {
-    if (thread) {
-        SDL_AtomicSet(&stop_flag, 1);
-        SDL_WaitThread(thread, NULL);
-        thread = NULL;
-    }
-    if (listen_fd >= 0) {
-        close(listen_fd);
-        listen_fd = -1;
-    }
+    web_stop();
 }
 
 void upload_get_status(UploadStatus *out) {

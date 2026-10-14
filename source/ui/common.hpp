@@ -20,6 +20,8 @@ extern "C" {
 #include "platform.h"
 #include "qr.h"
 #include "settings.h"
+#include "share.h"
+#include "backup.h"
 #include "update.h"
 #include "upload.h"
 #include "vpad.h"
@@ -56,10 +58,27 @@ void sdl_events_set_handler(SdlEventHandler handler);
 // Đặt chữ khi khác chữ đang hiện (tránh dựng lại bố cục mỗi khung hình)
 void set_text(brls::Label* label, const std::string& text);
 
+// Mã QR cho đường dẫn (trang web của Switch cho điện thoại)
+class QrView : public brls::View
+{
+  public:
+    explicit QrView(const char* text);
+    void draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style,
+              brls::FrameContext* ctx) override;
+
+  private:
+    uint8_t modules[QR_MAX_SIZE * QR_MAX_SIZE];
+    int size = 0;
+    int cell = 0;
+};
+
+// "1.5 MB"
+std::string format_mb(int64_t bytes);
+
 brls::Label* make_label(const std::string& text, float size, NVGcolor color, bool wrap = true);
 
 // Gán hành động cho nút tay cầm; bản desktop gán thêm phím tắt bàn phím giống input.c
-// (S = X, A = Y, Q = L, W = R, Tab = -, = là +)
+// (S = X, A = Y, Q = L, W = R, E = ZR, Tab = -, = là +)
 brls::ActionIdentifier bind_action(brls::View* view, const std::string& hint, brls::ControllerButton button,
                             const brls::ActionListener& listener, bool hidden = false);
 

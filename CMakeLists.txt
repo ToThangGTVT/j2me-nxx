@@ -298,6 +298,7 @@ add_executable(j2me-nxx
     source/ui/lang_activity.cpp
     source/ui/update_activity.cpp
     source/ui/upload_activity.cpp
+    source/ui/backup_activity.cpp
     source/platform.c
     source/gfx.c
     source/input.c
@@ -311,7 +312,10 @@ add_executable(j2me-nxx
     source/keybind.c
     source/settings.c
     source/qr.c
+    source/websrv.c
     source/upload.c
+    source/backup.c
+    source/share.c
     source/touch.c
     source/vkb.c
     source/vpad.c

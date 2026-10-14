@@ -16,6 +16,7 @@
 #include <switch.h>
 #endif
 
+#include "ui/backup_activity.hpp"
 #include "ui/common.hpp"
 #include "ui/lang_activity.hpp"
 #include "ui/main_activity.hpp"
@@ -286,7 +287,7 @@ static int run(int argc, char* argv[])
         ui::MainActivity::open();
 
 #ifndef __SWITCH__
-    // Desktop: J2ME_NX_SCREEN=settings / lang mở thẳng màn hình cài đặt / chọn ngôn ngữ (để test giao diện)
+    // Desktop: J2ME_NX_SCREEN=settings / lang / keybind / backup mở thẳng màn hình cài đặt / chọn ngôn ngữ (để test giao diện)
     const char* start_screen = SDL_getenv("J2ME_NX_SCREEN");
     if (start_screen && strcmp(start_screen, "settings") == 0)
         ui::SettingsActivity::open_global();
@@ -294,6 +295,8 @@ static int run(int argc, char* argv[])
         ui::LangActivity::open();
     else if (start_screen && strcmp(start_screen, "keybind") == 0)
         ui::SettingsActivity::open_keybinds_global();
+    else if (start_screen && strcmp(start_screen, "backup") == 0)
+        ui::BackupActivity::open("", nullptr);
 #endif
     if (argc > 1)
     {
@@ -321,6 +324,7 @@ static int run(int argc, char* argv[])
         {
             update_shutdown();
             upload_stop();
+            share_stop();
             emu_stop();
             // Trả vùng nhớ mã máy của AOT: hbmenu nạp .nro tiếp theo vào cùng tiến trình
             aot_mem_exit();

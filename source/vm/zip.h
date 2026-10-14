@@ -15,5 +15,8 @@ ZipFile *zip_open_mem(const uint8_t *data, size_t size, bool owned);
 void zip_close(ZipFile *z);
 
 bool zip_exists(ZipFile *z, const char *name);
+// Liệt kê entry (không có thư mục), theo thứ tự tên
+int zip_count(ZipFile *z);
+const char *zip_name(ZipFile *z, int index);
 // Trả về buffer malloc (thêm 1 byte '\0' ở cuối, không tính vào size), NULL nếu không có
 uint8_t *zip_read(ZipFile *z, const char *name, size_t *size);

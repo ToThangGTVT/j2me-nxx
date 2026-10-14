@@ -203,6 +203,14 @@ bool zip_exists(ZipFile *z, const char *name) {
     return z && find_entry(z, name) != NULL;
 }
 
+int zip_count(ZipFile *z) {
+    return z ? z->count : 0;
+}
+
+const char *zip_name(ZipFile *z, int index) {
+    return z && index >= 0 && index < z->count ? z->entries[index].name : NULL;
+}
+
 static bool inflate_raw(const uint8_t *src, uint32_t comp, uint8_t *out, uint32_t size) {
     z_stream s;
     memset(&s, 0, sizeof(s));

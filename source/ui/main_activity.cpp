@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "ui/backup_activity.hpp"
 #include "ui/screen_activity.hpp"
 #include "ui/settings_activity.hpp"
 #include "ui/update_activity.hpp"
@@ -330,15 +331,27 @@ void MainActivity::register_actions()
                         notify(trf(S_UPLOAD_DONE_STATUS, received));
                     } });
             return true; }));
+    actions.push_back(bind_action(frame, T(S_ACT_BACKUP), brls::BUTTON_RT, [this](brls::View*)
+        {
+            // Mở với ứng dụng đang chọn
+            char id[256] = "";
+            if (focused >= 0 && focused < list.count)
+                game_list_id(&list.items[focused], id, sizeof(id));
+            BackupActivity::open(id, []()
+                {
+                    if (instance)
+                        instance->rescan(true); });
+            return true; }));
     actions.push_back(bind_action(frame, T(S_ACT_UPDATE), brls::BUTTON_B, [](brls::View*)
         {
             if (update_available())
                 UpdateActivity::open();
             return true; }, !update_available()));
+    // Không hiện gợi ý (thanh dưới hết chỗ), + vẫn thoát như mọi app Switch
     actions.push_back(bind_action(frame, "hints/exit"_i18n, brls::BUTTON_START, [](brls::View*)
         {
             brls::Application::quit();
-            return true; }));
+            return true; }, true));
 }
 
 void MainActivity::relabel()

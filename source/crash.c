@@ -1,5 +1,6 @@
 #include "crash.h"
 
+#include <dirent.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -171,6 +172,39 @@ bool crash_take_previous(char *name, size_t name_size) {
     if (ok)
         name[strcspn(name, "\r\n")] = 0;
     return ok && name[0];
+}
+
+#define LOG_KEEP_SECONDS (7 * 24 * 3600)
+
+// Xoá path nếu sửa lần cuối quá 1 tuần. Không rõ giờ sửa (0) hoặc giờ máy sai thì giữ lại.
+static void remove_if_old(const char *path, time_t now) {
+    struct stat st;
+    if (stat(path, &st) == 0 && st.st_mtime > 0 && st.st_mtime < now && now - st.st_mtime > LOG_KEEP_SECONDS)
+        remove(path);
+}
+
+void crash_prune_logs(void) {
+    time_t now = time(NULL);
+    if (now <= 0)
+        return;
+    char path[700];
+    snprintf(path, sizeof(path), "%s/log.txt", platform_data_dir());
+    remove_if_old(path, now);
+    snprintf(path, sizeof(path), "%s/log-prev.txt", platform_data_dir());
+    remove_if_old(path, now);
+    if (!crash_dir[0])
+        return;
+    DIR *d = opendir(crash_dir);
+    if (!d)
+        return;
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        if (strncmp(e->d_name, "crash-", 6) != 0)
+            continue;
+        snprintf(path, sizeof(path), "%s/%s", crash_dir, e->d_name);
+        remove_if_old(path, now);
+    }
+    closedir(d);
 }
 
 // ---------------------------------------------------------------------------

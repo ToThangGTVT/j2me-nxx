@@ -19,3 +19,5 @@ void crash_log(const char *line);
 bool crash_write_report(const char *title, const char *detail, char *name, size_t name_size);
 // File crash ghi lần trước (app sập), để báo khi mở lại app; false nếu không có. Gọi 1 lần.
 bool crash_take_previous(char *name, size_t name_size);
+// Xoá log.txt, log-prev.txt và báo cáo crash cũ hơn 1 tuần. Gọi sau crash_take_previous.
+void crash_prune_logs(void);

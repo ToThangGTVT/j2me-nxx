@@ -280,6 +280,7 @@ static int run(int argc, char* argv[])
     std::string startup_note;
     if (crash_take_previous(crashed, sizeof(crashed)))
         startup_note = ui::trf(S_APP_CRASHED_BEFORE, crashed);
+    crash_prune_logs();
 
     if (first_run)
         ui::LangActivity::open();

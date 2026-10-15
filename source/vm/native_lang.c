@@ -250,7 +250,8 @@ static NativeResult Throwable_fillInStackTrace0(VMThread *t, Value *args, Value 
 
 static NativeResult Throwable_printStackTrace0(VMThread *t, Value *args, Value *ret) {
     (void)ret;
-    exception_describe(t, ARG_L(0));
+    if (vm_host()->print_traces)
+        exception_describe(t, ARG_L(0));
     return NATIVE_OK;
 }
 

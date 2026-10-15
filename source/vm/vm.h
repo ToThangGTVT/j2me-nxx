@@ -268,6 +268,9 @@ typedef struct {
     void (*exit_request)(int status);
     // Chế độ AOT (thử nghiệm): dịch method sang mã máy khi nạp lớp, chạy chung với trình thông dịch
     bool aot;
+    // Throwable.printStackTrace() in ra log. Tắt: bỏ qua (game in exception liên tục, định dạng stack
+    // trace tốn CPU làm khựng trên Switch). Exception không ai bắt vẫn ghi đủ.
+    bool print_traces;
 } VMHost;
 
 bool vm_init(const VMHost *host);

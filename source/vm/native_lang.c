@@ -248,18 +248,9 @@ static NativeResult Throwable_fillInStackTrace0(VMThread *t, Value *args, Value 
     return NATIVE_OK;
 }
 
-// Game hay printStackTrace trong catch (vd đọc tới EOF): chỉ ghi vài cái đầu, ghi log xuống thẻ SD
-// liên tục làm game đơ trên Switch. Exception không ai bắt vẫn ghi đủ (interp_loop.h).
-#define MAX_PRINTED_TRACES 20
-static int printed_traces;
-
 static NativeResult Throwable_printStackTrace0(VMThread *t, Value *args, Value *ret) {
     (void)ret;
-    if (printed_traces < MAX_PRINTED_TRACES) {
-        exception_describe(t, ARG_L(0));
-        if (++printed_traces == MAX_PRINTED_TRACES)
-            vm_log("Da ghi %d stack trace, bo qua printStackTrace tu day", MAX_PRINTED_TRACES);
-    }
+    exception_describe(t, ARG_L(0));
     return NATIVE_OK;
 }
 
@@ -695,7 +686,6 @@ static NativeResult TimeZone_getDefaultOffset0(VMThread *t, Value *args, Value *
 
 void natives_lang_init(void) {
     static bool done;
-    printed_traces = 0;     // đếm lại mỗi lần chơi
     if (done)
         return;
     done = true;

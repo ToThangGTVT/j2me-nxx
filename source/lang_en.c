@@ -110,6 +110,11 @@ const char *const lang_strings_en[S_COUNT] = {
     [S_CHECK_UPDATE]   = "Check for updates",
     [S_CHECK_UPDATE_HINT] = "Each time the app starts, ask GitHub whether a newer J2ME-NXX exists; if so, offer to "
                             "download it and replace the .nro file. Needs an Internet connection.",
+    [S_WRITE_LOG]      = "Write log",
+    [S_WRITE_LOG_HINT] = "Record stutters, Java errors and FPS while playing to sdmc:/switch/j2me-nxx/log.txt, to "
+                         "attach to bug reports. Warning: apps that log heavily may freeze the game, so only turn this "
+                         "on when needed. Takes effect the next time an app is opened. Logs older than a week are "
+                         "deleted automatically.",
     [S_UPDATE_BADGE]   = "New v%s  " ICON_B " Update",
     [S_UPDATE_TITLE]   = "New version: v%s",
     [S_UPDATE_CURRENT] = "You have v%s",

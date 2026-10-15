@@ -544,6 +544,7 @@ brls::View* SettingsActivity::tab_system()
     if (!game_mode)
     {
         add_toggle(tab, S_CHECK_UPDATE, S_CHECK_UPDATE_HINT, &s->check_update, nullptr);
+        add_toggle(tab, S_WRITE_LOG, S_WRITE_LOG_HINT, &s->write_log, nullptr);
 
         std::vector<std::string> data;
         for (int i = 0; i < LANG_COUNT; i++)

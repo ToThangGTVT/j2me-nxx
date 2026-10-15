@@ -110,6 +110,10 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_CHECK_UPDATE]   = "Tự kiểm tra bản mới",
     [S_CHECK_UPDATE_HINT] = "Mỗi lần mở app, hỏi GitHub xem có bản J2ME-NXX mới không; có thì hỏi tải về và tự "
                             "thay file .nro. Cần kết nối Internet.",
+    [S_WRITE_LOG]      = "Ghi log",
+    [S_WRITE_LOG_HINT] = "Ghi nhật ký khi chơi (khựng hình, lỗi Java, FPS) vào sdmc:/switch/j2me-nxx/log.txt để "
+                         "gửi kèm khi báo lỗi. Cảnh báo: ứng dụng ghi log nhiều có thể làm treo game, chỉ bật khi "
+                         "cần. Có hiệu lực từ lần mở ứng dụng sau. Log cũ hơn 1 tuần tự xoá.",
     [S_UPDATE_BADGE]   = "Bản mới v%s  " ICON_B " Cập nhật",
     [S_UPDATE_TITLE]   = "Có bản mới: v%s",
     [S_UPDATE_CURRENT] = "Đang dùng v%s",

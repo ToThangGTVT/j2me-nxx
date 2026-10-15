@@ -49,7 +49,7 @@ static bool sharp_dirty;
 static int hires_img;
 static int hires_k;
 static bool show_hires;
-// Đo hiệu năng. Cài đặt -> Hiện FPS: hiện ở góc màn hình và ghi log ra <data>/log.txt
+// Đo hiệu năng. Cài đặt -> Hiện FPS: hiện ở góc màn hình, bật thêm Ghi log thì ghi ra <data>/log.txt
 // (desktop: J2ME_NX_PROF=1 ghi ra stderr)
 static double stat_vm_max, stat_vm_sum;
 static Uint64 stat_last_frame;
@@ -71,7 +71,7 @@ static volatile int pub_cpu;
 static volatile double pub_vm_max;
 
 // ---------------------------------------------------------------------------
-// Log khựng (luôn bật, ghi vào log.txt): khựng thi thoảng trên Switch khó bắt bằng log hiệu năng.
+// Log khựng (ghi vào log.txt khi bật Cài đặt -> Ghi log): khựng thi thoảng trên Switch khó bắt bằng log hiệu năng.
 // - luồng VM: 1 lượt chạy quá STALL_MS (kèm GC), game ngừng vẽ giữa lúc đang hoạt hình (kèm trạng thái thread)
 // - luồng chính: 1 khung hình quá STALL_MS, chia theo phần (phím, chờ khoá, vẽ, giao diện + chờ vsync)
 // - luồng canh: đang kẹt quá STALL_WATCH_MS thì ghi chỗ đang kẹt (native nào, GC, phần nào của luồng chính)
@@ -569,12 +569,15 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     mkdir(platform_data_dir(), 0777);
     char log_path[600];
     snprintf(log_path, sizeof(log_path), "%s/log.txt", platform_data_dir());
-    // Giữ log lần chơi trước (khựng / lỗi thường chỉ để ý sau khi đã mở lại game)
-    char prev_path[600];
-    snprintf(prev_path, sizeof(prev_path), "%s/log-prev.txt", platform_data_dir());
-    remove(prev_path);
-    rename(log_path, prev_path);
-    log_file = fopen(log_path, "w");
+    // Cài đặt -> Ghi log: tắt thì không ghi gì xuống thẻ SD (game in exception liên tục làm đơ trên Switch)
+    if (settings()->write_log) {
+        // Giữ log lần chơi trước (khựng / lỗi thường chỉ để ý sau khi đã mở lại game)
+        char prev_path[600];
+        snprintf(prev_path, sizeof(prev_path), "%s/log-prev.txt", platform_data_dir());
+        remove(prev_path);
+        rename(log_path, prev_path);
+        log_file = fopen(log_path, "w");
+    }
     if (log_file)
         fprintf(log_file, "J2ME-NXX v" APP_VERSION_STR " - %s (%s)\n", jar_path, cls);
     crash_set_game(jar_path, cls);

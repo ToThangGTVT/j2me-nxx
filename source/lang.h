@@ -105,6 +105,8 @@ typedef enum {
     S_SMOOTH_TEXT_HINT,
     S_CHECK_UPDATE,
     S_CHECK_UPDATE_HINT,
+    S_WRITE_LOG,
+    S_WRITE_LOG_HINT,
     S_UPDATE_BADGE,         // %s
     S_UPDATE_TITLE,         // %s
     S_UPDATE_CURRENT,       // %s

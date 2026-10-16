@@ -115,6 +115,11 @@ const char *const lang_strings_en[S_COUNT] = {
                          "attach to bug reports. Warning: apps that log heavily may freeze the game, so only turn this "
                          "on when needed. Takes effect the next time an app is opened. Logs older than a week are "
                          "deleted automatically.",
+    [S_CPU_BOOST]      = "CPU boost",
+    [S_CPU_BOOST_HINT] = "While an app runs, raise the Switch CPU from 1020 to 1785 MHz (the system's game-loading "
+                         "boost mode): heavy games such as 3D ones run faster, but the console gets warmer and uses "
+                         "more battery. Back to normal when the app exits. Takes effect the next time an app is "
+                         "opened.",
     [S_UPDATE_BADGE]   = "New v%s  " ICON_B " Update",
     [S_UPDATE_TITLE]   = "New version: v%s",
     [S_UPDATE_CURRENT] = "You have v%s",

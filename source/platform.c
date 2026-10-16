@@ -99,6 +99,13 @@ void platform_mem_usage(size_t *used, size_t *total) {
     *total = (size_t)t;
 }
 
+void platform_cpu_boost(bool on) {
+    // Cần HOS 7.0+; lỗi thì chạy xung thường
+    Result rc = appletSetCpuBoostMode(on ? ApmCpuBoostMode_FastLoad : ApmCpuBoostMode_Normal);
+    if (R_FAILED(rc))
+        printf("appletSetCpuBoostMode failed: 0x%x\n", rc);
+}
+
 struct PlatformThread {
     Thread th;
     int (*fn)(void *);
@@ -110,14 +117,15 @@ static void thread_entry(void *p) {
     t->fn(t->arg);
 }
 
-PlatformThread *platform_thread_start(int (*fn)(void *), void *arg) {
+PlatformThread *platform_thread_start_on(int (*fn)(void *), void *arg, const char *name, int core) {
+    (void)name;
     PlatformThread *t = calloc(1, sizeof(PlatformThread));
     if (!t)
         return NULL;
     t->fn = fn;
     t->arg = arg;
-    // Ưu tiên như luồng chính (0x2C), nhân 1, stack 1MB (giải mã ảnh / M3G dùng stack C)
-    Result rc = threadCreate(&t->th, thread_entry, t, NULL, 1024 * 1024, 0x2C, 1);
+    // Ưu tiên như luồng chính (0x2C), stack 1MB (giải mã ảnh / M3G dùng stack C)
+    Result rc = threadCreate(&t->th, thread_entry, t, NULL, 1024 * 1024, 0x2C, core);
     if (R_FAILED(rc))
         rc = threadCreate(&t->th, thread_entry, t, NULL, 1024 * 1024, 0x2C, -2);
     if (R_FAILED(rc) || R_FAILED(threadStart(&t->th))) {
@@ -126,6 +134,10 @@ PlatformThread *platform_thread_start(int (*fn)(void *), void *arg) {
         return NULL;
     }
     return t;
+}
+
+PlatformThread *platform_thread_start(int (*fn)(void *), void *arg) {
+    return platform_thread_start_on(fn, arg, "vm", 1);
 }
 
 void platform_thread_join(PlatformThread *t) {
@@ -239,8 +251,17 @@ void platform_mem_usage(size_t *used, size_t *total) {
 #endif
 }
 
+void platform_cpu_boost(bool on) {
+    (void)on;
+}
+
+PlatformThread *platform_thread_start_on(int (*fn)(void *), void *arg, const char *name, int core) {
+    (void)core;
+    return (PlatformThread *)SDL_CreateThreadWithStackSize(fn, name, 4 * 1024 * 1024, arg);
+}
+
 PlatformThread *platform_thread_start(int (*fn)(void *), void *arg) {
-    return (PlatformThread *)SDL_CreateThreadWithStackSize(fn, "vm", 4 * 1024 * 1024, arg);
+    return platform_thread_start_on(fn, arg, "vm", 1);
 }
 
 void platform_thread_join(PlatformThread *t) {

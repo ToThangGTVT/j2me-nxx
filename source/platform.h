@@ -20,6 +20,8 @@ char *platform_keyboard(const char *title, const char *text, int max_len, int ty
 // Luồng chạy VM. Switch: ghim vào nhân CPU 1 (luồng chính ở nhân 0) để chạy song song thật sự
 typedef struct PlatformThread PlatformThread;
 PlatformThread *platform_thread_start(int (*fn)(void *), void *arg);
+// Luồng phụ ghim vào nhân core (Switch: 0..2; desktop bỏ qua core)
+PlatformThread *platform_thread_start_on(int (*fn)(void *), void *arg, const char *name, int core);
 void platform_thread_join(PlatformThread *t);
 
 // Mở trang web bằng trình duyệt: Switch dùng trình duyệt có sẵn (chặn tới khi người dùng đóng),
@@ -33,6 +35,9 @@ OpenUrlResult platform_open_url(const char *url);
 
 // Địa chỉ IPv4 của máy trong mạng LAN (để điện thoại kết nối tới). false nếu chưa có mạng
 bool platform_local_ip(char *out, size_t size);
+
+// Tăng xung CPU (Switch: chế độ tăng tốc lúc tải game, 1785 MHz); desktop không làm gì
+void platform_cpu_boost(bool on);
 
 // RAM của cả app (byte). total = 0 nếu không biết (desktop)
 void platform_mem_usage(size_t *used, size_t *total);

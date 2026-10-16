@@ -38,6 +38,7 @@ static Settings current = {
     .font_scale = 100,
     .check_update = true,
     .write_log = false,     // ghi thẻ SD liên tục: người dùng tự bật khi cần gửi lỗi
+    .cpu_boost = false,     // nóng máy, hao pin: người dùng tự bật
     .soundfont = "-",       // mặc định tắt: bộ tổng hợp sóng
     .aot = false,           // thử nghiệm: người dùng tự bật
 };
@@ -106,6 +107,8 @@ bool settings_load(void) {
             current.check_update = v != 0;
         else if (sscanf(line, "write_log=%d", &v) == 1)
             current.write_log = v != 0;
+        else if (sscanf(line, "cpu_boost=%d", &v) == 1)
+            current.cpu_boost = v != 0;
         else if (sscanf(line, "vkb_bubble=%d", &v) == 1)
             current.vkb_bubble = v != 0;
         else if (strncmp(line, "soundfont=", 10) == 0) {
@@ -137,6 +140,7 @@ bool settings_save(void) {
     fprintf(f, "font_scale=%d\n", current.font_scale);
     fprintf(f, "check_update=%d\n", current.check_update ? 1 : 0);
     fprintf(f, "write_log=%d\n", current.write_log ? 1 : 0);
+    fprintf(f, "cpu_boost=%d\n", current.cpu_boost ? 1 : 0);
     fprintf(f, "vkb_bubble=%d\n", current.vkb_bubble ? 1 : 0);
     fprintf(f, "soundfont=%s\n", current.soundfont);
     fprintf(f, "vpad=%d\n", current.vpad ? 1 : 0);

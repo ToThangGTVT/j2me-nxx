@@ -20,6 +20,7 @@ typedef struct {
     int font_scale;         // cỡ chữ trong game, % so với cỡ gốc
     bool check_update;      // mở app thì kiểm tra bản mới trên GitHub
     bool write_log;         // ghi <data_dir>/log.txt khi chơi (log khựng, exception, FPS)
+    bool cpu_boost;         // Switch: tăng xung CPU 1785 MHz khi chạy ứng dụng
     bool vkb_bubble;        // bong bóng bàn phím ảo QWERTY khi chơi
     char soundfont[128];    // file .sf2 trong <data_dir>/soundfonts; "" = tự động, "builtin" = bản có sẵn, "-" = tắt
     int keybinds[BIND_COUNT];   // nút Switch -> phím điện thoại (keybind.h)

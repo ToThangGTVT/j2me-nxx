@@ -4,10 +4,14 @@
 #include "midp.h"
 
 #include <math.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
 
+#include <SDL.h>
+
+#include "../platform.h"
 #include "../vm/vm.h"
 
 // --- Bố cục mảng tham số (khớp với javax/microedition/m3g/Graphics3D.java)
@@ -330,6 +334,7 @@ typedef struct {
     float *zb;
     int w, h;
     int x0, y0, x1, y1;         // vùng vẽ (clip ∩ viewport)
+    int part;                   // -1 mọi hàng; 0 / 1: chỉ các dải BAND_ROWS hàng có số thứ tự chẵn / lẻ
     const int *p;               // chỉ dùng ngoài vòng tô pixel
     const float *f;
     const uint32_t *tex;
@@ -342,6 +347,11 @@ typedef struct {
     int tex_func, blending, alpha_thr, fog_mode;
     float tex_blend[3], fog_color[3];
 } Raster;
+
+// Chia việc cho 2 luồng theo dải hàng xen kẽ: mỗi luồng duyệt mọi tam giác theo đúng thứ tự nhưng
+// chỉ tô hàng của mình, nên từng pixel vẫn được vẽ đúng trình tự như khi chạy 1 luồng
+#define BAND_SHIFT 3
+#define BAND_ROWS (1 << BAND_SHIFT)
 
 // Byte màu -> 0..1 (giống hệt c / 255.0f, tránh phép chia ở mỗi pixel)
 static float u8f[256];
@@ -519,6 +529,10 @@ static void raster_triangle(const Raster *R, const SVtx *a, const SVtx *b, const
     float k12 = yc > yb ? (t2->sx - t1->sx) / (yc - yb) : 0;
 
     for (int y = miny; y < maxy; y++) {
+        if (S.part >= 0 && ((y >> BAND_SHIFT) & 1) != S.part) {
+            y |= BAND_ROWS - 1;     // nhảy tới đầu dải kế tiếp
+            continue;
+        }
         float py = y + 0.5f;
         int xs = minx, xe = maxx;
         if (py >= ya && py <= yc) {
@@ -617,6 +631,150 @@ static void draw_triangle(Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v2
         raster_triangle(R, &s[0], &s[i], &s[i + 1]);
 }
 
+// Vẽ các tam giác của submesh, đỉnh đã xử lý xong (R riêng cho mỗi luồng: flat_rgba đổi theo tam giác).
+// sy: y màn hình của từng đỉnh (NaN nếu sau mặt phẳng gần), để bỏ qua sớm tam giác nằm gọn trong dải
+// của luồng kia thay vì cắt / chiếu / dựng lại ở cả 2 luồng.
+static void draw_tris(Raster *R, const Vtx *verts, const float *sy, const jint *idx, int nind, int nverts) {
+    for (int i = 0; i + 2 < nind; i += 3) {
+        int i0 = idx[i], i1 = idx[i + 1], i2 = idx[i + 2];
+        if (i0 < 0 || i0 >= nverts || i1 < 0 || i1 >= nverts || i2 < 0 || i2 >= nverts)
+            continue;
+        if (sy) {
+            float y0 = sy[i0], y1 = sy[i1], y2 = sy[i2];
+            if (y0 == y0 && y1 == y1 && y2 == y2) {
+                // Nới 1 hàng mỗi phía, kẹp trước khi đổi sang int
+                float lo = floorf(fminf(y0, fminf(y1, y2))) - 1, hi = ceilf(fmaxf(y0, fmaxf(y1, y2))) + 1;
+                lo = lo < -BAND_ROWS ? -BAND_ROWS : lo > R->h + BAND_ROWS ? R->h + BAND_ROWS : lo;
+                hi = hi < -BAND_ROWS ? -BAND_ROWS : hi > R->h + BAND_ROWS ? R->h + BAND_ROWS : hi;
+                int blo = (int)lo >> BAND_SHIFT, bhi = (int)hi >> BAND_SHIFT;
+                if (blo == bhi && (blo & 1) != R->part)
+                    continue;
+            }
+        }
+        if (R->flat) {
+            // Màu của đỉnh cuối (như OpenGL)
+            const Vtx *pv = &verts[i2];
+            R->flat_rgba[0] = pv->r;
+            R->flat_rgba[1] = pv->g;
+            R->flat_rgba[2] = pv->b;
+            R->flat_rgba[3] = pv->a;
+        }
+        draw_triangle(R, &verts[i0], &verts[i1], &verts[i2]);
+    }
+}
+
+// --- Luồng phụ vẽ các dải lẻ (Switch: nhân 2 đang rảnh; nhân 0 giao diện, nhân 1 máy ảo)
+
+#define MT_MIN_TRIS 64          // submesh nhỏ hơn thì chi phí đánh thức luồng lớn hơn phần được chia
+#define MT_SPIN_US 300          // quay chờ bao lâu trước khi ngủ trên semaphore (giữa 2 submesh máy ảo còn
+                                // chạy Java chuẩn bị dữ liệu, ngủ rồi đánh thức lại thì mất cả lợi)
+
+// Sự kiện quay-rồi-ngủ: mỗi khung có hàng trăm submesh, đánh thức qua semaphore mỗi lần tốn hàng chục us
+// nên bên chờ quay ngắn trên seq trước; quá hạn mới ngủ, bên báo thấy sleeping thì mới post.
+typedef struct {
+    atomic_int seq;
+    atomic_int sleeping;
+    SDL_sem *sem;
+} MtEvent;
+
+static inline void cpu_relax(void) {
+#if defined(__aarch64__)
+    __asm__ volatile("yield");
+#elif defined(__x86_64__)
+    __asm__ volatile("pause");
+#endif
+}
+
+static void ev_signal(MtEvent *e) {
+    atomic_fetch_add(&e->seq, 1);
+    if (atomic_exchange(&e->sleeping, 0))
+        SDL_SemPost(e->sem);
+}
+
+// Chờ tới khi seq khác *seen (mỗi lúc chỉ có 1 tín hiệu chưa xử lý)
+static void ev_wait(MtEvent *e, int *seen) {
+    Uint64 limit = 0;
+    for (int i = 0;; i++) {
+        if (atomic_load_explicit(&e->seq, memory_order_acquire) != *seen)
+            goto got;
+        cpu_relax();
+        if ((i & 63) == 63) {
+            Uint64 now = SDL_GetPerformanceCounter();
+            if (!limit)
+                limit = now + SDL_GetPerformanceFrequency() * MT_SPIN_US / 1000000;
+            else if (now >= limit)
+                break;
+        }
+    }
+    atomic_store(&e->sleeping, 1);
+    if (atomic_load(&e->seq) == *seen || !atomic_exchange(&e->sleeping, 0))
+        SDL_SemWait(e->sem);    // bên báo đã thấy sleeping = 1 nên chắc chắn post
+got:
+    *seen = atomic_load(&e->seq);
+}
+
+static bool mt_enabled = true;
+static bool mt_failed;
+static bool mt_quit;
+static PlatformThread *mt_thread;
+static MtEvent mt_go, mt_done;
+static int mt_go_seen, mt_done_seen;
+static struct {
+    Raster R;
+    const Vtx *verts;
+    const float *sy;
+    const jint *idx;
+    int nind, nverts;
+} mt_job;
+
+static int mt_main(void *arg) {
+    (void)arg;
+    int seen = mt_go_seen;      // chốt trước khi tạo luồng: việc đầu tiên có thể tới trước khi luồng chạy
+    for (;;) {
+        ev_wait(&mt_go, &seen);
+        if (mt_quit)
+            return 0;
+        draw_tris(&mt_job.R, mt_job.verts, mt_job.sy, mt_job.idx, mt_job.nind, mt_job.nverts);
+        ev_signal(&mt_done);
+    }
+}
+
+static void mt_stop(void) {
+    if (mt_thread) {
+        mt_quit = true;
+        ev_signal(&mt_go);
+        platform_thread_join(mt_thread);
+        mt_thread = NULL;
+    }
+    if (mt_go.sem)
+        SDL_DestroySemaphore(mt_go.sem);
+    if (mt_done.sem)
+        SDL_DestroySemaphore(mt_done.sem);
+    mt_go.sem = mt_done.sem = NULL;
+    mt_quit = false;
+}
+
+static bool mt_ensure(void) {
+    if (mt_thread)
+        return true;
+    if (mt_failed)
+        return false;
+    atomic_store(&mt_go.sleeping, 0);
+    atomic_store(&mt_done.sleeping, 0);
+    mt_go_seen = atomic_load(&mt_go.seq);
+    mt_done_seen = atomic_load(&mt_done.seq);
+    mt_go.sem = SDL_CreateSemaphore(0);
+    mt_done.sem = SDL_CreateSemaphore(0);
+    if (mt_go.sem && mt_done.sem)
+        mt_thread = platform_thread_start_on(mt_main, NULL, "m3g", 2);
+    if (!mt_thread) {
+        mt_stop();
+        mt_failed = true;
+        return false;
+    }
+    return true;
+}
+
 // renderSubmesh(int[] target, int w, int h, float[] f, int[] p, Object pos, Object nrm, Object col,
 //               Object tc, int[] tex, int[] indices)
 static NativeResult M3G_renderSubmesh(VMThread *t, Value *args, Value *ret) {
@@ -648,6 +806,7 @@ static NativeResult M3G_renderSubmesh(VMThread *t, Value *args, Value *ret) {
     Raster R;
     memset(&R, 0, sizeof(R));
     R.px = ARRAY_DATA(target, uint32_t);
+    R.part = -1;
     R.w = w;
     R.h = h;
     R.p = p;
@@ -703,30 +862,40 @@ static NativeResult M3G_renderSubmesh(VMThread *t, Value *args, Value *ret) {
         return NATIVE_OK;
     }
     for (int i = 0; i + 2 < nind; i += 3) {
-        int tri[3] = { idx[i], idx[i + 1], idx[i + 2] };
-        bool ok = true;
         for (int k = 0; k < 3; k++) {
-            if (tri[k] < 0 || tri[k] >= nverts) {
-                ok = false;
+            int vi = idx[i + k];
+            if (vi < 0 || vi >= nverts)
                 break;
-            }
-            if (!done[tri[k]]) {
-                process_vertex(f, p, pos, nrm, col, tc, nm, tri[k], &verts[tri[k]]);
-                done[tri[k]] = 1;
+            if (!done[vi]) {
+                process_vertex(f, p, pos, nrm, col, tc, nm, vi, &verts[vi]);
+                done[vi] = 1;
             }
         }
-        if (!ok)
-            continue;
-        if (R.flat) {
-            // Màu của đỉnh cuối (như OpenGL)
-            const Vtx *pv = &verts[tri[2]];
-            R.flat_rgba[0] = pv->r;
-            R.flat_rgba[1] = pv->g;
-            R.flat_rgba[2] = pv->b;
-            R.flat_rgba[3] = pv->a;
-        }
-        draw_triangle(&R, &verts[tri[0]], &verts[tri[1]], &verts[tri[2]]);
     }
+
+    float *sy = NULL;
+    if (mt_enabled && nind / 3 >= MT_MIN_TRIS && (sy = malloc(sizeof(float) * (size_t)nverts)) && mt_ensure()) {
+        for (int i = 0; i < nverts; i++) {
+            const Vtx *v = &verts[i];
+            sy[i] = NAN;
+            if (done[i] && v->w > 1e-6f && v->z + v->w >= 0)
+                sy[i] = vp[1] + (1 - v->y / v->w) * 0.5f * vp[3];
+        }
+        mt_job.R = R;
+        mt_job.R.part = 1;
+        mt_job.verts = verts;
+        mt_job.sy = sy;
+        mt_job.idx = idx;
+        mt_job.nind = nind;
+        mt_job.nverts = nverts;
+        ev_signal(&mt_go);
+        R.part = 0;
+        draw_tris(&R, verts, sy, idx, nind, nverts);
+        ev_wait(&mt_done, &mt_done_seen);
+    } else {
+        draw_tris(&R, verts, NULL, idx, nind, nverts);
+    }
+    free(sy);
     free(verts);
     free(done);
     return NATIVE_OK;
@@ -841,6 +1010,8 @@ void midp_m3g_register(void) {
 }
 
 void midp_m3g_shutdown(void) {
+    mt_stop();
+    mt_failed = false;
     free(zbuf);
     zbuf = NULL;
     zbuf_w = zbuf_h = 0;

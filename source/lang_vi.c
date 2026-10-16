@@ -114,6 +114,10 @@ const char *const lang_strings_vi[S_COUNT] = {
     [S_WRITE_LOG_HINT] = "Ghi nhật ký khi chơi (khựng hình, lỗi Java, FPS) vào sdmc:/switch/j2me-nxx/log.txt để "
                          "gửi kèm khi báo lỗi. Cảnh báo: ứng dụng ghi log nhiều có thể làm treo game, chỉ bật khi "
                          "cần. Có hiệu lực từ lần mở ứng dụng sau. Log cũ hơn 1 tuần tự xoá.",
+    [S_CPU_BOOST]      = "Tăng xung CPU",
+    [S_CPU_BOOST_HINT] = "Khi chạy ứng dụng, đẩy CPU của Switch từ 1020 lên 1785 MHz (chế độ tăng tốc lúc tải game "
+                         "của hệ thống): game nặng như 3D chạy nhanh hơn, đổi lại máy nóng và hao pin hơn. Thoát "
+                         "ứng dụng thì trở về bình thường. Có hiệu lực từ lần mở ứng dụng sau.",
     [S_UPDATE_BADGE]   = "Bản mới v%s  " ICON_B " Cập nhật",
     [S_UPDATE_TITLE]   = "Có bản mới: v%s",
     [S_UPDATE_CURRENT] = "Đang dùng v%s",

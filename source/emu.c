@@ -63,6 +63,7 @@ static SDL_mutex *vm_lock;
 static SDL_cond *vm_wake;          // báo luồng VM: có sự kiện mới / phải dừng
 static SDL_cond *kb_cond;          // bàn phím ảo: yêu cầu / đã xong
 static PlatformThread *vm_thread;
+static bool cpu_boosted;      // đã bật tăng xung cho phiên này (trả lại khi dừng VM)
 static volatile int main_waiting;
 static volatile bool vm_stop_req;
 static volatile bool vm_dead;
@@ -339,6 +340,9 @@ static void vm_thread_stop(void) {
     SDL_CondSignal(kb_cond);
     unlock_vm();
     platform_thread_join(vm_thread);
+    if (cpu_boosted)
+        platform_cpu_boost(false);
+    cpu_boosted = false;
     vm_thread = NULL;
     vm_set_preempt_flag(NULL);
 }
@@ -691,6 +695,9 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
         fprintf(log_file, "man %dx%d  fps %d  aot %d  scale %d  chu net cao %d  soundfont %d\n", scr_w, scr_h,
                 fps_limit, host.aot, settings()->scale_mode, hires_k, (int)sf);
     stall_start();
+    cpu_boosted = settings()->cpu_boost;
+    if (cpu_boosted)
+        platform_cpu_boost(true);
     vm_thread = platform_thread_start(vm_thread_main, NULL);
     if (!vm_thread) {
         vm_set_preempt_flag(NULL);

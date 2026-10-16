@@ -323,18 +323,28 @@ static void process_vertex(const float *f, const int *p, Object *pos, Object *nr
 
 // --- Raster
 
+// Trạng thái vẽ đọc sẵn từ p[] / f[]: p là int[] nên mỗi lần ghi pixel (uint32_t) trình biên dịch
+// phải coi p[] có thể đã đổi và đọc lại, làm vòng tô pixel chậm hẳn.
 typedef struct {
     uint32_t *px;
+    float *zb;
     int w, h;
     int x0, y0, x1, y1;         // vùng vẽ (clip ∩ viewport)
-    const int *p;
+    const int *p;               // chỉ dùng ngoài vòng tô pixel
     const float *f;
     const uint32_t *tex;
     int tw, th;
     float near, far;
     bool flat;
     float flat_rgba[4];
+    bool depth_test, depth_write, color_write, alpha_write, target_alpha;
+    bool clamp_s, clamp_t, tex_alpha;
+    int tex_func, blending, alpha_thr, fog_mode;
+    float tex_blend[3], fog_color[3];
 } Raster;
+
+// Byte màu -> 0..1 (giống hệt c / 255.0f, tránh phép chia ở mỗi pixel)
+static float u8f[256];
 
 static inline float wrap(float t, int clamp) {
     if (clamp)
@@ -342,14 +352,8 @@ static inline float wrap(float t, int clamp) {
     return t - floorf(t);
 }
 
-static inline void shade_pixel(Raster *R, int x, int y, float z, float r, float g, float b, float a, float u, float v,
-                               float fog) {
-    const int *p = R->p;
-    const float *f = R->f;
-    int idx = y * R->w + x;
-    if (p[P_DEPTH_TEST] && z > zbuf[idx])
-        return;
-
+static inline __attribute__((always_inline)) void shade_pixel(const Raster *R, int idx, float z, float r, float g,
+                                                              float b, float a, float u, float v, float fog) {
     if (R->flat) {
         r = R->flat_rgba[0];
         g = R->flat_rgba[1];
@@ -358,17 +362,17 @@ static inline void shade_pixel(Raster *R, int x, int y, float z, float r, float 
     }
 
     if (R->tex) {
-        int tx = (int)(wrap(u, p[P_TEX_WRAP_S] == WRAP_CLAMP) * R->tw);
-        int ty = (int)(wrap(v, p[P_TEX_WRAP_T] == WRAP_CLAMP) * R->th);
+        int tx = (int)(wrap(u, R->clamp_s) * R->tw);
+        int ty = (int)(wrap(v, R->clamp_t) * R->th);
         uint32_t t = R->tex[ty * R->tw + tx];
-        float tr = ((t >> 16) & 255) / 255.0f, tg = ((t >> 8) & 255) / 255.0f, tb = (t & 255) / 255.0f;
-        float ta = p[P_TEX_HAS_ALPHA] ? (t >> 24) / 255.0f : 1.0f;
-        switch (p[P_TEX_FUNC]) {
+        float tr = u8f[(t >> 16) & 255], tg = u8f[(t >> 8) & 255], tb = u8f[t & 255];
+        float ta = R->tex_alpha ? u8f[t >> 24] : 1.0f;
+        switch (R->tex_func) {
         case FUNC_REPLACE:
             r = tr;
             g = tg;
             b = tb;
-            if (p[P_TEX_HAS_ALPHA])
+            if (R->tex_alpha)
                 a = ta;
             break;
         case FUNC_DECAL:
@@ -377,7 +381,7 @@ static inline void shade_pixel(Raster *R, int x, int y, float z, float r, float 
             b = b * (1 - ta) + tb * ta;
             break;
         case FUNC_BLEND: {
-            const float *bc = f + F_TEX_BLEND_COLOR;
+            const float *bc = R->tex_blend;
             r = r * (1 - tr) + bc[0] * tr;
             g = g * (1 - tg) + bc[1] * tg;
             b = b * (1 - tb) + bc[2] * tb;
@@ -399,21 +403,21 @@ static inline void shade_pixel(Raster *R, int x, int y, float z, float r, float 
         }
     }
 
-    if (p[P_FOG_MODE]) {
-        const float *fc = f + F_FOG_COLOR;
+    if (R->fog_mode) {
+        const float *fc = R->fog_color;
         r = r * fog + fc[0] * (1 - fog);
         g = g * fog + fc[1] * (1 - fog);
         b = b * fog + fc[2] * (1 - fog);
     }
 
-    if (p[P_ALPHA_THRESHOLD] > 0 && a * 256.0f < p[P_ALPHA_THRESHOLD])
+    if (R->alpha_thr > 0 && a * 256.0f < R->alpha_thr)
         return;
 
     uint32_t dst = R->px[idx];
-    float dr = ((dst >> 16) & 255) / 255.0f, dg = ((dst >> 8) & 255) / 255.0f, db = (dst & 255) / 255.0f;
-    float da = (dst >> 24) / 255.0f;
+    float dr = u8f[(dst >> 16) & 255], dg = u8f[(dst >> 8) & 255], db = u8f[dst & 255];
+    float da = u8f[dst >> 24];
     float orr, og, ob, oa;
-    switch (p[P_BLENDING]) {
+    switch (R->blending) {
     case BLEND_ALPHA:
         orr = r * a + dr * (1 - a);
         og = g * a + dg * (1 - a);
@@ -446,17 +450,17 @@ static inline void shade_pixel(Raster *R, int x, int y, float z, float r, float 
         break;
     }
     uint32_t out = dst;
-    if (p[P_COLOR_WRITE]) {
+    if (R->color_write) {
         out = (out & 0xff000000u) | ((uint32_t)(clamp01(orr) * 255.0f + 0.5f) << 16) |
               ((uint32_t)(clamp01(og) * 255.0f + 0.5f) << 8) | (uint32_t)(clamp01(ob) * 255.0f + 0.5f);
     }
-    if (!p[P_TARGET_HAS_ALPHA])
+    if (!R->target_alpha)
         out |= 0xff000000u;
-    else if (p[P_ALPHA_WRITE])
+    else if (R->alpha_write)
         out = (out & 0x00ffffffu) | ((uint32_t)(clamp01(oa) * 255.0f + 0.5f) << 24);
     R->px[idx] = out;
-    if (p[P_DEPTH_WRITE])
-        zbuf[idx] = z;
+    if (R->depth_write)
+        R->zb[idx] = z;
 }
 
 static void to_screen(const Raster *R, const Vtx *v, SVtx *s) {
@@ -477,7 +481,7 @@ static void to_screen(const Raster *R, const Vtx *v, SVtx *s) {
     s->fog = v->fog * iw;
 }
 
-static void raster_triangle(Raster *R, const SVtx *a, const SVtx *b, const SVtx *c) {
+static void raster_triangle(const Raster *R, const SVtx *a, const SVtx *b, const SVtx *c) {
     float area = (b->sx - a->sx) * (c->sy - a->sy) - (c->sx - a->sx) * (b->sy - a->sy);
     if (fabsf(area) < 1e-6f)
         return;
@@ -492,23 +496,72 @@ static void raster_triangle(Raster *R, const SVtx *a, const SVtx *b, const SVtx 
     if (minx >= maxx || miny >= maxy)
         return;
 
+    // Bản sao cục bộ: ghi pixel không thể đè lên nó nên trạng thái nằm yên trong thanh ghi
+    const Raster S = *R;
+    // Thuộc tính nào bị ghi đè hoặc không dùng thì khỏi nội suy
+    bool replace = S.tex && S.tex_func == FUNC_REPLACE;
+    bool need_rgb = !S.flat && !replace;
+    bool need_a = !S.flat && !(replace && S.tex_alpha);
+    bool need_uv = S.tex != NULL;
+    bool need_fog = S.fog_mode != 0;
+
     float inv = 1.0f / area;
+
+    // Đoạn pixel của mỗi hàng lấy từ 2 cạnh cắt hàng đó (đỉnh sắp theo y). Tam giác nhỏ thì số hàng gần
+    // bằng số pixel nên phần này phải rẻ; đoạn được nới 1-2 pixel và từng pixel vẫn được kiểm tra chính xác.
+    const SVtx *t0 = a, *t1 = b, *t2 = c, *tt;
+    if (t1->sy < t0->sy) { tt = t0; t0 = t1; t1 = tt; }
+    if (t2->sy < t1->sy) { tt = t1; t1 = t2; t2 = tt; }
+    if (t1->sy < t0->sy) { tt = t0; t0 = t1; t1 = tt; }
+    float ya = t0->sy, yb = t1->sy, yc = t2->sy;
+    float k02 = yc > ya ? (t2->sx - t0->sx) / (yc - ya) : 0;
+    float k01 = yb > ya ? (t1->sx - t0->sx) / (yb - ya) : 0;
+    float k12 = yc > yb ? (t2->sx - t1->sx) / (yc - yb) : 0;
+
     for (int y = miny; y < maxy; y++) {
         float py = y + 0.5f;
-        for (int x = minx; x < maxx; x++) {
+        int xs = minx, xe = maxx;
+        if (py >= ya && py <= yc) {
+            float xl = t0->sx + (py - ya) * k02;
+            float xr = py < yb ? t0->sx + (py - ya) * k01 : t1->sx + (py - yb) * k12;
+            if (xl > xr) { float tmp = xl; xl = xr; xr = tmp; }
+            int s = (int)ceilf(xl - 0.5f) - 1, e = (int)floorf(xr - 0.5f) + 2;
+            if (s > xs) xs = s;
+            if (e < xe) xe = e;
+        } else if (py < ya - 0.01f || py > yc + 0.01f) {
+            continue;   // hàng ngoài tam giác (sát đỉnh thì duyệt cả hộp bao cho chắc)
+        }
+
+        int row = y * S.w;
+        for (int x = xs; x < xe; x++) {
             float px = x + 0.5f;
             float w0 = ((b->sx - px) * (c->sy - py) - (c->sx - px) * (b->sy - py)) * inv;
             float w1 = ((c->sx - px) * (a->sy - py) - (a->sx - px) * (c->sy - py)) * inv;
             float w2 = 1.0f - w0 - w1;
             if (w0 < 0 || w1 < 0 || w2 < 0)
                 continue;
+            int idx = row + x;
             float z = w0 * a->sz + w1 * b->sz + w2 * c->sz;
-            float iw = w0 * a->iw + w1 * b->iw + w2 * c->iw;
-            float pw = 1.0f / iw;
-            shade_pixel(R, x, y, z, (w0 * a->r + w1 * b->r + w2 * c->r) * pw, (w0 * a->g + w1 * b->g + w2 * c->g) * pw,
-                        (w0 * a->b + w1 * b->b + w2 * c->b) * pw, (w0 * a->a + w1 * b->a + w2 * c->a) * pw,
-                        (w0 * a->u + w1 * b->u + w2 * c->u) * pw, (w0 * a->v + w1 * b->v + w2 * c->v) * pw,
-                        (w0 * a->fog + w1 * b->fog + w2 * c->fog) * pw);
+            if (S.depth_test && z > S.zb[idx])
+                continue;
+            float r = 0, g = 0, bb = 0, al = 0, u = 0, v = 0, fog = 0;
+            if (need_rgb || need_a || need_uv || need_fog) {
+                float pw = 1.0f / (w0 * a->iw + w1 * b->iw + w2 * c->iw);
+                if (need_rgb) {
+                    r = (w0 * a->r + w1 * b->r + w2 * c->r) * pw;
+                    g = (w0 * a->g + w1 * b->g + w2 * c->g) * pw;
+                    bb = (w0 * a->b + w1 * b->b + w2 * c->b) * pw;
+                }
+                if (need_a)
+                    al = (w0 * a->a + w1 * b->a + w2 * c->a) * pw;
+                if (need_uv) {
+                    u = (w0 * a->u + w1 * b->u + w2 * c->u) * pw;
+                    v = (w0 * a->v + w1 * b->v + w2 * c->v) * pw;
+                }
+                if (need_fog)
+                    fog = (w0 * a->fog + w1 * b->fog + w2 * c->fog) * pw;
+            }
+            shade_pixel(&S, idx, z, r, g, bb, al, u, v, fog);
         }
     }
 }
@@ -622,6 +675,21 @@ static NativeResult M3G_renderSubmesh(VMThread *t, Value *args, Value *ret) {
         R.tw = p[P_TEX_W];
         R.th = p[P_TEX_H];
     }
+    R.zb = zbuf;
+    R.depth_test = p[P_DEPTH_TEST] != 0;
+    R.depth_write = p[P_DEPTH_WRITE] != 0;
+    R.color_write = p[P_COLOR_WRITE] != 0;
+    R.alpha_write = p[P_ALPHA_WRITE] != 0;
+    R.target_alpha = p[P_TARGET_HAS_ALPHA] != 0;
+    R.clamp_s = p[P_TEX_WRAP_S] == WRAP_CLAMP;
+    R.clamp_t = p[P_TEX_WRAP_T] == WRAP_CLAMP;
+    R.tex_alpha = p[P_TEX_HAS_ALPHA] != 0;
+    R.tex_func = p[P_TEX_FUNC];
+    R.blending = p[P_BLENDING];
+    R.alpha_thr = p[P_ALPHA_THRESHOLD];
+    R.fog_mode = p[P_FOG_MODE];
+    memcpy(R.tex_blend, f + F_TEX_BLEND_COLOR, sizeof(R.tex_blend));
+    memcpy(R.fog_color, f + F_FOG_COLOR, sizeof(R.fog_color));
 
     float nm[9];
     normal_matrix(f + F_MODELVIEW, nm);
@@ -684,13 +752,14 @@ static NativeResult M3G_clear(VMThread *t, Value *args, Value *ret) {
     if (y1 > h) y1 = h;
     zbuf_ensure(w, h);
     uint32_t *px = ARRAY_DATA(target, uint32_t);
+    float *zb = zbuf;
     for (int y = y0; y < y1; y++) {
-        for (int x = x0; x < x1; x++) {
-            if (clear_color)
+        if (clear_color)
+            for (int x = x0; x < x1; x++)
                 px[y * w + x] = color;
-            if (clear_depth)
-                zbuf[y * w + x] = 1.0f;
-        }
+        if (clear_depth)
+            for (int x = x0; x < x1; x++)
+                zb[y * w + x] = 1.0f;
     }
     return NATIVE_OK;
 }
@@ -760,6 +829,8 @@ static NativeResult M3G_inflate0(VMThread *t, Value *args, Value *ret) {
 }
 
 void midp_m3g_register(void) {
+    for (int i = 0; i < 256; i++)
+        u8f[i] = i / 255.0f;
     native_register("javax/microedition/m3g/Loader", "inflate0", "([BIII)[B", M3G_inflate0);
     const char *G = "javax/microedition/m3g/Graphics3D";
     native_register(G, "renderSubmesh",

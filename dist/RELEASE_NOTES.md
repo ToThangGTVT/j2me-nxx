@@ -1,3 +1,3 @@
-## J2ME-NXX v0.8.9
+## J2ME-NXX v0.8.10
 
-- Fixed stutters in games that print many exception stack traces (e.g. entering some maps): stack traces are now skipped unless "Write log" is on.
+- Faster 3D (M3G) rendering: about 1.45x faster in Minecraft J2ME PE, with identical output. 3D games get higher FPS; set an FPS limit to also lower CPU usage.

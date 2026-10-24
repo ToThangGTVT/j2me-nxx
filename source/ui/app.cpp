@@ -251,8 +251,9 @@ static int run(int argc, char* argv[])
     bool first_run = !settings_load();
 
     // Chữ của borealis (gợi ý nút) theo ngôn ngữ đã chọn; lần đầu theo máy
-    brls::Platform::APP_LOCALE_DEFAULT = first_run ? brls::LOCALE_AUTO : settings()->lang == LANG_EN ? "en-US"
-                                                                                                    : "vi";
+    static const char* const brls_locales[LANG_COUNT] = { "vi", brls::LOCALE_EN_US.c_str(), brls::LOCALE_ZH_HANS.c_str(),
+                                                          brls::LOCALE_RU.c_str() };
+    brls::Platform::APP_LOCALE_DEFAULT = first_run ? brls::LOCALE_AUTO : brls_locales[settings()->lang];
     brls::Logger::setLogLevel(SDL_getenv("J2ME_NX_BRLS_DEBUG") ? brls::LogLevel::LOG_DEBUG : brls::LogLevel::LOG_INFO);
     if (!brls::Application::init())
         throw std::runtime_error("brls::Application::init failed");

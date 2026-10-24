@@ -48,7 +48,7 @@ typedef struct {
     int font_scale;                                         // cỡ chữ, % so với cỡ gốc
     int text_hires;                                         // vẽ chữ nét cao gấp n lần (< 2 = tắt)
     bool system_font;                                       // font hệ thống làm font chính cho chữ
-    const char *lang;                                       // "vi" / "en": ngôn ngữ giao diện MIDP
+    const char *lang;                                       // "vi" / "en" / "zh" / "ru": ngôn ngữ giao diện MIDP
     const char *platform;                                   // microedition.platform
     // Mã phím của hãng: lên, xuống, trái, phải, fire, mềm trái, mềm phải, xoá
     int keycodes[8];

@@ -1,7 +1,7 @@
 package j2menx;
 
 // Ngôn ngữ giao diện MIDP theo cài đặt của app (thuộc tính j2menx.lang).
-// Chuỗi từng ngôn ngữ nằm ở LangVi / LangEn, đúng thứ tự các hằng số dưới đây.
+// Chuỗi từng ngôn ngữ nằm ở LangVi / LangEn / LangZh / LangRu, đúng thứ tự các hằng số dưới đây.
 public final class Lang {
     public static final int CREATE_MIDLET_FAILED = 0;
     public static final int START_APP_FAILED = 1;
@@ -26,7 +26,16 @@ public final class Lang {
 
     private static String[] table() {
         if (strings == null) {
-            strings = "en".equals(System.getProperty("j2menx.lang")) ? LangEn.STRINGS : LangVi.STRINGS;
+            String lang = System.getProperty("j2menx.lang");
+            if ("en".equals(lang)) {
+                strings = LangEn.STRINGS;
+            } else if ("zh".equals(lang)) {
+                strings = LangZh.STRINGS;
+            } else if ("ru".equals(lang)) {
+                strings = LangRu.STRINGS;
+            } else {
+                strings = LangVi.STRINGS;
+            }
         }
         return strings;
     }

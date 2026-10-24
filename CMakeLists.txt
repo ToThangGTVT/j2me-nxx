@@ -308,6 +308,8 @@ add_executable(j2me-nxx
     source/lang.c
     source/lang_vi.c
     source/lang_en.c
+    source/lang_zh.c
+    source/lang_ru.c
     source/keymap.c
     source/keybind.c
     source/settings.c

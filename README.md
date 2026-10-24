@@ -105,7 +105,7 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 Danh sách ứng dụng hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng ứng dụng (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
 Trong danh sách ứng dụng (**A** mở):
-- **X**: Cài đặt chung (chia thẻ Màn hình ứng dụng / Điều khiển / Chữ và âm thanh / Hệ thống): giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chạy, ánh xạ phím, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English).
+- **X**: Cài đặt chung (chia thẻ Màn hình ứng dụng / Điều khiển / Chữ và âm thanh / Hệ thống): giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chạy, ánh xạ phím, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English / 简体中文 / Русский).
 - **−**: Tùy chọn riêng cho ứng dụng đang chọn (FPS, kích thước màn hình, kiểu phím, ánh xạ phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nxx/options/<tên>.ini`.
 
 Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng của ứng dụng > `Nokia-MIDlet-Original-Display-Size` trong MANIFEST/JAD > cài đặt chung (mặc định 240x320).
@@ -235,7 +235,7 @@ The touch screen is mapped to pointer events.
 The app list shows the name, vendor, version and icon read from each app's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
 
 In the app list (**A** opens):
-- **X**: Global settings (tabs App screen / Controls / Text and sound / System): FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while running, button mapping, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English).
+- **X**: Global settings (tabs App screen / Controls / Text and sound / System): FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while running, button mapping, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English / 简体中文 / Русский).
 - **−**: Options for the selected app (FPS, screen size, key layout, button mapping, font size, smooth text), saved to `sdmc:/switch/j2me-nxx/options/<name>.ini`.
 
 Screen size is chosen in this order: the app's own options > `Nokia-MIDlet-Original-Display-Size` in MANIFEST/JAD > global settings (default 240x320).

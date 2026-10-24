@@ -1,0 +1,16 @@
+{
+  "ok": "确定",
+  "cancel": "取消",
+  "back": "返回",
+  "exit": "退出",
+  "exit_hint": "退出 J2ME-NXX？",
+  "open": "打开",
+  "on": "开",
+  "off": "关",
+  "delete": "删除",
+  "save": "保存",
+  "input": "请输入...",
+  "submit": "提交",
+  "left": "左",
+  "right": "右"
+}

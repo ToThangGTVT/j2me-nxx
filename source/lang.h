@@ -1,9 +1,11 @@
-// Chuỗi giao diện theo ngôn ngữ (Tiếng Việt / English)
+// Chuỗi giao diện theo ngôn ngữ (Tiếng Việt / English / 简体中文 / Русский)
 #pragma once
 
 typedef enum {
     LANG_VI,
     LANG_EN,
+    LANG_ZH,
+    LANG_RU,
     LANG_COUNT,
 } Lang;
 
@@ -259,7 +261,7 @@ typedef enum {
 
 void lang_set(Lang l);
 Lang lang_get(void);
-const char *lang_code(Lang l);          // "vi" / "en"
+const char *lang_code(Lang l);          // "vi" / "en" / "zh" / "ru"
 const char *lang_name(Lang l);          // tên hiển thị
 Lang lang_from_code(const char *code);
 const char *tr(StrId id);

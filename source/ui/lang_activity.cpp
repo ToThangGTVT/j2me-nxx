@@ -11,7 +11,7 @@ void LangActivity::open()
 }
 
 // Thứ tự nút từ trái sang phải
-static const Lang choices[] = { LANG_VI, LANG_EN };
+static const Lang choices[] = { LANG_VI, LANG_EN, LANG_ZH, LANG_RU };
 
 brls::View* LangActivity::createContentView()
 {
@@ -36,8 +36,8 @@ brls::View* LangActivity::createContentView()
         auto* button = new brls::Button();
         button->setText(lang_name(l));
         button->setFontSize(30);
-        button->setDimensions(300, 110);
-        button->setMargins(0, 20, 0, 20);
+        button->setDimensions(260, 110);
+        button->setMargins(0, 15, 0, 15);
         button->setStyle(&brls::BUTTONSTYLE_BORDERED);
         button->registerClickAction([l](brls::View*)
             {

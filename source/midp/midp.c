@@ -477,9 +477,16 @@ bool midp_start(const MidpConfig *c, const char *midlet_class) {
     vm_set_property("microedition.configuration", "CLDC-1.1");
     vm_set_property("microedition.profiles", "MIDP-2.0");
     vm_set_property("microedition.encoding", "UTF-8");
-    bool en = cfg.lang && strcmp(cfg.lang, "en") == 0;
-    vm_set_property("microedition.locale", en ? "en-US" : "vi-VN");
-    vm_set_property("j2menx.lang", en ? "en" : "vi");
+    static const char *const locales[][2] = { { "en", "en-US" }, { "zh", "zh-CN" }, { "ru", "ru-RU" } };
+    const char *lang = "vi", *locale = "vi-VN";
+    for (size_t i = 0; cfg.lang && i < sizeof(locales) / sizeof(locales[0]); i++) {
+        if (strcmp(cfg.lang, locales[i][0]) == 0) {
+            lang = locales[i][0];
+            locale = locales[i][1];
+        }
+    }
+    vm_set_property("microedition.locale", locale);
+    vm_set_property("j2menx.lang", lang);
     vm_set_property("microedition.media.version", "1.1");
     vm_set_property("supports.mixing", "false");
     // JSR-75 FileConnection

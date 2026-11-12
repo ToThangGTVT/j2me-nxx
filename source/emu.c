@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include "crash.h"
+#include "frameinterp.h"
 #include "gfx.h"
 #include "input.h"
 #include "keybind.h"
@@ -49,6 +50,8 @@ static bool sharp_dirty;
 static int hires_img;
 static int hires_k;
 static bool show_hires;
+// Nội suy khung hình thử nghiệm (frameinterp.h)
+static bool interp_on;
 // Đo hiệu năng. Cài đặt -> Hiện FPS: hiện ở góc màn hình, bật thêm Ghi log thì ghi ra <data>/log.txt
 // (desktop: J2ME_NX_PROF=1 ghi ra stderr)
 static double stat_vm_max, stat_vm_sum;
@@ -637,6 +640,9 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     if (hires_k < 2)
         hires_k = 0;
     show_hires = false;
+    // J2ME_NX_INTERP: bật để thử trên desktop không cần vào Cài đặt
+    interp_on = ((gs.frame_interp >= 0 ? gs.frame_interp == 1 : settings()->frame_interp) ||
+                 SDL_getenv("J2ME_NX_INTERP") != NULL);
 
     MidpConfig mc = {
         .screen_w = scr_w,
@@ -692,8 +698,8 @@ bool emu_start(const char *jar_path, const char *game_id, int midlet, char *err,
     memset(&kb, 0, sizeof(kb));
     vm_set_preempt_flag(&main_waiting);
     if (log_file)
-        fprintf(log_file, "man %dx%d  fps %d  aot %d  scale %d  chu net cao %d  soundfont %d\n", scr_w, scr_h,
-                fps_limit, host.aot, settings()->scale_mode, hires_k, (int)sf);
+        fprintf(log_file, "man %dx%d  fps %d  aot %d  scale %d  chu net cao %d  soundfont %d  noi suy %d\n", scr_w,
+                scr_h, fps_limit, host.aot, settings()->scale_mode, hires_k, (int)sf, interp_on);
     stall_start();
     cpu_boosted = settings()->cpu_boost;
     if (cpu_boosted)
@@ -727,6 +733,8 @@ void emu_stop(void) {
     gfx_image_free(sharp_img);
     gfx_image_free(hires_img);
     screen_img = sharp_img = hires_img = 0;
+    frameinterp_reset();
+    interp_on = false;
     zip_close(syslib);
     zip_close(game);
     syslib = game = NULL;
@@ -1170,14 +1178,17 @@ static void draw_help(void) {
 }
 
 // Thống kê: số khung hình game vẽ ra trong 1 giây, % thời gian luồng VM chạy code Java
-static void draw_stats(bool dirty) {
+// shown: màn hình có ảnh mới (khung của game hoặc khung nội suy)
+static void draw_stats(bool dirty, bool shown) {
     static Uint32 window_start;
-    static int frames, shown_fps, shown_busy;
+    static int frames, shown_fps, shown_busy, out_frames, shown_out;
     static double shown_vm, frame_max;
     static int slow_frames, host_frames;
 
     if (dirty)
         frames++;
+    if (shown)
+        out_frames++;
     // Khoảng cách giữa 2 lần vẽ của app (gồm cả VM, vẽ, chờ vsync): lớn = khựng
     Uint64 pc = SDL_GetPerformanceCounter();
     if (stat_last_frame) {
@@ -1197,19 +1208,21 @@ static void draw_stats(bool dirty) {
     Uint32 elapsed = now - window_start;
     if (elapsed >= 1000) {
         shown_fps = (int)(frames * 1000u / elapsed);
+        shown_out = (int)(out_frames * 1000u / elapsed);
         shown_vm = pub_vm_max;
         shown_busy = pub_cpu;
         size_t ram_used, ram_total;
         platform_mem_usage(&ram_used, &ram_total);
-        vm_prof_log("fps %d  cpu %d%%  vm max %.1f ms  game gap max %d ms  frame max %.1f ms  slow %d/%d  heap %zuK  "
-                    "ram %zu/%zuM",
-                    shown_fps, shown_busy, shown_vm, midp_take_frame_gap_max(), frame_max, slow_frames, host_frames,
-                    heap_used() / 1024, ram_used >> 20, ram_total >> 20);
+        vm_prof_log("fps %d  hien %d  cpu %d%%  vm max %.1f ms  game gap max %d ms  frame max %.1f ms  slow %d/%d  "
+                    "heap %zuK  ram %zu/%zuM",
+                    shown_fps, shown_out, shown_busy, shown_vm, midp_take_frame_gap_max(), frame_max, slow_frames,
+                    host_frames, heap_used() / 1024, ram_used >> 20, ram_total >> 20);
         vm_prof_flush();
         frame_max = 0;
         slow_frames = 0;
         host_frames = 0;
         frames = 0;
+        out_frames = 0;
         window_start = now;
     }
     if (!settings()->show_fps)
@@ -1222,8 +1235,13 @@ static void draw_stats(bool dirty) {
         snprintf(ram, sizeof(ram), "%zu/%zuM", ram_used >> 20, ram_total >> 20);
     else
         snprintf(ram, sizeof(ram), "%zuM", ram_used >> 20);
-    char buf[128];
-    snprintf(buf, sizeof(buf), "FPS %d   CPU %d%%   Java %zuK   RAM %s", shown_fps, shown_busy, heap_used() / 1024, ram);
+    char buf[128], fps[32];
+    // Nội suy: FPS của game -> số khung màn hình thực sự hiện
+    if (interp_on)
+        snprintf(fps, sizeof(fps), "%d \xE2\x86\x92 %d", shown_fps, shown_out);
+    else
+        snprintf(fps, sizeof(fps), "%d", shown_fps);
+    snprintf(buf, sizeof(buf), "FPS %s   CPU %d%%   Java %zuK   RAM %s", fps, shown_busy, heap_used() / 1024, ram);
     int tw = gfx_text_width(FONT_SMALL, buf) + 16, th = gfx_font_height(FONT_SMALL) + 8;
     gfx_fill_rect(8, 8, tw, th, RGB(0, 0, 0));
     gfx_text(FONT_SMALL, 16, 12, 0, ALIGN_LEFT, shown_fps < 20 ? COL_WARN : COL_TEXT, buf);
@@ -1257,16 +1275,30 @@ static void draw_game(void) {
     const uint32_t *fb = midp_framebuffer_lock(&w, &h, &dirty);
     Uint64 tl1 = SDL_GetPerformanceCounter();
     phase(PH_DRAW);
+    double now_ms = (double)tl1 * 1000.0 / (double)SDL_GetPerformanceFrequency();
+    bool shown = fb && dirty;     // screen_img / hires_img có ảnh mới
     if (fb && dirty) {
         int k = 0;
         const uint32_t *hi = hires_img ? midp_framebuffer_hires(&k) : NULL;
-        show_hires = hi && k == hires_k;
-        if (show_hires)
-            gfx_image_update(hires_img, hi);
-        else
-            gfx_image_update(screen_img, fb);
+        bool use_hi = hi && k == hires_k;
+        if (interp_on && frameinterp_push(fb, w, h, use_hi ? hi : NULL, k, now_ms)) {
+            shown = false;      // frameinterp_frame quyết định hiện gì
+        } else {
+            show_hires = use_hi;
+            gfx_image_update(show_hires ? hires_img : screen_img, show_hires ? hi : fb);
+        }
     }
     midp_framebuffer_unlock();
+    // Ngoài khoá framebuffer: ước lượng chuyển động (khi có khung mới) và dựng khung ở thời điểm này
+    if (interp_on) {
+        bool hi;
+        const uint32_t *img = frameinterp_frame(now_ms, &hi);
+        if (img) {
+            show_hires = hi;
+            gfx_image_update(hi ? hires_img : screen_img, img);
+            shown = true;
+        }
+    }
     Uint64 tl2 = SDL_GetPerformanceCounter();
     double f = 1000.0 / SDL_GetPerformanceFrequency();
     if ((tl2 - tl0) * f > 5)
@@ -1276,7 +1308,7 @@ static void draw_game(void) {
     if (show_hires) {
         gfx_draw_image(hires_img, dst.x, dst.y, dst.w, dst.h);
     } else if (sharp_img) {
-        if ((dirty || sharp_dirty) && gfx_image_upscale(screen_img, sharp_img))
+        if ((shown || sharp_dirty) && gfx_image_upscale(screen_img, sharp_img))
             sharp_dirty = false;
         gfx_draw_image(sharp_dirty ? screen_img : sharp_img, dst.x, dst.y, dst.w, dst.h);
     } else {
@@ -1287,7 +1319,7 @@ static void draw_game(void) {
         draw_help();
     vpad_draw();
     vkb_draw();
-    draw_stats(fb && dirty);
+    draw_stats(fb && dirty, shown);
 
     const char *note = toast_until && !SDL_TICKS_PASSED(SDL_GetTicks(), toast_until) ? toast : NULL;
     if (note) {

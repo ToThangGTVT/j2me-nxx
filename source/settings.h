@@ -27,6 +27,7 @@ typedef struct {
     bool vpad;              // phím ảo trên màn hình khi chạy (vpad.h)
     VpadLayout vpad_layout;
     bool aot;               // chế độ AOT thử nghiệm: dịch sang mã máy khi nạp lớp (vm/aot.h)
+    bool frame_interp;      // nội suy khung hình thử nghiệm (frameinterp.h)
 } Settings;
 
 typedef struct {
@@ -39,6 +40,7 @@ typedef struct {
     int keybinds[BIND_COUNT];   // BIND_INHERIT = theo cài đặt chung
     int vpad;               // phím ảo: -1 = theo cài đặt chung, 0 tắt, 1 bật
     int aot;                // chế độ AOT: -1 = theo cài đặt chung, 0 tắt, 1 bật
+    int frame_interp;       // nội suy khung hình: -1 = theo cài đặt chung, 0 tắt, 1 bật
 } GameSettings;
 
 typedef struct {

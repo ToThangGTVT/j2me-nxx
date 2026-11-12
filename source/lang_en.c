@@ -149,6 +149,9 @@ const char *const lang_strings_en[S_COUNT] = {
                          "code gets much faster. Experimental, turn it off if an app misbehaves. Can be set per app in App options.",
     [S_AOT_HINT_APP]   = "Compile this app's Java code to machine code when it loads. Experimental, turn it off if it misbehaves.",
     [S_AOT_UNSUPPORTED] = "Not supported",
+    [S_FRAME_INTERP]   = "Frame interpolation (experimental)",
+    [S_FRAME_INTERP_HINT] = "When an app draws few frames (15-30 FPS), build in-between frames from the motion so the picture runs smoothly at up to 50-60 FPS. Adds about one app frame of delay, moving edges may smear, uses more CPU. Not used on screens larger than 360x640. Toggle per app in App options.",
+    [S_FRAME_INTERP_HINT_APP] = "Build in-between frames for this app so the picture runs smoothly at up to 50-60 FPS. Experimental: about one frame of delay, moving edges may smear.",
     [S_VPAD_LAYOUT]    = "On-screen keypad layout",
     [S_VPAD_LAYOUT_HINT] = "Keys are placed on the Switch screen, shared by all apps. Drag each key to move it, drag the corner dot to resize; set rounded corners, opacity and hide "
                            "keys you don't need. Keys placed next to each other snap together. Press " ICON_A " to open.",

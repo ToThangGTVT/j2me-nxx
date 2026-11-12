@@ -301,6 +301,7 @@ add_executable(j2me-nxx
     source/ui/backup_activity.cpp
     source/platform.c
     source/gfx.c
+    source/frameinterp.c
     source/input.c
     source/game_list.c
     source/emu.c

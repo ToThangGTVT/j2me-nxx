@@ -373,8 +373,11 @@ brls::View* SettingsActivity::tab_screen()
                 settings()->scale_mode = i;
                 save(); });
         add_item(col, cell, T(S_SCALE_HINT));
-        add_toggle(col, S_SHOW_FPS, S_SHOW_FPS_HINT, &s->show_fps, nullptr);
     }
+    add_toggle(col, S_FRAME_INTERP, game_mode ? S_FRAME_INTERP_HINT_APP : S_FRAME_INTERP_HINT, &s->frame_interp,
+               &game.frame_interp);
+    if (!game_mode)
+        add_toggle(col, S_SHOW_FPS, S_SHOW_FPS_HINT, &s->show_fps, nullptr);
     update_size_items();
     return scroll;
 }

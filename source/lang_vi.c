@@ -147,6 +147,9 @@ const char *const lang_strings_vi[S_COUNT] = {
                          "nhiều. Đang thử nghiệm, ứng dụng lỗi thì tắt đi. Bật / tắt riêng trong Tuỳ chọn ứng dụng.",
     [S_AOT_HINT_APP]   = "Dịch code Java của ứng dụng này sang mã máy khi nạp. Đang thử nghiệm, lỗi thì tắt đi.",
     [S_AOT_UNSUPPORTED] = "Không hỗ trợ",
+    [S_FRAME_INTERP]   = "Nội suy khung hình (thử nghiệm)",
+    [S_FRAME_INTERP_HINT] = "Ứng dụng vẽ ít khung hình (15-30 FPS) thì dựng thêm khung ở giữa theo chuyển động để hình mượt tới 50-60 FPS. Hình hiện chậm hơn khoảng 1 khung của ứng dụng, có thể lem ở viền vật chuyển động; tốn thêm CPU. Không dùng với màn hình lớn hơn 360x640. Bật / tắt riêng trong Tuỳ chọn ứng dụng.",
+    [S_FRAME_INTERP_HINT_APP] = "Dựng thêm khung hình ở giữa cho ứng dụng này để hình mượt tới 50-60 FPS. Đang thử nghiệm: hình chậm hơn khoảng 1 khung, có thể lem ở viền vật chuyển động.",
     [S_VPAD_LAYOUT]    = "Bố cục phím ảo",
     [S_VPAD_LAYOUT_HINT] = "Phím đặt theo màn hình Switch, dùng chung cho mọi ứng dụng. Kéo từng phím để đổi vị trí, kéo chấm ở góc để đổi kích thước; chỉnh bo góc, độ rõ, ẩn phím "
                            "không dùng. Phím để sát nhau thì tự hít vào nhau. Nhấn " ICON_A " để mở.",

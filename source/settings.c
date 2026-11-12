@@ -41,6 +41,7 @@ static Settings current = {
     .cpu_boost = false,     // nóng máy, hao pin: người dùng tự bật
     .soundfont = "-",       // mặc định tắt: bộ tổng hợp sóng
     .aot = false,           // thử nghiệm: người dùng tự bật
+    .frame_interp = false,  // thử nghiệm: người dùng tự bật
 };
 
 Settings *settings(void) {
@@ -71,6 +72,8 @@ bool settings_load(void) {
             current.vpad = v != 0;
         else if (sscanf(line, "aot=%d", &v) == 1)
             current.aot = v != 0;
+        else if (sscanf(line, "frame_interp=%d", &v) == 1)
+            current.frame_interp = v != 0;
         else if (sscanf(line, "vpad_opacity=%d", &v) == 1 && v >= VPAD_OPACITY_MIN && v <= VPAD_OPACITY_MAX)
             current.vpad_layout.opacity = v;
         else if (sscanf(line, "vpad_snap=%d", &v) == 1)
@@ -145,6 +148,7 @@ bool settings_save(void) {
     fprintf(f, "soundfont=%s\n", current.soundfont);
     fprintf(f, "vpad=%d\n", current.vpad ? 1 : 0);
     fprintf(f, "aot=%d\n", current.aot ? 1 : 0);
+    fprintf(f, "frame_interp=%d\n", current.frame_interp ? 1 : 0);
     fprintf(f, "vpad_opacity=%d\n", current.vpad_layout.opacity);
     fprintf(f, "vpad_snap=%d\n", current.vpad_layout.snap ? 1 : 0);
     // Chỉ ghi phím ảo đã đổi khác bố cục mặc định
@@ -213,6 +217,7 @@ void game_settings_load(const char *game, GameSettings *out) {
     out->font_scale = -1;
     out->vpad = -1;
     out->aot = -1;
+    out->frame_interp = -1;
     for (int b = 0; b < BIND_COUNT; b++)
         out->keybinds[b] = BIND_INHERIT;
     char path[512];
@@ -236,6 +241,8 @@ void game_settings_load(const char *game, GameSettings *out) {
             out->vpad = v;
         else if (sscanf(line, "aot=%d", &v) == 1 && v >= -1 && v <= 1)
             out->aot = v;
+        else if (sscanf(line, "frame_interp=%d", &v) == 1 && v >= -1 && v <= 1)
+            out->frame_interp = v;
         else if (sscanf(line, "system_font=%d", &v) == 1 && v >= -1 && v <= 1)
             out->system_font = v;
         else if (sscanf(line, "font_scale=%d", &v) == 1 && (v == -1 || (v >= 50 && v <= 400)))
@@ -257,7 +264,8 @@ bool game_settings_save(const char *game, const GameSettings *gs) {
     game_path(game, path, sizeof(path));
     // Toàn mặc định thì xoá file cho gọn
     if (gs->fps_limit < 0 && gs->screen_w == 0 && gs->keymap < 0 && gs->smooth_text < 0 &&
-        gs->system_font < 0 && gs->font_scale < 0 && gs->vpad < 0 && gs->aot < 0 && keybind_changed(gs->keybinds, true) == 0) {
+        gs->system_font < 0 && gs->font_scale < 0 && gs->vpad < 0 && gs->aot < 0 &&
+        gs->frame_interp < 0 && keybind_changed(gs->keybinds, true) == 0) {
         remove(path);
         return true;
     }
@@ -273,6 +281,7 @@ bool game_settings_save(const char *game, const GameSettings *gs) {
     fprintf(f, "font_scale=%d\n", gs->font_scale);
     fprintf(f, "vpad=%d\n", gs->vpad);
     fprintf(f, "aot=%d\n", gs->aot);
+    fprintf(f, "frame_interp=%d\n", gs->frame_interp);
     for (int b = 0; b < BIND_COUNT; b++) {
         if (gs->keybinds[b] != BIND_INHERIT)
             fprintf(f, "key_%s=%d\n", keybind_id(b), gs->keybinds[b]);

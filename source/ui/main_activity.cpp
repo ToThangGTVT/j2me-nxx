@@ -325,6 +325,8 @@ void MainActivity::register_actions()
         {
             UploadActivity::open(platform_games_dir(), [](int received)
                 {
+                    app_logf("[upload] dong man hinh Gui game: nhan %d file%s", received,
+                        received > 0 ? ", quet lai danh sach" : "");
                     if (received > 0 && instance)
                     {
                         instance->rescan(true);
@@ -511,8 +513,10 @@ void MainActivity::confirm_delete(int index)
 bool MainActivity::launch_game(const char* path, const char* game_id, int midlet)
 {
     char err[256] = "";
+    app_logf("Mo game %s (MIDlet %d)", path, midlet);
     if (!emu_start(path, game_id, midlet, err, sizeof(err)))
     {
+        app_logf("Khong mo duoc game: %s", err);
         notify(trf(S_ERROR_FMT, err));
         return false;
     }

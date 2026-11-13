@@ -1,12 +1,14 @@
 #include "game_list.h"
 
 #include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
 
+#include "crash.h"
 #include "manifest.h"
 #include "platform.h"
 #include "third_party/stb_image.h"
@@ -14,6 +16,9 @@
 
 #define MAX_GAMES 2048
 #define MAX_DEPTH 3
+#define MAX_SKIP_LOG 20     // số file không phải .jar ghi vào app.log mỗi lần quét
+
+static int skipped;
 
 static int cmp_entries(const void *a, const void *b) {
     return strcasecmp(((const GameEntry *)a)->name, ((const GameEntry *)b)->name);
@@ -39,8 +44,10 @@ static void scan_dir(GameList *list, const char *root, const char *rel, int dept
     else
         snprintf(dir_path, sizeof(dir_path), "%s", root);
     DIR *d = opendir(dir_path);
-    if (!d)
+    if (!d) {
+        app_logf("[list] khong mo duoc thu muc %s: %s", dir_path, strerror(errno));
         return;
+    }
     struct dirent *ent;
     while ((ent = readdir(d)) && list->count < MAX_GAMES) {
         if (ent->d_name[0] == '.')
@@ -54,15 +61,21 @@ static void scan_dir(GameList *list, const char *root, const char *rel, int dept
         snprintf(full, sizeof(full), "%s/%s", root, child_rel);
 
         struct stat st;
-        if (stat(full, &st) != 0)
+        if (stat(full, &st) != 0) {
+            app_logf("[list] stat loi %s: %s", full, strerror(errno));
             continue;
+        }
         if (S_ISDIR(st.st_mode)) {
             if (depth < MAX_DEPTH)
                 scan_dir(list, root, child_rel, depth + 1);
             continue;
         }
-        if (!has_jar_ext(ent->d_name))
+        if (!has_jar_ext(ent->d_name)) {
+            // Để biết vì sao file vừa chép / gửi không hiện (vd chọn nhầm .jad, file .part nhận dở)
+            if (skipped++ < MAX_SKIP_LOG)
+                app_logf("[list] bo qua (khong phai .jar): %s (%lld byte)", child_rel, (long long)st.st_size);
             continue;
+        }
         GameEntry *g = &list->items[list->count++];
         memset(g, 0, sizeof(*g));
         snprintf(g->name, sizeof(g->name), "%s", child_rel);
@@ -100,9 +113,16 @@ void game_list_scan(GameList *list, const char *dir) {
     char sf_dir[512];   // chỗ chép file SoundFont .sf2
     snprintf(sf_dir, sizeof(sf_dir), "%s/soundfonts", platform_data_dir());
     mkdir(sf_dir, 0777);
+    skipped = 0;
     scan_dir(list, dir, "", 0);
+    app_logf("[list] %d game trong %s%s", list->count, dir, list->count >= MAX_GAMES ? " (da du gioi han)" : "");
+    if (skipped > MAX_SKIP_LOG)
+        app_logf("[list] ... va %d file khac khong phai .jar", skipped - MAX_SKIP_LOG);
 
     qsort(list->items, list->count, sizeof(GameEntry), cmp_entries);
+    // Tên từng game (danh sách nhỏ), để đối chiếu với file trên thẻ khi game không hiện
+    for (int i = 0; i < list->count && i < 100; i++)
+        app_logf("[list]   %s (%ld byte)", list->items[i].name, list->items[i].size);
 }
 
 // Giải mã icon PNG (thường 16-64px) sang ARGB
@@ -206,8 +226,11 @@ bool game_list_find_jad(const GameEntry *g, char *out, size_t size) {
 bool game_list_delete(const GameEntry *g) {
     char jad[600];
     bool has_jad = game_list_find_jad(g, jad, sizeof(jad));
-    if (remove(g->path) != 0)
+    if (remove(g->path) != 0) {
+        app_logf("[list] xoa %s loi: %s", g->path, strerror(errno));
         return false;
+    }
+    app_logf("[list] da xoa %s%s", g->path, has_jad ? " (kem .jad)" : "");
     if (has_jad)
         remove(jad);
     return true;

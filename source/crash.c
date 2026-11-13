@@ -1,6 +1,7 @@
 #include "crash.h"
 
 #include <dirent.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +29,8 @@ static bool ring_full;
 static SDL_SpinLock ring_lock;
 static char game_jar[512], game_cls[256];
 static char crash_dir[512];
+static FILE *app_log;
+static SDL_SpinLock app_log_lock;
 
 void crash_log(const char *line) {
     SDL_AtomicLock(&ring_lock);
@@ -42,6 +45,56 @@ void crash_log(const char *line) {
         }
     }
     SDL_AtomicUnlock(&ring_lock);
+}
+
+void app_log_line(const char *line) {
+    crash_log(line);
+    // Giây từ lúc mở app (không dùng SDL_GetTicks: về 0 sau SDL_Quit)
+    static struct timespec t0;
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    SDL_AtomicLock(&app_log_lock);
+    if (!t0.tv_sec && !t0.tv_nsec)
+        t0 = t;
+    long long ms = (long long)(t.tv_sec - t0.tv_sec) * 1000 + (t.tv_nsec - t0.tv_nsec) / 1000000;
+    if (app_log)
+        fprintf(app_log, "[%5lld.%03lld] %s\n", ms / 1000, ms % 1000, line);
+    SDL_AtomicUnlock(&app_log_lock);
+}
+
+void app_logf(const char *fmt, ...) {
+    char line[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(line, sizeof(line), fmt, ap);
+    va_end(ap);
+    app_log_line(line);
+#ifndef __SWITCH__
+    fprintf(stderr, "%s\n", line);
+#endif
+}
+
+// Thư mục crash + app.log (giữ log lần mở trước ở app-prev.log)
+static void init_common(void) {
+    snprintf(crash_dir, sizeof(crash_dir), "%s/crash", platform_data_dir());
+    mkdir(platform_data_dir(), 0777);
+    char path[600], prev[600];
+    snprintf(path, sizeof(path), "%s/app.log", platform_data_dir());
+    snprintf(prev, sizeof(prev), "%s/app-prev.log", platform_data_dir());
+    remove(prev);
+    rename(path, prev);
+    FILE *f = fopen(path, "w");
+    if (f)
+        setvbuf(f, NULL, _IONBF, 0);    // sập giữa chừng vẫn còn log
+    SDL_AtomicLock(&app_log_lock);
+    app_log = f;
+    SDL_AtomicUnlock(&app_log_lock);
+    time_t now = time(NULL);
+    struct tm *tm = localtime(&now);
+    char when[64] = "?";
+    if (tm)
+        strftime(when, sizeof(when), "%Y-%m-%d %H:%M:%S", tm);
+    app_logf("J2ME-NXX v" APP_VERSION_STR " mo luc %s", when);
 }
 
 void crash_set_game(const char *jar_path, const char *midlet_class) {
@@ -310,8 +363,13 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
 }
 
 void crash_init(void) {
-    snprintf(crash_dir, sizeof(crash_dir), "%s/crash", platform_data_dir());
+    init_common();
     crash_restore_reserve();
+    u64 used = 0, total = 0;
+    svcGetInfo(&used, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
+    svcGetInfo(&total, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
+    app_logf("Switch: applet type %d, RAM %lluM / %lluM", (int)appletGetAppletType(),
+             (unsigned long long)(used >> 20), (unsigned long long)(total >> 20));
 }
 
 #else
@@ -343,7 +401,7 @@ static void on_signal(int sig) {
 }
 
 void crash_init(void) {
-    snprintf(crash_dir, sizeof(crash_dir), "%s/crash", platform_data_dir());
+    init_common();
     crash_restore_reserve();
     // Stack riêng để vẫn ghi được khi tràn stack
     static char alt[64 * 1024];

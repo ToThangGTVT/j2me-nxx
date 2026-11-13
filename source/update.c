@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <SDL.h>
 
+#include "crash.h"
 #include "http.h"
 #include "platform.h"
 
@@ -39,7 +40,7 @@ static void set_state(UpdateState s) {
 }
 
 static void set_error(UpdateState s, const char *msg) {
-    printf("[update] %s\n", msg);
+    app_logf("[update] %s", msg);
     SDL_LockMutex(lock);
     snprintf(error, sizeof(error), "%s", msg);
     state = s;
@@ -329,7 +330,7 @@ static int check_thread(void *arg) {
     has_new = newer(tag, local) && url[0];
     state = has_new ? UPDATE_AVAILABLE : UPDATE_LATEST;
     SDL_UnlockMutex(lock);
-    printf("[update] latest %s, running %s%s\n", tag, local, has_new ? ": update available" : "");
+    app_logf("[update] latest %s, running %s%s", tag, local, has_new ? ": update available" : "");
     return 0;
 }
 

@@ -217,18 +217,9 @@ int main(int argc, char* argv[])
         return 1;
     crash_init();
     std::set_terminate(on_terminate);
-    // Log của borealis vào bộ đệm của báo cáo crash, và ra file (Switch không có console)
+    // Log của borealis vào bộ đệm của báo cáo crash và app.log (Switch không có console)
     brls::Logger::getLogEvent()->subscribe([](brls::Logger::TimePoint, brls::LogLevel, std::string line)
-        { crash_log(line.c_str()); });
-#ifdef __SWITCH__
-    char log_path[600];
-    snprintf(log_path, sizeof(log_path), "%s/borealis.log", platform_data_dir());
-    if (FILE* f = fopen(log_path, "w"))
-    {
-        setvbuf(f, nullptr, _IONBF, 0);     // sập giữa chừng vẫn còn log
-        brls::Logger::setLogOutput(f);
-    }
-#endif
+        { app_log_line(line.c_str()); });
     int ret = 1;
     try
     {

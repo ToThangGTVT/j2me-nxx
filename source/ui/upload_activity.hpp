@@ -29,6 +29,7 @@ class UploadActivity : public brls::Activity
     brls::Label *status = nullptr, *bytes = nullptr, *net_error = nullptr;
     ProgressBar* bar    = nullptr;
     brls::VoidEvent::Subscription loop;
+    bool loop_on = false; // loop chỉ hợp lệ khi đã subscribe (không có Wi-Fi thì không)
 
     void refresh();
 };

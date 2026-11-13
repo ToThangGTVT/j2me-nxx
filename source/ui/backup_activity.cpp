@@ -537,7 +537,8 @@ ShareActivity::ShareActivity(std::function<void(int)> closed)
 
 ShareActivity::~ShareActivity()
 {
-    brls::Application::getRunLoopEvent()->unsubscribe(loop);
+    if (loop_on)
+        brls::Application::getRunLoopEvent()->unsubscribe(loop);
     ShareStatus st;
     share_get_status(&st);
     share_stop();
@@ -613,6 +614,7 @@ void ShareActivity::onContentAvailable()
         return;
     loop = brls::Application::getRunLoopEvent()->subscribe([this]()
         { refresh(); });
+    loop_on = true;
 }
 
 void ShareActivity::refresh()

@@ -14,7 +14,8 @@ UploadActivity::UploadActivity(const std::string& dir, std::function<void(int)> 
 
 UploadActivity::~UploadActivity()
 {
-    brls::Application::getRunLoopEvent()->unsubscribe(loop);
+    if (loop_on)
+        brls::Application::getRunLoopEvent()->unsubscribe(loop);
     UploadStatus st;
     upload_get_status(&st);
     upload_stop();
@@ -91,6 +92,7 @@ void UploadActivity::onContentAvailable()
         return;
     loop = brls::Application::getRunLoopEvent()->subscribe([this]()
         { refresh(); });
+    loop_on = true;
 }
 
 void UploadActivity::refresh()

@@ -207,7 +207,7 @@ class TabButton : public brls::Box
         this->setFocusable(true);
         this->setPadding(4, 16, 0, 16);
         this->setMarginRight(6);
-        this->setShrink(1.0f);
+        // Không bóp tab lại: hàng tab cuộn ngang khi quá dài
         this->setCornerRadius(6);
         auto* text = new brls::Box(brls::Axis::ROW);
         text->setAlignItems(brls::AlignItems::CENTER);
@@ -262,6 +262,58 @@ class TabRow : public brls::Box
             return instance->tabs[instance->tab];
         return brls::Box::getDefaultFocus();
     }
+};
+
+// Khung cuộn ngang của hàng tab: tab đang chọn luôn nằm trong màn hình
+class TabScroll : public brls::HScrollingFrame
+{
+  public:
+    TabScroll()
+    {
+        this->setScrollingBehavior(brls::ScrollingBehavior::CENTERED);
+        this->setScrollingIndicatorVisible(false);
+        // Chỉ các tab nhận focus, khung không tự nhận
+        this->setFocusable(false);
+    }
+
+    // Hết tab ở hai đầu thì không giữ focus lại ở khung
+    brls::View* getNextFocus(brls::FocusDirection direction, brls::View* currentView) override
+    {
+        return brls::Box::getNextFocus(direction, currentView);
+    }
+
+    // Bố cục vừa tính lại (đổi tên, thêm / xoá nhóm): cuộn lại tới tab đang chọn
+    // (hoãn sang khung sau: cuộn gọi invalidate(), cuộn ngay trong onLayout sẽ đệ quy mãi)
+    void onLayout() override
+    {
+        brls::HScrollingFrame::onLayout();
+        if (pending)
+            return;
+        pending = true;
+        brls::sync([this]()
+            {
+                pending = false;
+                if (instance)
+                    instance->scroll_to_tab(false); });
+    }
+
+    // Đưa tab vào giữa khung (giới hạn ở hai đầu do HScrollingFrame lo)
+    void center(brls::View* tab, bool animated)
+    {
+        float mid = tab->getLocalX() + tab->getWidth() / 2;
+        float to  = mid - this->getWidth() / 2;
+        float max = row ? row->getWidth() - this->getWidth() : 0;
+        to        = to > max ? max : to;
+        to        = to < 0 ? 0 : to;
+        // Đã đúng chỗ thì thôi (tránh invalidate thừa)
+        if (fabsf(to - this->getContentOffsetX()) > 0.5f)
+            this->setContentOffsetX(to, animated);
+    }
+
+    brls::View* row = nullptr;  // hàng tab bên trong
+
+  private:
+    bool pending = false;
 };
 
 class GameDataSource : public brls::RecyclerDataSource
@@ -381,7 +433,6 @@ void MainActivity::build_tabs()
 {
     auto* row = new TabRow();
     row->setAlignItems(brls::AlignItems::FLEX_END);
-    row->setMargins(14, 50, 2, 50);
     // Đủ chỗ cho mọi nhóm, ẩn bớt theo số nhóm (không xoá view để khỏi mất focus)
     for (int t = 0; t <= GROUP_MAX + 1; t++)
     {
@@ -414,7 +465,12 @@ void MainActivity::build_tabs()
                 confirm_delete_group(t - 1);
                 return true; }, true);
     }
-    body->addView(row);
+    tab_scroll = new TabScroll();
+    tab_scroll->setMargins(14, 50, 2, 50);
+    tab_scroll->setHeight(52);
+    tab_scroll->setContentView(row);
+    tab_scroll->row = row;
+    body->addView(tab_scroll);
 }
 
 void MainActivity::refresh_tabs()
@@ -446,6 +502,12 @@ void MainActivity::refresh_tabs()
         if (t > 0 && t != tab_add)
             b->updateActionHint(brls::BUTTON_LB, T(S_GROUP_DELETE));
     }
+}
+
+void MainActivity::scroll_to_tab(bool animated)
+{
+    if (tab_scroll && tab >= 0 && tab < (int)tabs.size() && !in_tab_row())
+        tab_scroll->center(tabs[tab], animated);
 }
 
 int MainActivity::group_size(int g)
@@ -770,6 +832,7 @@ void MainActivity::switch_tab(int to, bool focus)
     tab     = to;
     focused = tab < (int)tab_focus.size() ? tab_focus[tab] : 0;
     apply_filter(true, focus);
+    scroll_to_tab(true);
 }
 
 void MainActivity::tab_focused(int t)

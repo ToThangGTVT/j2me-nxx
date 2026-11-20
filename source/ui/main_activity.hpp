@@ -58,6 +58,7 @@ class MainActivity : public brls::Activity
     brls::Label* subtitle_label  = nullptr;
     brls::Box* badge             = nullptr;
     brls::Label* badge_label     = nullptr;
+    class TabScroll* tab_scroll  = nullptr;
     int tab_add                  = 0;   // vị trí tab "+"
     std::vector<int> tab_focus   = std::vector<int>(GROUP_MAX + 1, 0);
     GameDataSource* source       = nullptr;
@@ -89,6 +90,8 @@ class MainActivity : public brls::Activity
     void rename_group(int g);
     void confirm_delete_group(int g);
     void open_menu();
+    // Cuộn hàng tab tới tab đang chọn (khi focus không ở hàng tab)
+    void scroll_to_tab(bool animated);
     void do_rescan();
     void do_upload();
     void do_backup();

@@ -13,7 +13,6 @@ typedef enum {
     // Danh sách game
     S_APP_SUBTITLE,
     S_GAME_COUNT,           // %d
-    S_FOLDER,               // %s
     S_NO_MIDLET,
     S_MENU_HINTS,
     S_PICK_MIDLET,
@@ -225,6 +224,26 @@ typedef enum {
     S_LANG_RESTART,
     S_OUT_OF_MEMORY,
     S_OUT_OF_MEMORY_HINT,
+    // Tab nhóm ở màn hình chính
+    S_TAB_ALL,              // %d
+    S_GROUP_FAVORITES,
+    S_GROUP_NEW,
+    S_GROUP_NAME_HINT,
+    S_GROUP_RENAME,
+    S_GROUP_DELETE,
+    S_GROUP_DELETE_INFO,
+    S_GROUP_FULL,
+    S_GROUP_PICK_TITLE,
+    S_GROUP_ADD_TO,
+    S_GROUP_REMOVE_FROM,
+    S_GROUP_ADDED,
+    S_GROUP_REMOVED,
+    S_GROUP_EMPTY_TITLE,
+    S_GROUP_EMPTY_HINT,
+    S_ACT_GROUPS,
+    S_ACT_MENU,
+    S_ACT_EXIT,
+    S_MENU_GENERAL,
     // Backup
     S_ACT_BACKUP,
     S_ACT_BACKUP_NOW,

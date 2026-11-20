@@ -78,7 +78,7 @@ std::string format_mb(int64_t bytes);
 brls::Label* make_label(const std::string& text, float size, NVGcolor color, bool wrap = true);
 
 // Gán hành động cho nút tay cầm; bản desktop gán thêm phím tắt bàn phím giống input.c
-// (S = X, A = Y, Q = L, W = R, E = ZR, Tab = -, = là +)
+// (S = X, A = Y, Q = L, W = R, F = ZL, E = ZR, Tab = -, = là +)
 brls::ActionIdentifier bind_action(brls::View* view, const std::string& hint, brls::ControllerButton button,
                             const brls::ActionListener& listener, bool hidden = false);
 

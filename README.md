@@ -98,15 +98,17 @@ Màn hình cảm ứng được chuyển thành sự kiện pointer.
 
 **Gửi ứng dụng từ điện thoại (Upload)**: ở danh sách ứng dụng bấm **R**, Switch hiện mã QR. Điện thoại (cùng mạng Wi-Fi với Switch) quét mã để mở trang tải lên, chọn một hoặc nhiều file ứng dụng `.jar` / `.jad`, file được lưu thẳng vào thư mục `games` (có thanh tiến trình trên cả điện thoại và Switch). Không quét được mã thì gõ địa chỉ hiện bên cạnh (dạng `http://192.168.x.x:8080/`) vào trình duyệt. Bấm **B** để đóng, danh sách tự quét lại.
 
+**Nhóm ứng dụng**: hàng tab trên danh sách gồm **Tất cả** (cố định) và các nhóm (mặc định có **Yêu thích**). Đổi tab bằng **trái / phải** hoặc chạm vào tab. Bấm **ZL** ở một ứng dụng để thêm / bỏ nó khỏi từng nhóm, hoặc tạo nhóm mới chứa nó. Đổi tên / xoá nhóm (ứng dụng vẫn còn) trong **Menu** (**X**) khi đang mở nhóm đó; thêm nhóm bằng tab **+ Nhóm mới** (bấm **lên** để vào hàng tab) hoặc Menu (tối đa 12). Lưu ở `sdmc:/switch/j2me-nxx/groups.ini`.
+
 **Backup save game**: ở danh sách ứng dụng bấm **ZR** để mở **Quản lý backup**. Chọn ứng dụng rồi bấm **Y** để tạo backup: một file zip gồm file game (`.jar` / `.jad`), save RMS, file của ứng dụng và tuỳ chọn riêng, lưu ở `sdmc:/switch/j2me-nxx/backups/<ứng dụng>/<thời gian>.zip`. Mỗi ứng dụng có thể có nhiều backup, xếp theo thời gian. Mở một ứng dụng (**A**) để xem các backup: **A** áp dụng (thay save, file, tuỳ chọn riêng hiện tại bằng bản trong backup; dữ liệu hiện tại được tự động backup trước; file game được chép lại nếu đã xoá), **L** xoá backup. **R** mở mã QR chia sẻ với điện thoại: trang web liệt kê backup của mọi ứng dụng để tải về, và cho gửi file backup `.zip` từ điện thoại lên Switch.
 
 **Xoá ứng dụng**: chọn file trong danh sách rồi bấm **L**, hộp xác nhận hiện tên và dung lượng file, bấm **A** để xoá (kèm file `.jad` cùng tên nếu có), **B** để huỷ. Dữ liệu save và tuỳ chọn riêng của ứng dụng vẫn được giữ lại, chép lại ứng dụng là dùng tiếp được.
 
 Danh sách ứng dụng hiện tên, nhà phát hành, phiên bản và icon đọc từ `MANIFEST.MF` / `.jad` của từng ứng dụng (đọc dần khi cuộn tới). JAR thiếu `MIDlet-1` được đánh dấu cảnh báo.
 
-Trong danh sách ứng dụng (**A** mở):
-- **X**: Cài đặt chung (chia thẻ Màn hình ứng dụng / Điều khiển / Chữ và âm thanh / Hệ thống): giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chạy, ánh xạ phím, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English / 简体中文 / Русский).
-- **−**: Tùy chọn riêng cho ứng dụng đang chọn (FPS, kích thước màn hình, kiểu phím, ánh xạ phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nxx/options/<tên>.ini`.
+Trong danh sách ứng dụng (**A** mở), **X** mở **Menu** bên phải gom mọi thao tác: với ứng dụng đang chọn (Mở, Nhóm, Tùy chọn, Backup, Xoá), với nhóm đang mở (Đổi tên, Xoá nhóm) và các mục chung (Nhóm mới, Cài đặt, Quét lại, Cập nhật, Thoát); **R** gửi game từ điện thoại. Cạnh mỗi mục trong Menu ghi nút tắt (**ZL**, **−**, **ZR**, **L**, **Y**, **+**) để bấm thẳng không cần mở menu.
+- **Cài đặt** (trong Menu): cài đặt chung (chia thẻ Màn hình ứng dụng / Điều khiển / Chữ và âm thanh / Hệ thống): giới hạn FPS, kích thước màn hình mặc định (có sẵn 20 cỡ, dọc/ngang, tuỳ chỉnh), hiện chú thích phím khi chạy, ánh xạ phím, cỡ chữ (75–300%), chữ mịn (khử răng cưa, nên bật cho Opera Mini), ngôn ngữ (Tiếng Việt / English / 简体中文 / Русский).
+- **Tùy chọn** (**−**): tùy chọn riêng cho ứng dụng đang chọn (FPS, kích thước màn hình, kiểu phím, ánh xạ phím, cỡ chữ, chữ mịn), lưu ở `sdmc:/switch/j2me-nxx/options/<tên>.ini`.
 
 Kích thước màn hình được chọn theo thứ tự: tuỳ chọn riêng của ứng dụng > `Nokia-MIDlet-Original-Display-Size` trong MANIFEST/JAD > cài đặt chung (mặc định 240x320).
 
@@ -132,7 +134,7 @@ Bản desktop đọc vài biến môi trường để chạy kịch bản (tính
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
-`J2ME_NX_TAPS="1000:640:500"` chạm chuột tại (x, y) trên màn hình app 1280x720, `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách ứng dụng) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 48000Hz) ra file, `J2ME_NX_SCREEN=settings` / `lang` / `keybind` mở thẳng màn hình cài đặt / chọn ngôn ngữ / ánh xạ phím, `J2ME_NX_PRESS="1500:Return,2000:Down"` bấm phím bàn phím (Enter = A, Esc = B, mũi tên; S = X, A = Y, Q = L, W = R, Tab = −, `=` là +), `J2ME_NX_FAKE_VERSION=0.1.0` giả làm bản cũ để thử cập nhật (bản desktop chỉ tải `.nro` về thư mục dữ liệu, hoặc `J2ME_NX_UPDATE_PATH`).
+`J2ME_NX_TAPS="1000:640:500"` chạm chuột tại (x, y) trên màn hình app 1280x720, `J2ME_NX_APPSHOT=<file.bmp>` chụp màn hình app (danh sách ứng dụng) rồi thoát, `J2ME_NX_AUDIO_DUMP=<file>` ghi luồng âm thanh (PCM 16-bit mono 48000Hz) ra file, `J2ME_NX_SCREEN=settings` / `lang` / `keybind` mở thẳng màn hình cài đặt / chọn ngôn ngữ / ánh xạ phím, `J2ME_NX_PRESS="1500:Return,2000:Down"` bấm phím bàn phím (Enter = A, Esc = B, mũi tên; S = X, A = Y, Q = L, W = R, F = ZL, Tab = −, `=` là +), `J2ME_NX_FAKE_VERSION=0.1.0` giả làm bản cũ để thử cập nhật (bản desktop chỉ tải `.nro` về thư mục dữ liệu, hoặc `J2ME_NX_UPDATE_PATH`).
 
 ---
 
@@ -228,15 +230,17 @@ The touch screen is mapped to pointer events.
 
 **Sending apps from your phone (Upload)**: press **R** in the app list and the Switch shows a QR code. Scan it with a phone on the same Wi-Fi network to open the upload page, then pick one or more `.jar` / `.jad` apps; they are saved straight into the `games` folder (with progress on both the phone and the Switch). If scanning does not work, type the address shown next to the code (like `http://192.168.x.x:8080/`) into the browser. Press **B** to close; the list is rescanned automatically.
 
+**App groups**: the tab row above the list has **All** (fixed) and your groups (**Favorites** by default). Switch tabs with **left / right** or by tapping. Press **ZL** on an app to add it to / remove it from each group, or to create a new group containing it. Rename / delete a group (its apps are kept) from the **Menu** (**X**) while that group is open; add one with the **+ New group** tab (press **up** to reach the tabs) or the Menu (up to 12). Stored in `sdmc:/switch/j2me-nxx/groups.ini`.
+
 **Save backups**: press **ZR** in the app list to open **Backups**. Pick an app and press **Y** to back it up: one zip file with the game file (`.jar` / `.jad`), RMS saves, the app's files and its options, stored in `sdmc:/switch/j2me-nxx/backups/<app>/<time>.zip`. An app can have many backups, listed by time. Open an app (**A**) to see its backups: **A** applies one (replaces the current saves, files and options with the backup's; the current data is backed up automatically first; the game file is copied back if it was deleted), **L** deletes it. **R** shows a QR code to share with your phone: the web page lists the backups of every app for download, and lets you send `.zip` backups from the phone to the Switch.
 
 **Deleting apps**: select a file in the list and press **L**; a confirmation shows its name and size. Press **A** to delete it (along with the matching `.jad`, if any) or **B** to cancel. Save data and per-app options are kept, so copying the app back lets you continue where you left off.
 
 The app list shows the name, vendor, version and icon read from each app's `MANIFEST.MF` / `.jad` (loaded lazily as you scroll). JARs without `MIDlet-1` are flagged with a warning.
 
-In the app list (**A** opens):
-- **X**: Global settings (tabs App screen / Controls / Text and sound / System): FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while running, button mapping, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English / 简体中文 / Русский).
-- **−**: Options for the selected app (FPS, screen size, key layout, button mapping, font size, smooth text), saved to `sdmc:/switch/j2me-nxx/options/<name>.ini`.
+In the app list (**A** opens), **X** opens the **Menu** on the right with every action: for the selected app (Open, Groups, Options, Backup, Delete), for the open group (Rename, Delete group) and general ones (New group, Settings, Rescan, Update, Exit); **R** uploads apps from your phone. Each Menu item shows its shortcut button (**ZL**, **−**, **ZR**, **L**, **Y**, **+**) so you can press it directly without opening the menu.
+- **Settings** (in the Menu): global settings (tabs App screen / Controls / Text and sound / System): FPS limit, default screen size (20 presets, portrait/landscape, custom), show key hints while running, button mapping, font size (75–300%), smooth (anti-aliased) text, recommended for Opera Mini, language (Tiếng Việt / English / 简体中文 / Русский).
+- **Options** (**−**): options for the selected app (FPS, screen size, key layout, button mapping, font size, smooth text), saved to `sdmc:/switch/j2me-nxx/options/<name>.ini`.
 
 Screen size is chosen in this order: the app's own options > `Nokia-MIDlet-Original-Display-Size` in MANIFEST/JAD > global settings (default 240x320).
 
@@ -262,4 +266,4 @@ The desktop build reads a few environment variables to run a script (times in ms
 J2ME_NX_KEYS="1500:-6,2000:-5" J2ME_NX_SHOTS="3000:/tmp/a.bmp" J2ME_NX_QUIT=4000 ./build-desktop/j2me-nxx game.jar
 ```
 
-`J2ME_NX_TAPS="1000:640:500"` clicks at (x, y) on the 1280x720 app screen, `J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (app list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 48000 Hz) to a file, `J2ME_NX_SCREEN=settings` / `lang` / `keybind` opens the settings / language / button mapping screen directly, `J2ME_NX_PRESS="1500:Return,2000:Down"` presses keyboard keys (Enter = A, Esc = B, arrows; S = X, A = Y, Q = L, W = R, Tab = −, `=` is +), `J2ME_NX_FAKE_VERSION=0.1.0` pretends to be an older version to test updating (the desktop build only downloads the `.nro` into the data folder, or `J2ME_NX_UPDATE_PATH`).
+`J2ME_NX_TAPS="1000:640:500"` clicks at (x, y) on the 1280x720 app screen, `J2ME_NX_APPSHOT=<file.bmp>` takes a screenshot of the app (app list) and exits, `J2ME_NX_AUDIO_DUMP=<file>` writes the audio stream (16-bit mono PCM, 48000 Hz) to a file, `J2ME_NX_SCREEN=settings` / `lang` / `keybind` opens the settings / language / button mapping screen directly, `J2ME_NX_PRESS="1500:Return,2000:Down"` presses keyboard keys (Enter = A, Esc = B, arrows; S = X, A = Y, Q = L, W = R, F = ZL, Tab = −, `=` is +), `J2ME_NX_FAKE_VERSION=0.1.0` pretends to be an older version to test updating (the desktop build only downloads the `.nro` into the data folder, or `J2ME_NX_UPDATE_PATH`).

@@ -171,6 +171,7 @@ brls::ActionIdentifier bind_action(brls::View* view, const std::string& hint, br
         case brls::BUTTON_LB: key = brls::BRLS_KBD_KEY_Q; break;
         case brls::BUTTON_RB: key = brls::BRLS_KBD_KEY_W; break;
         case brls::BUTTON_RT: key = brls::BRLS_KBD_KEY_E; break;
+        case brls::BUTTON_LT: key = brls::BRLS_KBD_KEY_F; break;
         case brls::BUTTON_BACK: key = brls::BRLS_KBD_KEY_TAB; break;
         case brls::BUTTON_START: key = brls::BRLS_KBD_KEY_EQUAL; break;
         default: break;

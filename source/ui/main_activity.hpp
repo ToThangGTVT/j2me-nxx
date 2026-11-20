@@ -3,6 +3,10 @@
 
 #include "ui/common.hpp"
 
+extern "C" {
+#include "groups.h"
+}
+
 namespace ui
 {
 
@@ -34,7 +38,16 @@ class MainActivity : public brls::Activity
     void relabel();
 
     GameList list = {};
-    int focused   = 0;
+    int focused   = 0;      // dòng đang chọn trong tab hiện tại
+
+    // Tab: 0 tất cả, 1.. nhóm thứ tab - 1 (groups.h)
+    int tab = 0;
+    std::vector<int> rows;          // dòng -> vị trí trong list theo tab hiện tại
+    std::vector<std::string> ids;   // theo vị trí trong list: game_list_id
+    std::vector<class TabButton*> tabs;
+
+    // Vị trí trong list của một dòng, -1 nếu không có
+    int index_of(int row) const { return row >= 0 && row < (int)rows.size() ? rows[row] : -1; }
 
   private:
     brls::AppletFrame* frame     = nullptr;
@@ -45,7 +58,8 @@ class MainActivity : public brls::Activity
     brls::Label* subtitle_label  = nullptr;
     brls::Box* badge             = nullptr;
     brls::Label* badge_label     = nullptr;
-    brls::Label* folder_label    = nullptr;
+    int tab_add                  = 0;   // vị trí tab "+"
+    std::vector<int> tab_focus   = std::vector<int>(GROUP_MAX + 1, 0);
     GameDataSource* source       = nullptr;
     std::vector<brls::ActionIdentifier> actions;
     bool update_shown            = false;   // đang hiện nhãn có bản mới
@@ -53,11 +67,31 @@ class MainActivity : public brls::Activity
     void build_empty();
     void register_actions();
     void refresh_header();
+    void build_tabs();
+    void refresh_tabs();
+    // Dựng lại rows theo tab; keep: giữ con trỏ ở gần chỗ cũ; focus: đưa focus về danh sách
+    void apply_filter(bool keep, bool focus);
+    void fill_empty();
+    void focus_list();
+    void focus_tab(int t);
+    bool in_tab_row();
+    int group_size(int g);
 
   public:
     void open_entry(int index);
     void open_options(int index);
     void confirm_delete(int index);
+    void open_groups(int index);
+    void switch_tab(int to, bool focus);
+    void tab_focused(int t);
+    void tab_pressed(int t);
+    void new_group(int index);
+    void rename_group(int g);
+    void confirm_delete_group(int g);
+    void open_menu();
+    void do_rescan();
+    void do_upload();
+    void do_backup();
     void free_icons();
 };
 

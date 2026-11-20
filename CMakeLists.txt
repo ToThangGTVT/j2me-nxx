@@ -21,7 +21,7 @@ if(NOT J2ME_NX_DESKTOP AND NOT CMAKE_TOOLCHAIN_FILE)
     endif()
 endif()
 
-project(j2me-nxx VERSION 0.8.13 LANGUAGES C CXX)
+project(j2me-nxx VERSION 0.8.14 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -293,6 +293,7 @@ add_executable(j2me-nxx
     source/ui/common.cpp
     source/ui/screen_activity.cpp
     source/ui/main_activity.cpp
+    source/ui/side_menu.cpp
     source/ui/settings_activity.cpp
     source/ui/keybind_activity.cpp
     source/ui/lang_activity.cpp
@@ -314,6 +315,7 @@ add_executable(j2me-nxx
     source/keymap.c
     source/keybind.c
     source/settings.c
+    source/groups.c
     source/qr.c
     source/websrv.c
     source/upload.c
